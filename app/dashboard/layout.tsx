@@ -13,8 +13,8 @@ export default async function DashboardLayout({
 
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="flex items-center justify-between border-b px-6 py-3 print:hidden">
-        <nav className="flex items-center gap-6">
+      <header className="flex flex-col gap-2 border-b px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 print:hidden">
+        <nav className="flex flex-wrap items-center gap-x-4 gap-y-1">
           <Link href="/dashboard" className="font-semibold">
             Verta
           </Link>
@@ -64,7 +64,9 @@ export default async function DashboardLayout({
           )}
         </nav>
         <div className="flex items-center gap-4 text-sm">
-          <span className="text-muted-foreground">{profile?.email}</span>
+          <span className="hidden text-muted-foreground sm:inline">
+            {profile?.email}
+          </span>
           <form action="/auth/signout" method="post">
             <button
               type="submit"
