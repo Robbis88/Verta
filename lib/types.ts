@@ -24,6 +24,20 @@ export type Property = {
   updated_at: string;
 };
 
+export type Boost = {
+  id: string;
+  property_id: string;
+  status: string;
+  budget_nok: number;
+  platform: string;
+  start_date: string;
+  end_date: string;
+  ai_generated_text: string | null;
+  user_approved_text: string | null;
+  utm_campaign_id: string | null;
+  created_at: string;
+};
+
 export type Booking = {
   id: string;
   property_id: string;

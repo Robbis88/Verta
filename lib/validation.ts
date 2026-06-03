@@ -25,3 +25,17 @@ export const bookingSchema = z
     path: ["check_out"],
   });
 export type BookingInput = z.infer<typeof bookingSchema>;
+
+export const boostSchema = z
+  .object({
+    property_id: z.string().uuid("Velg en eiendom"),
+    budget_nok: z.coerce.number().min(100, "Minst 100 kr").max(10000, "Maks 10 000 kr"),
+    platform: z.enum(["instagram", "facebook", "both"]),
+    start_date: z.string().min(1, "Velg startdato"),
+    end_date: z.string().min(1, "Velg sluttdato"),
+  })
+  .refine((d) => d.end_date > d.start_date, {
+    message: "Sluttdato må være etter startdato",
+    path: ["end_date"],
+  });
+export type BoostInput = z.infer<typeof boostSchema>;

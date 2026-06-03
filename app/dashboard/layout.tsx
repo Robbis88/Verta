@@ -29,6 +29,12 @@ export default async function DashboardLayout({
           >
             Eiendommer
           </Link>
+          <Link
+            href="/dashboard/boosts"
+            className="text-sm text-muted-foreground hover:text-foreground"
+          >
+            Boost
+          </Link>
         </nav>
         <div className="flex items-center gap-4 text-sm">
           <span className="text-muted-foreground">{profile?.email}</span>
