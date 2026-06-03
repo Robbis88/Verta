@@ -35,6 +35,12 @@ export default async function DashboardLayout({
           >
             Boost
           </Link>
+          <Link
+            href="/dashboard/commissions"
+            className="text-sm text-muted-foreground hover:text-foreground"
+          >
+            Provisjon
+          </Link>
         </nav>
         <div className="flex items-center gap-4 text-sm">
           <span className="text-muted-foreground">{profile?.email}</span>
