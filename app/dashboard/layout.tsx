@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { getCurrentProfile, requireUser } from "@/lib/auth";
+import { isAdmin } from "@/lib/admin";
 
 export default async function DashboardLayout({
   children,
@@ -53,6 +54,14 @@ export default async function DashboardLayout({
           >
             Innstillinger
           </Link>
+          {isAdmin(profile?.email) && (
+            <Link
+              href="/admin"
+              className="text-sm text-muted-foreground hover:text-foreground"
+            >
+              Admin
+            </Link>
+          )}
         </nav>
         <div className="flex items-center gap-4 text-sm">
           <span className="text-muted-foreground">{profile?.email}</span>
