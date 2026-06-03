@@ -1,5 +1,6 @@
 import { Hero } from "@/components/landing/Hero";
 import { PainPoints } from "@/components/landing/PainPoints";
+import { Showcase } from "@/components/landing/Showcase";
 import { PricingTable } from "@/components/landing/PricingTable";
 import { HowItWorks } from "@/components/landing/HowItWorks";
 import { Features } from "@/components/landing/Features";
@@ -10,6 +11,7 @@ export default function Home() {
     <>
       <Hero />
       <PainPoints />
+      <Showcase />
       <Features />
       <HowItWorks />
       <PricingTable />

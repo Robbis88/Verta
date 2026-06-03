@@ -1,33 +1,43 @@
+import {
+  KeyRound,
+  LockKeyhole,
+  FileText,
+  Calendar,
+  Sparkles,
+  BarChart3,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+
 import { Card } from "@/components/ui/card";
 
-const features = [
+const features: { icon: LucideIcon; title: string; description: string }[] = [
   {
-    icon: "🔑",
+    icon: KeyRound,
     title: "Direkte bookinger",
     description: "Slipp Airbnb-gebyret. Full kontroll. Dine kunder.",
   },
   {
-    icon: "🔒",
+    icon: LockKeyhole,
     title: "Smartlås-integrasjon",
     description: "Nuki-lås. Automatisk kode. Ingen nøkkelutveksling.",
   },
   {
-    icon: "🧾",
+    icon: FileText,
     title: "Skatt på autopilot",
     description: "DPI-rapportering. Ferdig utfylt for Skatteetaten.",
   },
   {
-    icon: "📅",
+    icon: Calendar,
     title: "Multi-kanal sync",
     description: "Airbnb, Booking, Finn. Én kalender. Null dobbeltbooking.",
   },
   {
-    icon: "✨",
+    icon: Sparkles,
     title: "AI-markedsføring",
     description: "Genererte annonser. Flere bookinger. 10 % provisjon.",
   },
   {
-    icon: "📊",
+    icon: BarChart3,
     title: "Premium analytics",
     description: "ROI per boost. Inntekt per kanal. Sanntidssporing.",
   },
@@ -44,13 +54,22 @@ export function Features() {
         </div>
 
         <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
-          {features.map((f) => (
-            <Card key={f.title} className="p-8 transition hover:shadow-lg">
-              <div className="mb-4 text-4xl">{f.icon}</div>
-              <h3 className="mb-2 text-lg font-semibold text-navy">{f.title}</h3>
-              <p className="text-sm leading-relaxed text-ink">{f.description}</p>
-            </Card>
-          ))}
+          {features.map((f) => {
+            const Icon = f.icon;
+            return (
+              <Card key={f.title} className="p-8 transition hover:shadow-lg">
+                <div className="mb-5 inline-flex size-11 items-center justify-center rounded-lg bg-gold/15 text-gold">
+                  <Icon className="size-5" strokeWidth={1.75} />
+                </div>
+                <h3 className="mb-2 text-lg font-semibold text-navy">
+                  {f.title}
+                </h3>
+                <p className="text-sm leading-relaxed text-ink">
+                  {f.description}
+                </p>
+              </Card>
+            );
+          })}
         </div>
       </div>
     </section>

@@ -1,28 +1,24 @@
 const steps = [
   {
     num: 1,
-    icon: "🎯",
     title: "Registrer med Vipps",
     desc: "Scan QR-kode, godta. Du er logget inn.",
     time: "2 min",
   },
   {
     num: 2,
-    icon: "🏠",
     title: "Legg til hytta",
     desc: "Navn, adresse, type. Vi gjør resten.",
     time: "3 min",
   },
   {
     num: 3,
-    icon: "💳",
     title: "Velg plan",
     desc: "Basis, Pluss eller Premium. Oppgrader når du vil.",
     time: "1 min",
   },
   {
     num: 4,
-    icon: "🚀",
     title: "Kom i gang",
     desc: "Dashboard, bookinger, markedsføring. Alt klart.",
     time: "Dag 1",
@@ -45,14 +41,17 @@ export function HowItWorks() {
 
         <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 md:grid-cols-4">
           {steps.map((step) => (
-            <div key={step.num} className="text-center">
-              <div className="mb-2 text-3xl">{step.icon}</div>
-              <div className="mb-3 text-5xl font-bold text-gold">{step.num}</div>
+            <div key={step.num} className="flex flex-col items-center text-center">
+              <div className="mb-4 flex size-12 items-center justify-center rounded-full bg-navy text-lg font-semibold text-white">
+                {step.num}
+              </div>
               <h3 className="mb-2 text-lg font-semibold text-navy">
                 {step.title}
               </h3>
-              <p className="mb-4 text-sm text-ink">{step.desc}</p>
-              <p className="text-xs font-semibold text-gold">{step.time}</p>
+              <p className="mb-3 text-sm text-ink">{step.desc}</p>
+              <p className="text-xs font-semibold tracking-wide text-gold">
+                {step.time}
+              </p>
             </div>
           ))}
         </div>

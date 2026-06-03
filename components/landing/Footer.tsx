@@ -79,7 +79,7 @@ export function Footer() {
         <p className="text-sm text-gold">
           © 2026 Verta AS. Alle rettigheter reservert.
         </p>
-        <p className="text-sm text-gold">Made in Norway 🇳🇴</p>
+        <p className="text-sm text-gold">Laget i Norge</p>
       </div>
     </footer>
   );
