@@ -4,6 +4,17 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Verta-merkefarger (brukes på landingssiden) */
+@theme {
+  --color-navy: #081b33;
+  --color-navy-dark: #04111f;
+  --color-gold: #d8a66a;
+  --color-gold-light: #f2c38b;
+  --color-cloud: #f5f7fa;
+  --color-ink: #4b5563;
+  --color-hairline: #e0e7ff;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
