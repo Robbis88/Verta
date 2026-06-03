@@ -12,7 +12,7 @@ export default async function DashboardLayout({
 
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="flex items-center justify-between border-b px-6 py-3">
+      <header className="flex items-center justify-between border-b px-6 py-3 print:hidden">
         <nav className="flex items-center gap-6">
           <Link href="/dashboard" className="font-semibold">
             Verta
@@ -40,6 +40,12 @@ export default async function DashboardLayout({
             className="text-sm text-muted-foreground hover:text-foreground"
           >
             Provisjon
+          </Link>
+          <Link
+            href="/dashboard/tax"
+            className="text-sm text-muted-foreground hover:text-foreground"
+          >
+            Skatt
           </Link>
         </nav>
         <div className="flex items-center gap-4 text-sm">
