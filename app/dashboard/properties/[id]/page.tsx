@@ -15,8 +15,10 @@ import { BookingAddForm } from "@/components/bookings/booking-add-form";
 import { CancelBookingButton } from "@/components/bookings/cancel-booking-button";
 import { SmartLockCode } from "@/components/smartlock/smartlock-code";
 import { AvailabilityCalendar } from "@/components/calendar/availability-calendar";
+import { addIcalUrl, removeIcalUrl, syncIcal } from "../ical-actions";
 import { bookedDateSet } from "@/lib/availability";
 import { formatNok } from "@/lib/utils";
+import type { IcalUrl } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -170,6 +172,70 @@ export default async function PropertyDetailPage({
               {(process.env.NEXT_PUBLIC_SITE_URL ?? "")}/api/calendar/{p.slug}
             </code>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Importer kalender (iCal)</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4 text-sm">
+          <p className="text-muted-foreground">
+            Lim inn iCal-eksportlenken fra Airbnb eller Booking.com, så
+            importeres bookingene deres hit og blokkerer datoene.
+          </p>
+
+          {(p.ical_urls ?? []).length > 0 && (
+            <ul className="flex flex-col divide-y">
+              {(p.ical_urls as IcalUrl[]).map((u) => (
+                <li
+                  key={u.url}
+                  className="flex items-center justify-between gap-3 py-2"
+                >
+                  <span className="truncate">
+                    <span className="font-medium">{u.source}</span> ·{" "}
+                    <span className="text-muted-foreground">{u.url}</span>
+                  </span>
+                  <form action={removeIcalUrl}>
+                    <input type="hidden" name="property_id" value={p.id} />
+                    <input type="hidden" name="url" value={u.url} />
+                    <Button type="submit" variant="ghost" size="sm">
+                      Fjern
+                    </Button>
+                  </form>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <form action={addIcalUrl} className="flex flex-col gap-2 sm:flex-row">
+            <input type="hidden" name="property_id" value={p.id} />
+            <input
+              name="url"
+              type="url"
+              required
+              placeholder="https://www.airbnb.no/calendar/ical/…"
+              className="flex h-9 flex-1 rounded-lg border border-input bg-background px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+            <select
+              name="source"
+              defaultValue="airbnb"
+              className="h-9 rounded-lg border border-input bg-background px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <option value="airbnb">Airbnb</option>
+              <option value="booking">Booking.com</option>
+            </select>
+            <Button type="submit" variant="outline">
+              Legg til
+            </Button>
+          </form>
+
+          {(p.ical_urls ?? []).length > 0 && (
+            <form action={syncIcal}>
+              <input type="hidden" name="property_id" value={p.id} />
+              <Button type="submit">Synk nå</Button>
+            </form>
+          )}
         </CardContent>
       </Card>
 

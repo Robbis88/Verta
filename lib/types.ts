@@ -10,6 +10,8 @@ export type UserProfile = {
   stripe_customer_id: string | null;
 };
 
+export type IcalUrl = { url: string; source: string };
+
 export type Property = {
   id: string;
   user_id: string;
@@ -20,6 +22,7 @@ export type Property = {
   bedrooms: number | null;
   bathrooms: number | null;
   max_guests: number | null;
+  ical_urls?: IcalUrl[];
   created_at: string;
   updated_at: string;
 };
