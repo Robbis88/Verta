@@ -1,0 +1,176 @@
+import Link from "next/link";
+import { notFound } from "next/navigation";
+
+import { createClient } from "@/lib/supabase/server";
+import { getCurrentProfile } from "@/lib/auth";
+import { deleteProperty, updateProperty } from "../actions";
+import {
+  connectSmartLock,
+  disconnectSmartLock,
+} from "../smartlock-actions";
+import { PropertyForm } from "@/components/properties/property-form";
+import { DeletePropertyButton } from "@/components/properties/delete-property-button";
+import { SmartLockCode } from "@/components/smartlock/smartlock-code";
+import { formatNok } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import type { Booking, Property } from "@/lib/types";
+
+type SmartLock = {
+  id: string;
+  status: string;
+  device_id: string;
+  provider: string;
+};
+
+export default async function PropertyDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const supabase = await createClient();
+
+  const { data: property } = await supabase
+    .from("properties")
+    .select("*")
+    .eq("id", id)
+    .single();
+
+  if (!property) notFound();
+  const p = property as Property;
+
+  const { data: bookingsData } = await supabase
+    .from("bookings")
+    .select("*")
+    .eq("property_id", id)
+    .order("check_in", { ascending: false });
+  const bookings = (bookingsData ?? []) as Booking[];
+
+  const profile = await getCurrentProfile();
+  const isPremium = profile?.plan === "premium";
+  const { data: lockData } = await supabase
+    .from("smart_locks")
+    .select("id,status,device_id,provider")
+    .eq("property_id", id)
+    .maybeSingle();
+  const lock = lockData as SmartLock | null;
+
+  return (
+    <div className="flex flex-col gap-8">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold">{p.name}</h1>
+          <p className="text-sm text-muted-foreground">
+            Offentlig lenke: /properties/{p.slug}
+          </p>
+        </div>
+        <Link
+          href="/dashboard/properties"
+          className="text-sm text-muted-foreground hover:text-foreground"
+        >
+          ← Tilbake
+        </Link>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Rediger</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <PropertyForm
+            action={updateProperty}
+            submitLabel="Lagre endringer"
+            defaults={{
+              id: p.id,
+              name: p.name,
+              address: p.address,
+              description: p.description,
+              bedrooms: p.bedrooms,
+              bathrooms: p.bathrooms,
+              max_guests: p.max_guests,
+            }}
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Bookinger ({bookings.length})</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {bookings.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Ingen bookinger ennå.</p>
+          ) : (
+            <ul className="flex flex-col divide-y">
+              {bookings.map((b) => (
+                <li
+                  key={b.id}
+                  className="flex items-center justify-between py-2 text-sm"
+                >
+                  <span>{b.guest_name}</span>
+                  <span className="text-muted-foreground">
+                    {b.check_in} → {b.check_out}
+                  </span>
+                  <span>{b.total_price ? formatNok(Number(b.total_price)) : "—"}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Smartlås</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {!isPremium ? (
+            <p className="text-sm text-muted-foreground">
+              Smartlås er en Premium-funksjon.{" "}
+              <Link href="/onboarding/plan" className="underline">
+                Oppgrader til Premium
+              </Link>{" "}
+              for å koble til Nuki-lås.
+            </p>
+          ) : lock ? (
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center gap-3 text-sm">
+                <Badge>{lock.status}</Badge>
+                <span className="text-muted-foreground">
+                  {lock.provider} · {lock.device_id}
+                </span>
+              </div>
+              <SmartLockCode />
+              <form action={disconnectSmartLock}>
+                <input type="hidden" name="id" value={lock.id} />
+                <input type="hidden" name="property_id" value={p.id} />
+                <Button type="submit" variant="outline">
+                  Koble fra
+                </Button>
+              </form>
+            </div>
+          ) : (
+            <form action={connectSmartLock} className="flex flex-col gap-3">
+              <input type="hidden" name="property_id" value={p.id} />
+              <p className="text-sm text-muted-foreground">
+                Koble til en Nuki-lås for automatiske adgangskoder ved booking.
+              </p>
+              <div>
+                <Button type="submit">Koble til Nuki</Button>
+              </div>
+            </form>
+          )}
+        </CardContent>
+      </Card>
+
+      <DeletePropertyButton action={deleteProperty} id={p.id} />
+    </div>
+  );
+}
