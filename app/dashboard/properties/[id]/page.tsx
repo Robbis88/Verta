@@ -14,6 +14,8 @@ import { DeletePropertyButton } from "@/components/properties/delete-property-bu
 import { BookingAddForm } from "@/components/bookings/booking-add-form";
 import { CancelBookingButton } from "@/components/bookings/cancel-booking-button";
 import { SmartLockCode } from "@/components/smartlock/smartlock-code";
+import { AvailabilityCalendar } from "@/components/calendar/availability-calendar";
+import { bookedDateSet } from "@/lib/availability";
 import { formatNok } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -145,6 +147,29 @@ export default async function PropertyDetailPage({
               ))}
             </ul>
           )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Tilgjengelighet</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-6">
+          <AvailabilityCalendar
+            bookedDates={[...bookedDateSet(bookings)]}
+            fromISO={new Date().toISOString().slice(0, 10)}
+            months={3}
+          />
+          <div className="flex flex-col gap-1 border-t pt-4 text-sm">
+            <span className="font-medium">Kalendersynk (iCal)</span>
+            <span className="text-muted-foreground">
+              Lim denne lenken inn i Airbnb/Booking for å blokkere
+              Verta-bookede datoer:
+            </span>
+            <code className="mt-1 break-all rounded bg-muted px-2 py-1 text-xs">
+              {(process.env.NEXT_PUBLIC_SITE_URL ?? "")}/api/calendar/{p.slug}
+            </code>
+          </div>
         </CardContent>
       </Card>
 
