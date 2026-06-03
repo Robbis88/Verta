@@ -39,3 +39,24 @@ export const boostSchema = z
     path: ["end_date"],
   });
 export type BoostInput = z.infer<typeof boostSchema>;
+
+export const ownerBookingSchema = z
+  .object({
+    guest_name: z.string().min(2, "Oppgi navn").max(100),
+    guest_email: z.string().email("Ugyldig e-post").optional().or(z.literal("")),
+    source: z.enum([
+      "airbnb",
+      "booking",
+      "verta_direct",
+      "verta_instagram",
+      "verta_facebook",
+    ]),
+    total_price: z.coerce.number().min(0).max(1_000_000).optional(),
+    check_in: z.string().min(1, "Velg innsjekk"),
+    check_out: z.string().min(1, "Velg utsjekk"),
+  })
+  .refine((d) => d.check_out > d.check_in, {
+    message: "Utsjekk må være etter innsjekk",
+    path: ["check_out"],
+  });
+export type OwnerBookingInput = z.infer<typeof ownerBookingSchema>;

@@ -8,8 +8,11 @@ import {
   connectSmartLock,
   disconnectSmartLock,
 } from "../smartlock-actions";
+import { createOwnerBooking } from "../booking-actions";
 import { PropertyForm } from "@/components/properties/property-form";
 import { DeletePropertyButton } from "@/components/properties/delete-property-button";
+import { BookingAddForm } from "@/components/bookings/booking-add-form";
+import { CancelBookingButton } from "@/components/bookings/cancel-booking-button";
 import { SmartLockCode } from "@/components/smartlock/smartlock-code";
 import { formatNok } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -102,6 +105,15 @@ export default async function PropertyDetailPage({
 
       <Card>
         <CardHeader>
+          <CardTitle>Legg til booking</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <BookingAddForm action={createOwnerBooking.bind(null, p.id)} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle>Bookinger ({bookings.length})</CardTitle>
         </CardHeader>
         <CardContent>
@@ -112,13 +124,23 @@ export default async function PropertyDetailPage({
               {bookings.map((b) => (
                 <li
                   key={b.id}
-                  className="flex items-center justify-between py-2 text-sm"
+                  className="flex items-center justify-between gap-3 py-2 text-sm"
                 >
-                  <span>{b.guest_name}</span>
-                  <span className="text-muted-foreground">
+                  <span className="flex-1">{b.guest_name}</span>
+                  <Badge>{b.source}</Badge>
+                  <span className="w-28 text-right text-muted-foreground">
                     {b.check_in} → {b.check_out}
                   </span>
-                  <span>{b.total_price ? formatNok(Number(b.total_price)) : "—"}</span>
+                  <span className="w-24 text-right">
+                    {b.total_price ? formatNok(Number(b.total_price)) : "—"}
+                  </span>
+                  {b.status === "cancelled" ? (
+                    <span className="w-16 text-right text-xs text-muted-foreground">
+                      avbrutt
+                    </span>
+                  ) : (
+                    <CancelBookingButton id={b.id} propertyId={p.id} />
+                  )}
                 </li>
               ))}
             </ul>
