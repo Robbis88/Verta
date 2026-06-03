@@ -1,30 +1,26 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
+
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { parseICal } from "@/lib/ical-parse";
 import type { IcalUrl } from "@/lib/types";
 
 function nights(start: string, end: string): number {
-  const ms = new Date(`${end}T00:00:00Z`).getTime() - new Date(`${start}T00:00:00Z`).getTime();
+  const ms =
+    new Date(`${end}T00:00:00Z`).getTime() -
+    new Date(`${start}T00:00:00Z`).getTime();
   return Math.max(1, Math.round(ms / 86_400_000));
 }
 
 export type ImportResult = { imported: number; updated: number; failed: number };
 
-/**
- * Importerer bookinger fra eiendommens eksterne iCal-feeder.
- * Bruker RLS-klienten (eier-scope). Dedupliserer på (property_id, ical_uid).
- */
-export async function importIcalForProperty(
+/** Importerer alle feeder for én eiendom med en gitt Supabase-klient. */
+async function importForProperty(
+  supabase: SupabaseClient,
   propertyId: string,
+  urls: IcalUrl[],
 ): Promise<ImportResult> {
-  const supabase = await createClient();
   const result: ImportResult = { imported: 0, updated: 0, failed: 0 };
-
-  const { data: property } = await supabase
-    .from("properties")
-    .select("ical_urls")
-    .eq("id", propertyId)
-    .single();
-  const urls = (property?.ical_urls ?? []) as IcalUrl[];
 
   for (const { url, source } of urls) {
     let text: string;
@@ -76,4 +72,46 @@ export async function importIcalForProperty(
   }
 
   return result;
+}
+
+/** Owner-trigget import (RLS-klient, eier-scope). */
+export async function importIcalForProperty(
+  propertyId: string,
+): Promise<ImportResult> {
+  const supabase = await createClient();
+  const { data: property } = await supabase
+    .from("properties")
+    .select("ical_urls")
+    .eq("id", propertyId)
+    .single();
+  const urls = (property?.ical_urls ?? []) as IcalUrl[];
+  return importForProperty(supabase, propertyId, urls);
+}
+
+/** Cron-trigget import for alle eiendommer med feeder (admin-klient). */
+export async function importAllIcal(): Promise<{
+  properties: number;
+  imported: number;
+  updated: number;
+  failed: number;
+}> {
+  const supabase = createAdminClient();
+  const { data: props } = await supabase
+    .from("properties")
+    .select("id,ical_urls");
+
+  let properties = 0;
+  const agg: ImportResult = { imported: 0, updated: 0, failed: 0 };
+
+  for (const p of (props ?? []) as { id: string; ical_urls: IcalUrl[] | null }[]) {
+    const urls = p.ical_urls ?? [];
+    if (urls.length === 0) continue;
+    properties += 1;
+    const r = await importForProperty(supabase, p.id, urls);
+    agg.imported += r.imported;
+    agg.updated += r.updated;
+    agg.failed += r.failed;
+  }
+
+  return { properties, ...agg };
 }
