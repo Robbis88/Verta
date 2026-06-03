@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { getCurrentUser } from "@/lib/auth";
-import { isAdmin, getAdminMetrics } from "@/lib/admin";
+import { isAdmin, getAdminMetrics, getAdminUsers } from "@/lib/admin";
 import { PLANS } from "@/lib/constants";
 import { formatNok } from "@/lib/utils";
 import {
@@ -17,6 +17,7 @@ export default async function AdminPage() {
   if (!isAdmin(user?.email)) notFound();
 
   const m = await getAdminMetrics();
+  const users = await getAdminUsers();
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 p-6">
@@ -35,6 +36,7 @@ export default async function AdminPage() {
         <Stat title="MRR" value={formatNok(m.mrrNok)} />
         <Stat title="Eiendommer" value={String(m.properties)} />
         <Stat title="Bookinger" value={String(m.bookings)} />
+        <Stat title="Boost (aktive)" value={`${m.activeBoosts} / ${m.boosts}`} />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -65,6 +67,42 @@ export default async function AdminPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Brukere ({users.length})</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {users.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Ingen brukere ennå.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b text-left text-muted-foreground">
+                    <th className="py-2 font-medium">E-post</th>
+                    <th className="py-2 font-medium">Plan</th>
+                    <th className="py-2 text-right font-medium">Eiendommer</th>
+                    <th className="py-2 text-right font-medium">Registrert</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {users.map((u) => (
+                    <tr key={u.id}>
+                      <td className="py-2">{u.email}</td>
+                      <td className="py-2">{PLANS[u.plan]?.label ?? u.plan}</td>
+                      <td className="py-2 text-right">{u.properties}</td>
+                      <td className="py-2 text-right text-muted-foreground">
+                        {u.created_at.slice(0, 10)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

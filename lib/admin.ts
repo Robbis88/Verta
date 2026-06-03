@@ -17,9 +17,20 @@ export type AdminMetrics = {
   mrrNok: number;
   properties: number;
   bookings: number;
+  boosts: number;
+  activeBoosts: number;
   commissionTotal: number;
   commissionPending: number;
   commissionPaid: number;
+};
+
+export type AdminUser = {
+  id: string;
+  email: string;
+  name: string | null;
+  plan: Plan;
+  properties: number;
+  created_at: string;
 };
 
 type UserRow = { plan: Plan; extra_properties_count: number | null };
@@ -57,6 +68,12 @@ export async function getAdminMetrics(): Promise<AdminMetrics> {
     .from("bookings")
     .select("*", { count: "exact", head: true });
 
+  const { data: boostData } = await supabase.from("boosts").select("status");
+  const boostRows = (boostData ?? []) as { status: string }[];
+  const activeBoosts = boostRows.filter(
+    (b) => b.status === "approved" || b.status === "active",
+  ).length;
+
   const { data: commData } = await supabase
     .from("commissions")
     .select("commission_amount,status");
@@ -75,8 +92,32 @@ export async function getAdminMetrics(): Promise<AdminMetrics> {
     mrrNok,
     properties: properties ?? 0,
     bookings: bookings ?? 0,
+    boosts: boostRows.length,
+    activeBoosts,
     commissionTotal,
     commissionPending: commissionTotal - commissionPaid,
     commissionPaid,
   };
+}
+
+/** Brukerliste med antall eiendommer per bruker (service role). */
+export async function getAdminUsers(): Promise<AdminUser[]> {
+  const supabase = createAdminClient();
+
+  const { data: usersData } = await supabase
+    .from("users")
+    .select("id,email,name,plan,created_at")
+    .order("created_at", { ascending: false });
+  const users = (usersData ?? []) as Omit<AdminUser, "properties">[];
+
+  const { data: props } = await supabase.from("properties").select("user_id");
+  const countByUser = new Map<string, number>();
+  for (const p of (props ?? []) as { user_id: string }[]) {
+    countByUser.set(p.user_id, (countByUser.get(p.user_id) ?? 0) + 1);
+  }
+
+  return users.map((u) => ({
+    ...u,
+    properties: countByUser.get(u.id) ?? 0,
+  }));
 }
