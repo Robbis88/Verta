@@ -1,0 +1,94 @@
+"use server";
+
+import { z } from "zod";
+
+import { createAdminClient } from "@/lib/supabase/admin";
+import { bookingSchema } from "@/lib/validation";
+import { logAudit } from "@/lib/audit";
+
+export type BookingFormState = {
+  error?: string;
+  success?: boolean;
+  fieldErrors?: Record<string, string>;
+};
+
+function toFieldErrors(error: z.ZodError): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const issue of error.issues) {
+    const key = String(issue.path[0] ?? "");
+    if (key && !out[key]) out[key] = issue.message;
+  }
+  return out;
+}
+
+function nightsBetween(checkIn: string, checkOut: string): number {
+  const ms = new Date(checkOut).getTime() - new Date(checkIn).getTime();
+  return Math.max(1, Math.round(ms / 86_400_000));
+}
+
+/**
+ * Oppretter en direkte booking fra den offentlige booking-siden.
+ * Gjesten er ikke innlogget, så vi bruker admin-klienten (omgår RLS).
+ */
+export async function createDirectBooking(
+  slug: string,
+  _prev: BookingFormState,
+  formData: FormData,
+): Promise<BookingFormState> {
+  const parsed = bookingSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) {
+    return { error: "Sjekk feltene under", fieldErrors: toFieldErrors(parsed.error) };
+  }
+  const data = parsed.data;
+
+  const supabase = createAdminClient();
+
+  const { data: property } = await supabase
+    .from("properties")
+    .select("id,user_id")
+    .eq("slug", slug)
+    .single();
+
+  if (!property) return { error: "Fant ikke eiendommen" };
+
+  // Overlapp-sjekk: finnes en aktiv booking som krysser datointervallet?
+  const { data: clashes } = await supabase
+    .from("bookings")
+    .select("id")
+    .eq("property_id", property.id)
+    .neq("status", "cancelled")
+    .lt("check_in", data.check_out)
+    .gt("check_out", data.check_in);
+
+  if (clashes && clashes.length > 0) {
+    return { error: "Disse datoene er dessverre opptatt. Velg andre datoer." };
+  }
+
+  const { data: booking, error } = await supabase
+    .from("bookings")
+    .insert({
+      property_id: property.id,
+      guest_name: data.guest_name,
+      guest_email: data.guest_email || null,
+      guest_phone: data.guest_phone || null,
+      check_in: data.check_in,
+      check_out: data.check_out,
+      nights: nightsBetween(data.check_in, data.check_out),
+      source: "verta_direct",
+      status: "confirmed",
+    })
+    .select("id")
+    .single();
+
+  if (error) return { error: error.message };
+
+  await logAudit({
+    user_id: property.user_id,
+    action: "booking.created",
+    resource_type: "booking",
+    resource_id: booking.id,
+    changes: { source: "verta_direct" },
+  });
+
+  return { success: true };
+}
