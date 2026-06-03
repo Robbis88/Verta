@@ -1,24 +1,31 @@
-const painPoints = [
+import { Wallet, ReceiptText, Calendar, TrendingDown } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+
+const painPoints: {
+  icon: LucideIcon;
+  title: string;
+  description: string;
+}[] = [
   {
-    icon: "💰",
+    icon: Wallet,
     title: "Airbnb-gebyr dreper marginene",
     description:
       "15 % gebyr på hver booking. En hytte som tjener 40 000 kr per sesong mister 6 000 kr i gebyrer. Direktebooking sparer det hele.",
   },
   {
-    icon: "🧾",
+    icon: ReceiptText,
     title: "Skatt er et kaos",
     description:
       "DPI-regler er rotete. Fribeløp på 15 000 kr, 85 % skattepliktig overskytende, MVA-regler uklare. Vi gjør det automatisk.",
   },
   {
-    icon: "📅",
+    icon: Calendar,
     title: "Flere kanaler = flere kalendre",
     description:
       "Airbnb, Booking.com, Finn, egen side. Dobbeltbookinger er fienden. Én kalender, alle kanaler synkronisert.",
   },
   {
-    icon: "📉",
+    icon: TrendingDown,
     title: "Lave bookinger = stresset eier",
     description:
       "Synlighet på Airbnb krymper når konkurransen stiger. Markedsføring er dyrt og komplisert. Vi gjør det enkelt og billig.",
@@ -39,16 +46,23 @@ export function PainPoints() {
         </div>
 
         <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
-          {painPoints.map((p) => (
-            <div
-              key={p.title}
-              className="rounded-lg border border-hairline bg-cloud p-8 transition hover:shadow-lg"
-            >
-              <div className="mb-4 text-4xl">{p.icon}</div>
-              <h3 className="mb-3 text-xl font-semibold text-navy">{p.title}</h3>
-              <p className="leading-relaxed text-ink">{p.description}</p>
-            </div>
-          ))}
+          {painPoints.map((p) => {
+            const Icon = p.icon;
+            return (
+              <div
+                key={p.title}
+                className="rounded-xl border border-hairline bg-cloud p-8 transition hover:shadow-lg"
+              >
+                <div className="mb-5 inline-flex size-11 items-center justify-center rounded-lg bg-gold/15 text-gold">
+                  <Icon className="size-5" strokeWidth={1.75} />
+                </div>
+                <h3 className="mb-3 text-xl font-semibold text-navy">
+                  {p.title}
+                </h3>
+                <p className="leading-relaxed text-ink">{p.description}</p>
+              </div>
+            );
+          })}
         </div>
       </div>
     </section>

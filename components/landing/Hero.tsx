@@ -1,17 +1,29 @@
+import Image from "next/image";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
+import { IMG } from "@/lib/images";
 
 export function Hero() {
   return (
-    <section className="flex min-h-screen items-center justify-center bg-navy px-6 py-20">
-      <div className="mx-auto max-w-2xl text-center">
+    <section className="relative flex min-h-screen items-center justify-center overflow-hidden">
+      <Image
+        src={IMG.hero}
+        alt="Norsk hytte ved fjorden i Lofoten"
+        fill
+        priority
+        sizes="100vw"
+        className="object-cover"
+      />
+      <div className="absolute inset-0 bg-gradient-to-b from-navy/80 via-navy/65 to-navy/90" />
+
+      <div className="relative z-10 mx-auto max-w-3xl px-6 text-center">
         <h1 className="mb-6 text-4xl font-bold leading-tight tracking-tight text-white sm:text-5xl md:text-6xl">
           Full kontroll over dine utleieeiendommer
         </h1>
-        <p className="mx-auto mb-12 max-w-xl text-lg leading-relaxed text-gold-light md:text-2xl">
-          Enkel kalender, direkte bookinger, smartere markedsføring, skatt på
-          autopilot.
+        <p className="mx-auto mb-10 max-w-xl text-lg leading-relaxed text-gold-light md:text-xl">
+          Enkel kalender, direkte bookinger, smartere markedsføring og skatt på
+          autopilot — for norske hytter og leiligheter.
         </p>
         <div className="flex flex-col justify-center gap-4 sm:flex-row">
           <Button
@@ -23,9 +35,9 @@ export function Hero() {
           <Button
             asChild
             variant="outline"
-            className="hidden h-auto rounded-lg border-2 border-gold bg-transparent px-8 py-4 text-base font-semibold text-white hover:bg-gold/10 hover:text-white sm:inline-flex dark:bg-transparent"
+            className="h-auto rounded-lg border-2 border-white/40 bg-white/5 px-8 py-4 text-base font-semibold text-white backdrop-blur hover:bg-white/15 hover:text-white dark:bg-white/5"
           >
-            <Link href="#priser">Se pris</Link>
+            <Link href="#priser">Se priser</Link>
           </Button>
         </div>
       </div>
