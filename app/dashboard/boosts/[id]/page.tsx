@@ -20,10 +20,10 @@ export default async function BoostDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ paid?: string }>;
+  searchParams: Promise<{ paid?: string; payment_failed?: string }>;
 }) {
   const { id } = await params;
-  const { paid } = await searchParams;
+  const { paid, payment_failed } = await searchParams;
   const supabase = await createClient();
 
   const { data } = await supabase.from("boosts").select("*").eq("id", id).single();
@@ -55,7 +55,12 @@ export default async function BoostDetailPage({
 
       {paid && (
         <p className="rounded-lg border border-hairline bg-cloud p-4 text-sm text-navy">
-          Boosten er godkjent! (Dev-modus — ingen reell betaling.)
+          Boosten er godkjent og betalt!
+        </p>
+      )}
+      {payment_failed && (
+        <p className="rounded-lg border border-destructive/40 p-4 text-sm text-destructive">
+          Betalingen ble ikke fullført. Prøv igjen.
         </p>
       )}
 

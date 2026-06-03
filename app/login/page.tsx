@@ -3,9 +3,12 @@
 import { useActionState } from "react";
 
 import { signInWithEmail, type LoginState } from "./actions";
+import { VippsLoginButton } from "@/components/auth/vipps-login-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+
+const vippsEnabled = process.env.NEXT_PUBLIC_VIPPS_ENABLED === "true";
 import {
   Card,
   CardContent,
@@ -28,7 +31,17 @@ export default function LoginPage() {
             Vi sender deg en innloggingslenke på e-post.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex flex-col gap-4">
+          {vippsEnabled && (
+            <>
+              <VippsLoginButton />
+              <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                <span className="h-px flex-1 bg-border" />
+                eller
+                <span className="h-px flex-1 bg-border" />
+              </div>
+            </>
+          )}
           {state.sent ? (
             <p className="text-sm">
               Sjekk innboksen din — vi har sendt en innloggingslenke til{" "}

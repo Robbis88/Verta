@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { z } from "zod";
 
 import { requireUser } from "@/lib/auth";
@@ -9,7 +10,7 @@ import { createClient } from "@/lib/supabase/server";
 import { boostSchema } from "@/lib/validation";
 import { generateBoostCopy } from "@/lib/ai";
 import { logAudit } from "@/lib/audit";
-import { vippsEnabled } from "@/lib/vipps";
+import { vippsEnabled, createVippsPayment } from "@/lib/vipps";
 
 export type BoostFormState = {
   error?: string;
@@ -145,8 +146,23 @@ export async function payBoost(formData: FormData): Promise<void> {
   const supabase = await createClient();
 
   if (vippsEnabled) {
-    // TODO: createVippsPayment(...) + redirect til Vipps. Stub inntil merchant er klart.
-    throw new Error("Vipps-betaling er ikke konfigurert ennå.");
+    // Ekte Vipps ePayment: opprett betaling og send brukeren til Vipps.
+    const { data: boost } = await supabase
+      .from("boosts")
+      .select("budget_nok")
+      .eq("id", id)
+      .single();
+    const origin =
+      (await headers()).get("origin") ??
+      process.env.NEXT_PUBLIC_SITE_URL ??
+      "http://localhost:3000";
+    const url = await createVippsPayment({
+      amountNok: Number(boost?.budget_nok) || 0,
+      reference: `boost-${id}`,
+      returnUrl: `${origin}/api/vipps/return?boost=${id}`,
+      description: "Verta boost",
+    });
+    redirect(url);
   }
 
   // Dev-fallback: marker som godkjent uten betaling.
