@@ -2,6 +2,8 @@ import Link from "next/link";
 
 import { getCurrentProfile } from "@/lib/auth";
 import { PLANS, type Plan } from "@/lib/constants";
+import { stripeEnabled } from "@/lib/stripe";
+import { openBillingPortal, purchaseExtraProperty } from "./actions";
 import { DeleteAccountButton } from "@/components/settings/delete-account-button";
 import { Button } from "@/components/ui/button";
 import {
@@ -34,6 +36,29 @@ export default async function SettingsPage() {
           </p>
         </CardContent>
       </Card>
+
+      {stripeEnabled && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Abonnement</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col items-start gap-3 text-sm">
+            <p className="text-muted-foreground">
+              Nåværende plan: {PLANS[plan].label}
+            </p>
+            <form action={openBillingPortal}>
+              <Button type="submit" variant="outline">
+                Administrer abonnement
+              </Button>
+            </form>
+            {plan === "premium" && (
+              <form action={purchaseExtraProperty}>
+                <Button type="submit">Kjøp ekstra eiendom (+99 kr/mnd)</Button>
+              </form>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>
