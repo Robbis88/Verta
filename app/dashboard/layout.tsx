@@ -47,6 +47,12 @@ export default async function DashboardLayout({
           >
             Skatt
           </Link>
+          <Link
+            href="/dashboard/settings"
+            className="text-sm text-muted-foreground hover:text-foreground"
+          >
+            Innstillinger
+          </Link>
         </nav>
         <div className="flex items-center gap-4 text-sm">
           <span className="text-muted-foreground">{profile?.email}</span>
