@@ -2,10 +2,18 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentProfile } from "@/lib/auth";
 import { deleteProperty, updateProperty } from "../actions";
+import {
+  connectSmartLock,
+  disconnectSmartLock,
+} from "../smartlock-actions";
 import { PropertyForm } from "@/components/properties/property-form";
 import { DeletePropertyButton } from "@/components/properties/delete-property-button";
+import { SmartLockCode } from "@/components/smartlock/smartlock-code";
 import { formatNok } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
@@ -13,6 +21,13 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import type { Booking, Property } from "@/lib/types";
+
+type SmartLock = {
+  id: string;
+  status: string;
+  device_id: string;
+  provider: string;
+};
 
 export default async function PropertyDetailPage({
   params,
@@ -37,6 +52,15 @@ export default async function PropertyDetailPage({
     .eq("property_id", id)
     .order("check_in", { ascending: false });
   const bookings = (bookingsData ?? []) as Booking[];
+
+  const profile = await getCurrentProfile();
+  const isPremium = profile?.plan === "premium";
+  const { data: lockData } = await supabase
+    .from("smart_locks")
+    .select("id,status,device_id,provider")
+    .eq("property_id", id)
+    .maybeSingle();
+  const lock = lockData as SmartLock | null;
 
   return (
     <div className="flex flex-col gap-8">
@@ -98,6 +122,50 @@ export default async function PropertyDetailPage({
                 </li>
               ))}
             </ul>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Smartlås</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {!isPremium ? (
+            <p className="text-sm text-muted-foreground">
+              Smartlås er en Premium-funksjon.{" "}
+              <Link href="/onboarding/plan" className="underline">
+                Oppgrader til Premium
+              </Link>{" "}
+              for å koble til Nuki-lås.
+            </p>
+          ) : lock ? (
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center gap-3 text-sm">
+                <Badge>{lock.status}</Badge>
+                <span className="text-muted-foreground">
+                  {lock.provider} · {lock.device_id}
+                </span>
+              </div>
+              <SmartLockCode />
+              <form action={disconnectSmartLock}>
+                <input type="hidden" name="id" value={lock.id} />
+                <input type="hidden" name="property_id" value={p.id} />
+                <Button type="submit" variant="outline">
+                  Koble fra
+                </Button>
+              </form>
+            </div>
+          ) : (
+            <form action={connectSmartLock} className="flex flex-col gap-3">
+              <input type="hidden" name="property_id" value={p.id} />
+              <p className="text-sm text-muted-foreground">
+                Koble til en Nuki-lås for automatiske adgangskoder ved booking.
+              </p>
+              <div>
+                <Button type="submit">Koble til Nuki</Button>
+              </div>
+            </form>
           )}
         </CardContent>
       </Card>
