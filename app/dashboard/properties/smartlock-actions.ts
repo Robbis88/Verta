@@ -1,13 +1,19 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 
 import { requireUser, getCurrentProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { logAudit } from "@/lib/audit";
-import { nukiEnabled, generateAccessCode } from "@/lib/nuki";
+import { generateAccessCode } from "@/lib/nuki";
+import { seamEnabled, createLockConnectWebview } from "@/lib/seam";
 
-/** Kobler til smartlås. Premium-only. Dev-stub uten Nuki-credentials. */
+/**
+ * Kobler til smartlås. Premium-only.
+ * Med Seam-nøkkel: starter Connect Webview-flyten (eier logger inn på sin
+ * lås-konto). Uten nøkkel: dev-stub som simulerer en tilkoblet lås.
+ */
 export async function connectSmartLock(formData: FormData): Promise<void> {
   const user = await requireUser();
   const propertyId = String(formData.get("property_id") ?? "");
@@ -16,12 +22,38 @@ export async function connectSmartLock(formData: FormData): Promise<void> {
   const profile = await getCurrentProfile();
   if (profile?.plan !== "premium") return; // Premium-funksjon
 
-  if (nukiEnabled) {
-    // TODO: start Nuki-OAuth og lagre krypterte tokens.
-    throw new Error("Nuki-OAuth er ikke ferdig konfigurert ennå.");
+  const supabase = await createClient();
+
+  if (seamEnabled) {
+    const site = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+    const redirectUrl = `${site}/dashboard/properties/${propertyId}/smartlock/callback`;
+    const { url, connectWebviewId } = await createLockConnectWebview(redirectUrl);
+
+    // Rydd bort evt. tidligere ufullført forsøk, og lagre nytt som 'pending'.
+    await supabase
+      .from("smart_locks")
+      .delete()
+      .eq("property_id", propertyId)
+      .eq("status", "pending");
+    await supabase.from("smart_locks").insert({
+      property_id: propertyId,
+      provider: "seam",
+      device_id: "pending",
+      status: "pending",
+      connect_webview_id: connectWebviewId,
+    });
+
+    await logAudit({
+      user_id: user.id,
+      action: "smartlock.connect.started",
+      resource_type: "property",
+      resource_id: propertyId,
+    });
+
+    redirect(url); // videre til Seam Connect Webview
   }
 
-  const supabase = await createClient();
+  // Dev-stub uten Seam-nøkkel: simulerer en tilkoblet lås.
   await supabase.from("smart_locks").insert({
     property_id: propertyId,
     provider: "nuki",
