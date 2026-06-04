@@ -7,7 +7,7 @@ export const PLANS = {
   gratis: { label: "Gratis", priceNok: 0 },
   basis: { label: "Basis", priceNok: 149 },
   pluss: { label: "Pluss", priceNok: 249 },
-  premium: { label: "Premium", priceNok: 349 },
+  premium: { label: "Premium", priceNok: 399 },
 } as const;
 
 export type Plan = keyof typeof PLANS;

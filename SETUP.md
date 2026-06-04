@@ -12,7 +12,7 @@ Environment Variables (produksjon).
 2. **Lag 4 produkter** (Products → Add product), hver med en månedlig pris (NOK):
    - Basis — 149 kr/mnd
    - Pluss — 249 kr/mnd
-   - Premium — 349 kr/mnd
+   - Premium — 399 kr/mnd
    - Ekstra eiendom — 99 kr/mnd
    Kopier **Price-ID** (`price_…`) for hver.
 3. Hent API-nøkler (Developers → API keys): `Secret key` og `Publishable key`.
