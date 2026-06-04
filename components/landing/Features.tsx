@@ -19,7 +19,8 @@ const features: { icon: LucideIcon; title: string; description: string }[] = [
   {
     icon: LockKeyhole,
     title: "Smartlås-integrasjon",
-    description: "Nuki-lås. Automatisk kode. Ingen nøkkelutveksling.",
+    description:
+      "Nuki, Igloohome & Salto. Automatisk kode per gjest — virker uten nett.",
   },
   {
     icon: FileText,
