@@ -52,7 +52,7 @@ const plans: Plan[] = [
     features: [
       { label: "1 eiendom", included: true },
       { label: "Alt i Pluss", included: true },
-      { label: "Smartlås (Nuki)", included: true },
+      { label: "Smartlås (Nuki, Igloohome, Salto)", included: true },
       { label: "Priority support", included: true },
       { label: "Avansert skatterapport", included: true },
       { label: "API-tilgang", included: true },

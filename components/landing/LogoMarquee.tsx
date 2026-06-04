@@ -7,6 +7,8 @@ const platforms = [
   "TikTok",
   "Vipps",
   "Nuki",
+  "Igloohome",
+  "Salto",
 ];
 
 function Track({ ariaHidden = false }: { ariaHidden?: boolean }) {
