@@ -20,18 +20,29 @@ export default async function AdminPage() {
   const users = await getAdminUsers();
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 p-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Admin — plattform</h1>
+    <div className="flex min-h-screen flex-col">
+      <header className="flex items-center justify-between border-b border-white/10 bg-navy px-4 py-3 text-white sm:px-6">
+        <div className="flex items-baseline gap-3">
+          <Link
+            href="/dashboard"
+            className="text-lg font-bold tracking-tight text-gold"
+          >
+            Verta
+          </Link>
+          <span className="text-sm text-white/70">Admin</span>
+        </div>
         <Link
           href="/dashboard"
-          className="text-sm text-muted-foreground hover:text-foreground"
+          className="text-sm text-white/70 hover:text-white"
         >
           ← Til dashbordet
         </Link>
-      </div>
+      </header>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 p-6">
+        <h1 className="text-2xl font-semibold text-navy">Plattformoversikt</h1>
+
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Stat title="Brukere" value={String(m.users)} />
         <Stat title="MRR" value={formatNok(m.mrrNok)} />
         <Stat title="Eiendommer" value={String(m.properties)} />
@@ -103,6 +114,7 @@ export default async function AdminPage() {
           )}
         </CardContent>
       </Card>
+      </main>
     </div>
   );
 }
