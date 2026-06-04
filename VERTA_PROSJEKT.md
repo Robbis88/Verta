@@ -21,7 +21,7 @@ Enable property owners across Norway to manage their rental business independent
 |---|---|---|---|
 | **Basis** | 149 kr/mnd | 1 | Kalender (Airbnb sync) + direkte booking-side + skatt-rapport + AI-annonse |
 | **Pluss** | 249 kr/mnd | 1 | Basis + multi-kanal (Finn) + boost-annonsering + SMS-notifikasjoner + analytics |
-| **Premium** | 349 kr/mnd | 1 | Pluss + smartlås (Nuki) + priority support + advanced tax reporting + API access |
+| **Premium** | 399 kr/mnd | 1 | Pluss + smartlås (Nuki/Igloohome/Salto, inkludert) + priority support + advanced tax reporting + API access |
 | **+Property (Premium only)** | +99 kr/mnd | Each extra | Full feature parity (boosts, analytics, smartlås) |
 
 **Additional Revenue Streams:**

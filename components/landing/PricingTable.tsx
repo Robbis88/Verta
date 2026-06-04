@@ -8,7 +8,7 @@ type Plan = {
   name: string;
   price: string;
   highlighted?: boolean;
-  features: { label: string; included: boolean }[];
+  features: { label: string; included: boolean; highlight?: boolean }[];
 };
 
 const plans: Plan[] = [
@@ -48,11 +48,15 @@ const plans: Plan[] = [
   {
     key: "premium",
     name: "Premium",
-    price: "349 kr",
+    price: "399 kr",
     features: [
       { label: "1 eiendom", included: true },
       { label: "Alt i Pluss", included: true },
-      { label: "Smartlås (Nuki, Igloohome, Salto)", included: true },
+      {
+        label: "Smartlås inkludert — Nuki, Igloohome & Salto",
+        included: true,
+        highlight: true,
+      },
       { label: "Priority support", included: true },
       { label: "Avansert skatterapport", included: true },
       { label: "API-tilgang", included: true },
@@ -113,12 +117,24 @@ export function PricingTable() {
                 {plan.features.map((f) => (
                   <li key={f.label} className="flex items-center gap-3 text-sm">
                     <span
-                      className={f.included ? "text-emerald-500" : "text-ink/40"}
+                      className={
+                        f.highlight
+                          ? "text-gold"
+                          : f.included
+                            ? "text-emerald-500"
+                            : "text-ink/40"
+                      }
                     >
                       {f.included ? "✓" : "✗"}
                     </span>
                     <span
-                      className={f.included ? "text-ink" : "text-ink/40 line-through"}
+                      className={
+                        f.highlight
+                          ? "font-semibold text-navy"
+                          : f.included
+                            ? "text-ink"
+                            : "text-ink/40 line-through"
+                      }
                     >
                       {f.label}
                     </span>
