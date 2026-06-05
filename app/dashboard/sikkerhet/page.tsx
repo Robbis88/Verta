@@ -3,6 +3,7 @@ import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { TwoFactor } from "@/components/security/two-factor";
+import { SetPassword } from "@/components/security/set-password";
 import {
   Card,
   CardContent,
@@ -57,6 +58,15 @@ export default async function SikkerhetPage({
           Tofaktor-autentisering og en logg over viktige handlinger på kontoen.
         </p>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Passord</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <SetPassword />
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
