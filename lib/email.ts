@@ -1,0 +1,133 @@
+import { Resend } from "resend";
+
+/**
+ * Transaksjons-e-post via Resend. Av uten RESEND_API_KEY (da blir hver
+ * send en stille no-op, så booking-flyten aldri feiler pga. e-post).
+ */
+export const emailEnabled = Boolean(process.env.RESEND_API_KEY);
+
+const FROM = process.env.EMAIL_FROM ?? "Verta <noreply@verta.no>";
+
+let _resend: Resend | null = null;
+function resend(): Resend | null {
+  if (!process.env.RESEND_API_KEY) return null;
+  if (!_resend) _resend = new Resend(process.env.RESEND_API_KEY);
+  return _resend;
+}
+
+/** Sender e-post. Feiler aldri — logger og returnerer false ved problem. */
+async function send(opts: {
+  to: string;
+  subject: string;
+  html: string;
+}): Promise<boolean> {
+  const client = resend();
+  if (!client) return false;
+  try {
+    const { error } = await client.emails.send({
+      from: FROM,
+      to: opts.to,
+      subject: opts.subject,
+      html: opts.html,
+    });
+    if (error) {
+      console.error("E-post-feil:", error);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error("E-post-unntak:", err);
+    return false;
+  }
+}
+
+/** Norsk datoformat for e-post (f.eks. «5. juni 2026»). */
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString("nb-NO", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
+/** Felles e-postramme med Verta-farger (inline-stiler for e-postklienter). */
+function layout(heading: string, body: string): string {
+  return `
+  <div style="margin:0;padding:0;background:#f5f7fa;">
+    <div style="max-width:520px;margin:0 auto;padding:32px 16px;font-family:Helvetica,Arial,sans-serif;color:#081b33;">
+      <div style="text-align:center;margin-bottom:24px;">
+        <span style="font-size:24px;font-weight:700;letter-spacing:-0.5px;color:#081b33;">Verta</span>
+      </div>
+      <div style="background:#ffffff;border-radius:12px;padding:32px;border:1px solid #e0e7ff;">
+        <h1 style="margin:0 0 16px;font-size:20px;color:#081b33;">${heading}</h1>
+        ${body}
+      </div>
+      <p style="text-align:center;margin-top:24px;font-size:12px;color:#4b5563;">
+        Sendt fra Verta · Full kontroll over dine utleieeiendommer
+      </p>
+    </div>
+  </div>`;
+}
+
+function detailRow(label: string, value: string): string {
+  return `<tr>
+    <td style="padding:6px 0;color:#4b5563;font-size:14px;">${label}</td>
+    <td style="padding:6px 0;text-align:right;font-weight:600;font-size:14px;">${value}</td>
+  </tr>`;
+}
+
+/** Bookingbekreftelse til gjesten etter en direkte booking. */
+export async function sendBookingConfirmation(opts: {
+  to: string;
+  guestName: string;
+  propertyName: string;
+  checkIn: string;
+  checkOut: string;
+  nights: number;
+}): Promise<boolean> {
+  const body = `
+    <p style="font-size:15px;line-height:1.6;margin:0 0 20px;">
+      Hei ${opts.guestName}, takk for bestillingen! Oppholdet ditt er bekreftet.
+    </p>
+    <table style="width:100%;border-collapse:collapse;margin:0 0 8px;">
+      ${detailRow("Eiendom", opts.propertyName)}
+      ${detailRow("Innsjekk", formatDate(opts.checkIn))}
+      ${detailRow("Utsjekk", formatDate(opts.checkOut))}
+      ${detailRow("Netter", String(opts.nights))}
+    </table>
+    <p style="font-size:14px;line-height:1.6;color:#4b5563;margin:16px 0 0;">
+      Du får praktisk informasjon (inkludert adgangskode hvis eiendommen har
+      smartlås) nærmere innsjekk. Gleder oss til å se deg!
+    </p>`;
+  return send({
+    to: opts.to,
+    subject: `Bekreftet: ${opts.propertyName} – ${formatDate(opts.checkIn)}`,
+    html: layout("Bookingen din er bekreftet 🎉", body),
+  });
+}
+
+/** Varsel til eieren om en ny direkte booking. */
+export async function sendOwnerBookingNotification(opts: {
+  to: string;
+  propertyName: string;
+  guestName: string;
+  guestEmail?: string | null;
+  checkIn: string;
+  checkOut: string;
+}): Promise<boolean> {
+  const body = `
+    <p style="font-size:15px;line-height:1.6;margin:0 0 20px;">
+      Du har fått en ny direkte booking på <strong>${opts.propertyName}</strong>.
+    </p>
+    <table style="width:100%;border-collapse:collapse;">
+      ${detailRow("Gjest", opts.guestName)}
+      ${opts.guestEmail ? detailRow("E-post", opts.guestEmail) : ""}
+      ${detailRow("Innsjekk", formatDate(opts.checkIn))}
+      ${detailRow("Utsjekk", formatDate(opts.checkOut))}
+    </table>`;
+  return send({
+    to: opts.to,
+    subject: `Ny booking: ${opts.propertyName}`,
+    html: layout("Ny direkte booking 📅", body),
+  });
+}

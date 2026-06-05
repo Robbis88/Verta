@@ -5,6 +5,10 @@ import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { bookingSchema } from "@/lib/validation";
 import { logAudit } from "@/lib/audit";
+import {
+  sendBookingConfirmation,
+  sendOwnerBookingNotification,
+} from "@/lib/email";
 
 export type BookingFormState = {
   error?: string;
@@ -45,7 +49,7 @@ export async function createDirectBooking(
 
   const { data: property } = await supabase
     .from("properties")
-    .select("id,user_id")
+    .select("id,user_id,name")
     .eq("slug", slug)
     .single();
 
@@ -89,6 +93,37 @@ export async function createDirectBooking(
     resource_id: booking.id,
     changes: { source: "verta_direct" },
   });
+
+  // Send bekreftelse (gjest) + varsel (eier). Feiler aldri bookingen.
+  const nights = nightsBetween(data.check_in, data.check_out);
+  const { data: owner } = await supabase
+    .from("users")
+    .select("email")
+    .eq("id", property.user_id)
+    .single();
+
+  await Promise.allSettled([
+    data.guest_email
+      ? sendBookingConfirmation({
+          to: data.guest_email,
+          guestName: data.guest_name,
+          propertyName: property.name,
+          checkIn: data.check_in,
+          checkOut: data.check_out,
+          nights,
+        })
+      : Promise.resolve(false),
+    owner?.email
+      ? sendOwnerBookingNotification({
+          to: owner.email,
+          propertyName: property.name,
+          guestName: data.guest_name,
+          guestEmail: data.guest_email || null,
+          checkIn: data.check_in,
+          checkOut: data.check_out,
+        })
+      : Promise.resolve(false),
+  ]);
 
   return { success: true };
 }
