@@ -58,6 +58,12 @@ export default async function DashboardLayout({
             Provisjon
           </Link>
           <Link
+            href="/dashboard/utgifter"
+            className="text-sm text-white/70 hover:text-white"
+          >
+            Utgifter
+          </Link>
+          <Link
             href="/dashboard/tax"
             className="text-sm text-white/70 hover:text-white"
           >

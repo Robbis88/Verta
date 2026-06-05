@@ -96,12 +96,36 @@ export default async function TaxPage({
                 </tr>
                 <tr>
                   <td className="py-2 text-muted-foreground">
+                    Fradragsberettigede utgifter
+                  </td>
+                  <td className="py-2 text-right">
+                    −{formatNok(report.total_expenses ?? 0)}
+                  </td>
+                </tr>
+                <tr className="border-t text-base font-semibold">
+                  <td className="py-3">
+                    Netto utleieresultat
+                    <span className="block text-xs font-normal text-muted-foreground">
+                      hytte / sekundærbolig (regnskapsligning)
+                    </span>
+                  </td>
+                  <td className="py-3 text-right">
+                    {formatNok(report.net_income ?? report.total_income)}
+                  </td>
+                </tr>
+                <tr>
+                  <td className="py-2 text-muted-foreground">
                     Fribeløp (egen bolig)
                   </td>
                   <td className="py-2 text-right">−{formatNok(15000)}</td>
                 </tr>
-                <tr className="border-t-2 text-base font-semibold">
-                  <td className="py-3">Skattepliktig inntekt (85 %)</td>
+                <tr className="border-t text-base font-semibold">
+                  <td className="py-3">
+                    Skattepliktig inntekt (85 %)
+                    <span className="block text-xs font-normal text-muted-foreground">
+                      korttidsutleie av egen bolig
+                    </span>
+                  </td>
                   <td className="py-3 text-right">
                     {formatNok(report.taxable_income)}
                   </td>
@@ -110,8 +134,10 @@ export default async function TaxPage({
             </table>
 
             <p className="mt-6 text-xs text-muted-foreground">
-              Forenklet beregning for korttidsutleie av egen bolig. Sjekk
-              reglene for din situasjon hos Skatteetaten.
+              To modeller vises: <strong>egen bolig</strong> (fribeløp 15 000 kr +
+              85 %) og <strong>hytte/sekundærbolig</strong> (netto inntekt minus
+              utgifter). Hvilken som gjelder avhenger av din situasjon — sjekk
+              reglene hos Skatteetaten.
             </p>
           </div>
 

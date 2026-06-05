@@ -17,12 +17,15 @@ export type TaxReport = {
   income_from_verta_direct: number;
   income_from_verta_boosts: number;
   verta_commission_paid: number;
+  total_expenses: number;
+  net_income: number;
   taxable_income: number;
   status: string;
 };
 
 type BookingRow = { total_price: number | null; source: string };
 type CommissionRow = { period: string; commission_amount: number | null };
+type ExpenseRow = { amount: number | null };
 
 /**
  * Beregner skatterapport for innlogget bruker og lagrer den (status 'draft').
@@ -62,6 +65,24 @@ export async function computeTaxReport(year: number): Promise<TaxReport> {
     .filter((c) => c.period.endsWith(`_${year}`))
     .reduce((s, c) => s + (Number(c.commission_amount) || 0), 0);
 
+  // Fradragsberettigede utgifter for året (RLS gir kun egne eiendommer).
+  const { data: expData } = await supabase
+    .from("expenses")
+    .select("amount")
+    .gte("expense_date", `${year}-01-01`)
+    .lt("expense_date", `${year + 1}-01-01`);
+  const total_expenses =
+    Math.round(
+      ((expData ?? []) as ExpenseRow[]).reduce(
+        (s, e) => s + (Number(e.amount) || 0),
+        0,
+      ) * 100,
+    ) / 100;
+
+  // Netto utleieresultat (regnskapsligning, f.eks. hytte/sekundærbolig).
+  const net_income = Math.round((total_income - total_expenses) * 100) / 100;
+
+  // Forenklet egen-bolig-modell: 85 % av det som overstiger fribeløpet.
   const taxable_income =
     Math.round(Math.max(0, total_income - TAX_FREE_AMOUNT) * TAXABLE_RATE * 100) /
     100;
@@ -74,6 +95,8 @@ export async function computeTaxReport(year: number): Promise<TaxReport> {
     income_from_verta_direct,
     income_from_verta_boosts,
     verta_commission_paid,
+    total_expenses,
+    net_income,
     taxable_income,
     status: "draft",
   };
