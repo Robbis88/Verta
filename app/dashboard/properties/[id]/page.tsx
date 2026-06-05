@@ -38,10 +38,13 @@ type SmartLock = {
 
 export default async function PropertyDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ lock?: string }>;
 }) {
   const { id } = await params;
+  const { lock: lockResult } = await searchParams;
   const supabase = await createClient();
 
   const { data: property } = await supabase
@@ -244,15 +247,25 @@ export default async function PropertyDetailPage({
           <CardTitle>Smartlås</CardTitle>
         </CardHeader>
         <CardContent>
+          {lockResult === "connected" && (
+            <p className="mb-4 rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+              Smartlåsen er koblet til. ✓
+            </p>
+          )}
+          {lockResult === "error" && (
+            <p className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+              Vi fikk ikke koblet til låsen. Prøv på nytt.
+            </p>
+          )}
           {!isPremium ? (
             <p className="text-sm text-muted-foreground">
               Smartlås er en Premium-funksjon.{" "}
               <Link href="/onboarding/plan" className="underline">
                 Oppgrader til Premium
               </Link>{" "}
-              for å koble til Nuki-lås.
+              for å koble til smartlås.
             </p>
-          ) : lock ? (
+          ) : lock && lock.status !== "pending" ? (
             <div className="flex flex-col gap-4">
               <div className="flex items-center gap-3 text-sm">
                 <Badge>{lock.status}</Badge>
@@ -273,10 +286,11 @@ export default async function PropertyDetailPage({
             <form action={connectSmartLock} className="flex flex-col gap-3">
               <input type="hidden" name="property_id" value={p.id} />
               <p className="text-sm text-muted-foreground">
-                Koble til en Nuki-lås for automatiske adgangskoder ved booking.
+                Koble til smartlåsen din (Nuki, Igloohome eller Salto) for
+                automatiske adgangskoder ved booking.
               </p>
               <div>
-                <Button type="submit">Koble til Nuki</Button>
+                <Button type="submit">Koble til smartlås</Button>
               </div>
             </form>
           )}
