@@ -31,12 +31,20 @@ export default async function AdminPage() {
           </Link>
           <span className="text-sm text-white/70">Admin</span>
         </div>
-        <Link
-          href="/dashboard"
-          className="text-sm text-white/70 hover:text-white"
-        >
-          ← Til dashbordet
-        </Link>
+        <div className="flex items-center gap-4">
+          <Link
+            href="/admin/kanaler"
+            className="text-sm text-gold-light hover:text-gold"
+          >
+            Kanaler
+          </Link>
+          <Link
+            href="/dashboard"
+            className="text-sm text-white/70 hover:text-white"
+          >
+            ← Til dashbordet
+          </Link>
+        </div>
       </header>
 
       <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 p-6">
