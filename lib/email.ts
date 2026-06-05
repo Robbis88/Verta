@@ -115,7 +115,17 @@ export async function sendBookingConfirmation(opts: {
   checkOut: string;
   nights: number;
   access?: BookingAccess;
+  guideToken?: string;
 }): Promise<boolean> {
+  const guideButton = opts.guideToken
+    ? `<div style="text-align:center;margin:24px 0 0;">
+        <a href="${SITE_URL}/gjest/${opts.guideToken}"
+          style="display:inline-block;background:#d8a66a;color:#081b33;font-weight:600;
+          font-size:15px;text-decoration:none;padding:12px 28px;border-radius:8px;">
+          Se all info om oppholdet
+        </a>
+      </div>`
+    : "";
   const body = `
     <p style="font-size:15px;line-height:1.6;margin:0 0 20px;">
       Hei ${opts.guestName}, takk for bestillingen! Oppholdet ditt er bekreftet.
@@ -126,7 +136,8 @@ export async function sendBookingConfirmation(opts: {
       ${detailRow("Utsjekk", formatDate(opts.checkOut))}
       ${detailRow("Netter", String(opts.nights))}
     </table>
-    ${accessSection(opts.access ?? null)}`;
+    ${accessSection(opts.access ?? null)}
+    ${guideButton}`;
   return send({
     to: opts.to,
     subject: `Bekreftet: ${opts.propertyName} – ${formatDate(opts.checkIn)}`,

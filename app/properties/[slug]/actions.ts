@@ -82,7 +82,7 @@ export async function createDirectBooking(
       source: "verta_direct",
       status: "confirmed",
     })
-    .select("id")
+    .select("id,guest_token")
     .single();
 
   if (error) return { error: error.message };
@@ -130,6 +130,7 @@ export async function createDirectBooking(
           checkOut: data.check_out,
           nights,
           access,
+          guideToken: booking.guest_token,
         })
       : Promise.resolve(false),
     owner?.email

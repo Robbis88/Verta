@@ -106,6 +106,10 @@ export default async function PropertyDetailPage({
               bathrooms: p.bathrooms,
               max_guests: p.max_guests,
               access_info: p.access_info,
+              wifi_name: p.wifi_name,
+              wifi_password: p.wifi_password,
+              house_rules: p.house_rules,
+              checkout_info: p.checkout_info,
             }}
           />
         </CardContent>
@@ -142,6 +146,16 @@ export default async function PropertyDetailPage({
                   <span className="w-24 text-right">
                     {b.total_price ? formatNok(Number(b.total_price)) : "—"}
                   </span>
+                  {b.status !== "cancelled" && b.guest_token && (
+                    <a
+                      href={`/gjest/${b.guest_token}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-muted-foreground underline hover:text-foreground"
+                    >
+                      Gjesteside
+                    </a>
+                  )}
                   {b.status === "cancelled" ? (
                     <span className="w-16 text-right text-xs text-muted-foreground">
                       avbrutt
