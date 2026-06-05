@@ -58,6 +58,12 @@ export default async function DashboardLayout({
             Vedlikehold
           </Link>
           <Link
+            href="/dashboard/lager"
+            className="text-sm text-white/70 hover:text-white"
+          >
+            Lager
+          </Link>
+          <Link
             href="/dashboard/boosts"
             className="text-sm text-white/70 hover:text-white"
           >
