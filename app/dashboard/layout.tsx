@@ -94,6 +94,12 @@ export default async function DashboardLayout({
             Skatt
           </Link>
           <Link
+            href="/dashboard/team"
+            className="text-sm text-white/70 hover:text-white"
+          >
+            Team
+          </Link>
+          <Link
             href="/dashboard/settings"
             className="text-sm text-white/70 hover:text-white"
           >
