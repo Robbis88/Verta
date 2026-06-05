@@ -2,9 +2,13 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 
-import { signInWithEmail, type LoginState } from "./actions";
+import {
+  signInWithPassword,
+  signInWithEmail,
+  type LoginState,
+} from "./actions";
 import { VippsLoginButton } from "@/components/auth/vipps-login-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,29 +24,28 @@ import { IMG } from "@/lib/images";
 
 const vippsEnabled = process.env.NEXT_PUBLIC_VIPPS_ENABLED === "true";
 
-const initialState: LoginState = {};
+const initial: LoginState = {};
 
 export default function LoginPage() {
-  const [state, action, pending] = useActionState(signInWithEmail, initialState);
+  const [pwState, pwAction, pwPending] = useActionState(
+    signInWithPassword,
+    initial,
+  );
+  const [mlState, mlAction, mlPending] = useActionState(
+    signInWithEmail,
+    initial,
+  );
+  const [email, setEmail] = useState("");
+  const [showMagic, setShowMagic] = useState(false);
 
   return (
     <main className="relative flex min-h-screen items-center justify-center overflow-hidden p-6">
-      <Image
-        src={IMG.hero}
-        alt=""
-        fill
-        priority
-        sizes="100vw"
-        className="object-cover"
-      />
+      <Image src={IMG.hero} alt="" fill priority sizes="100vw" className="object-cover" />
       <div className="absolute inset-0 bg-gradient-to-b from-navy/85 via-navy/75 to-navy/90" />
 
       <div className="relative z-10 w-full max-w-sm">
         <div className="mb-8 text-center">
-          <Link
-            href="/"
-            className="text-3xl font-bold tracking-tight text-white"
-          >
+          <Link href="/" className="text-3xl font-bold tracking-tight text-white">
             Verta
           </Link>
           <p className="mt-2 text-sm text-gold-light">
@@ -54,7 +57,7 @@ export default function LoginPage() {
           <CardHeader>
             <CardTitle className="text-2xl text-navy">Logg inn</CardTitle>
             <CardDescription>
-              Vi sender deg en innloggingslenke på e-post.
+              Logg inn med e-post og passord.
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
@@ -68,39 +71,94 @@ export default function LoginPage() {
                 </div>
               </>
             )}
-            {state.sent ? (
+
+            {mlState.sent ? (
               <p className="text-sm">
                 Sjekk innboksen din — vi har sendt en innloggingslenke til{" "}
-                <strong>{state.email}</strong>.
+                <strong>{mlState.email}</strong>.
               </p>
             ) : (
-              <form action={action} className="flex flex-col gap-4">
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="email">E-post</Label>
-                  <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    required
-                    autoComplete="email"
-                    placeholder="navn@eksempel.no"
-                  />
-                </div>
-                {state.error && (
-                  <p className="text-sm text-destructive">{state.error}</p>
-                )}
-                <Button
-                  type="submit"
-                  size="lg"
-                  disabled={pending}
-                  className="bg-gold font-semibold text-navy hover:bg-gold/90"
-                >
-                  {pending ? "Sender…" : "Send innloggingslenke"}
-                </Button>
-                <p className="text-center text-xs text-muted-foreground">
-                  Innlogging med Vipps kommer snart.
+              <>
+                <form action={pwAction} className="flex flex-col gap-4">
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="email">E-post</Label>
+                    <Input
+                      id="email"
+                      name="email"
+                      type="email"
+                      required
+                      autoComplete="email"
+                      placeholder="navn@eksempel.no"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="password">Passord</Label>
+                      <Link
+                        href="/glemt-passord"
+                        className="text-xs text-muted-foreground hover:text-navy"
+                      >
+                        Glemt passord?
+                      </Link>
+                    </div>
+                    <Input
+                      id="password"
+                      name="password"
+                      type="password"
+                      required
+                      autoComplete="current-password"
+                    />
+                  </div>
+                  {pwState.error && (
+                    <p className="text-sm text-destructive">{pwState.error}</p>
+                  )}
+                  <Button
+                    type="submit"
+                    size="lg"
+                    disabled={pwPending}
+                    className="bg-gold font-semibold text-navy hover:bg-gold/90"
+                  >
+                    {pwPending ? "Logger inn…" : "Logg inn"}
+                  </Button>
+                </form>
+
+                <p className="text-center text-sm text-muted-foreground">
+                  Ny bruker?{" "}
+                  <Link href="/registrer" className="font-medium text-navy underline">
+                    Registrer deg
+                  </Link>
                 </p>
-              </form>
+
+                <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                  <span className="h-px flex-1 bg-border" />
+                  eller
+                  <span className="h-px flex-1 bg-border" />
+                </div>
+
+                {showMagic ? (
+                  <form action={mlAction} className="flex flex-col gap-2">
+                    <input type="hidden" name="email" value={email} />
+                    {mlState.error && (
+                      <p className="text-sm text-destructive">{mlState.error}</p>
+                    )}
+                    <Button type="submit" variant="outline" disabled={mlPending}>
+                      {mlPending
+                        ? "Sender…"
+                        : `Send engangslenke til ${email || "e-posten min"}`}
+                    </Button>
+                  </form>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setShowMagic(true)}
+                    className="text-center text-xs text-muted-foreground hover:text-navy"
+                  >
+                    Foretrekker du engangslenke på e-post?
+                  </button>
+                )}
+              </>
             )}
           </CardContent>
         </Card>
