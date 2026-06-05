@@ -100,6 +100,12 @@ export default async function DashboardLayout({
             Team
           </Link>
           <Link
+            href="/dashboard/sikkerhet"
+            className="text-sm text-white/70 hover:text-white"
+          >
+            Sikkerhet
+          </Link>
+          <Link
             href="/dashboard/settings"
             className="text-sm text-white/70 hover:text-white"
           >
