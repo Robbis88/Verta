@@ -10,6 +10,10 @@ export const propertySchema = z.object({
   bathrooms: z.coerce.number().int().min(0).max(50).optional(),
   max_guests: z.coerce.number().int().min(1, "Minst 1 gjest").max(100).optional(),
   access_info: z.string().max(1000).optional().or(z.literal("")),
+  wifi_name: z.string().max(100).optional().or(z.literal("")),
+  wifi_password: z.string().max(100).optional().or(z.literal("")),
+  house_rules: z.string().max(2000).optional().or(z.literal("")),
+  checkout_info: z.string().max(2000).optional().or(z.literal("")),
 });
 export type PropertyInput = z.infer<typeof propertySchema>;
 

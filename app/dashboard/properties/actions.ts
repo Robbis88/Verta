@@ -68,6 +68,10 @@ export async function createProperty(
       bathrooms: data.bathrooms ?? null,
       max_guests: data.max_guests ?? null,
       access_info: data.access_info || null,
+      wifi_name: data.wifi_name || null,
+      wifi_password: data.wifi_password || null,
+      house_rules: data.house_rules || null,
+      checkout_info: data.checkout_info || null,
     })
     .select("id")
     .single();
@@ -112,6 +116,10 @@ export async function updateProperty(
       bathrooms: data.bathrooms ?? null,
       max_guests: data.max_guests ?? null,
       access_info: data.access_info || null,
+      wifi_name: data.wifi_name || null,
+      wifi_password: data.wifi_password || null,
+      house_rules: data.house_rules || null,
+      checkout_info: data.checkout_info || null,
     })
     .eq("id", id);
 

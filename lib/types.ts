@@ -23,6 +23,10 @@ export type Property = {
   bathrooms: number | null;
   max_guests: number | null;
   access_info?: string | null;
+  wifi_name?: string | null;
+  wifi_password?: string | null;
+  house_rules?: string | null;
+  checkout_info?: string | null;
   ical_urls?: IcalUrl[];
   created_at: string;
   updated_at: string;
@@ -55,5 +59,6 @@ export type Booking = {
   status: string;
   access_code?: string | null;
   access_code_id?: string | null;
+  guest_token?: string;
   created_at: string;
 };

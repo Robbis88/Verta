@@ -22,6 +22,10 @@ export type PropertyDefaults = {
   bathrooms?: number | null;
   max_guests?: number | null;
   access_info?: string | null;
+  wifi_name?: string | null;
+  wifi_password?: string | null;
+  house_rules?: string | null;
+  checkout_info?: string | null;
 };
 
 const initialState: PropertyFormState = {};
@@ -97,6 +101,36 @@ export function PropertyForm({
           Sendes til gjesten i bookingbekreftelsen. Har eiendommen smartlås,
           lages en unik kode automatisk i stedet.
         </p>
+      </Field>
+
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="WiFi-navn" error={state.fieldErrors?.wifi_name}>
+          <Input name="wifi_name" defaultValue={defaults?.wifi_name ?? ""} />
+        </Field>
+        <Field label="WiFi-passord" error={state.fieldErrors?.wifi_password}>
+          <Input
+            name="wifi_password"
+            defaultValue={defaults?.wifi_password ?? ""}
+          />
+        </Field>
+      </div>
+
+      <Field label="Husregler" error={state.fieldErrors?.house_rules}>
+        <Textarea
+          name="house_rules"
+          rows={3}
+          placeholder="F.eks: Røyking forbudt. Ro etter kl. 23. Maks 6 gjester."
+          defaultValue={defaults?.house_rules ?? ""}
+        />
+      </Field>
+
+      <Field label="Utsjekk-info" error={state.fieldErrors?.checkout_info}>
+        <Textarea
+          name="checkout_info"
+          rows={2}
+          placeholder="F.eks: Utsjekk innen kl. 11. Søppel i container ved porten. Lås døra."
+          defaultValue={defaults?.checkout_info ?? ""}
+        />
       </Field>
 
       {state.error && <p className="text-sm text-destructive">{state.error}</p>}
