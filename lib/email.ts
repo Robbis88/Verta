@@ -7,6 +7,7 @@ import { Resend } from "resend";
 export const emailEnabled = Boolean(process.env.RESEND_API_KEY);
 
 const FROM = process.env.EMAIL_FROM ?? "Verta <noreply@verta.no>";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
 let _resend: Resend | null = null;
 function resend(): Resend | null {
@@ -129,5 +130,39 @@ export async function sendOwnerBookingNotification(opts: {
     to: opts.to,
     subject: `Ny booking: ${opts.propertyName}`,
     html: layout("Ny direkte booking 📅", body),
+  });
+}
+
+/** Velkomst-e-post til nye brukere (sendes én gang ved første innlogging). */
+export async function sendWelcomeEmail(opts: {
+  to: string;
+  name?: string | null;
+}): Promise<boolean> {
+  const greeting = opts.name ? `Hei ${opts.name}!` : "Hei og velkommen!";
+  const body = `
+    <p style="font-size:15px;line-height:1.6;margin:0 0 16px;">
+      ${greeting} Så hyggelig at du er i gang med Verta. Nå har du alt på ett
+      sted for å leie ut hytta eller leiligheten din med full kontroll.
+    </p>
+    <p style="font-size:14px;line-height:1.6;color:#4b5563;margin:0 0 8px;">
+      Slik kommer du i gang:
+    </p>
+    <ul style="font-size:14px;line-height:1.7;color:#081b33;margin:0 0 24px;padding-left:18px;">
+      <li>Legg til din første eiendom</li>
+      <li>Del din egen bookingside og ta imot direkte bookinger</li>
+      <li>Synk kalenderen med Airbnb og Booking.com</li>
+      <li>La skatterapporten fylles ut automatisk</li>
+    </ul>
+    <div style="text-align:center;margin:0 0 8px;">
+      <a href="${SITE_URL}/dashboard"
+        style="display:inline-block;background:#d8a66a;color:#081b33;font-weight:600;
+        font-size:15px;text-decoration:none;padding:12px 28px;border-radius:8px;">
+        Gå til dashbordet
+      </a>
+    </div>`;
+  return send({
+    to: opts.to,
+    subject: "Velkommen til Verta 🎉",
+    html: layout("Velkommen til Verta", body),
   });
 }
