@@ -88,6 +88,47 @@ export async function suggestGuestReply(input: {
 }
 
 /**
+ * Lager ferdig kampanjemateriale for et tomt-dato-varsel: e-post, Instagram,
+ * Facebook og en foreslått rabatt — for å fylle ledige datoer.
+ */
+export async function generateAlertCampaign(input: {
+  propertyName: string;
+  address?: string | null;
+  gapStart?: string | null;
+  gapEnd?: string | null;
+  occupancyPct?: number | null;
+}): Promise<string> {
+  const period =
+    input.gapStart && input.gapEnd
+      ? `for ledige datoer ${input.gapStart} – ${input.gapEnd}`
+      : input.occupancyPct != null
+        ? `for å løfte belegget (nå ${input.occupancyPct}% de neste 60 dagene)`
+        : "for å fylle ledige datoer";
+
+  const message = await anthropic.messages.create({
+    model: DEFAULT_MODEL,
+    max_tokens: 700,
+    messages: [
+      {
+        role: "user",
+        content:
+          `Du er markedsfører for den norske utleieboligen "${input.propertyName}"` +
+          `${input.address ? ` (${input.address})` : ""}. Lag ferdig kampanjemateriale ` +
+          `på norsk ${period}. Foreslå en rabatt mellom 15 og 25 %. ` +
+          `Svar med nøyaktig disse fire seksjonene, hver med overskrift:\n\n` +
+          `RABATT: <foreslått rabatt + kort begrunnelse>\n\n` +
+          `E-POST (emne + tekst):\n<emne>\n<kort tekst>\n\n` +
+          `INSTAGRAM:\n<caption med 1–2 emojis og 3 hashtags>\n\n` +
+          `FACEBOOK:\n<litt lengre innlegg med oppfordring til å booke direkte>`,
+      },
+    ],
+  });
+
+  const block = message.content.find((b) => b.type === "text");
+  return block && block.type === "text" ? block.text.trim() : "";
+}
+
+/**
  * Foreslår et svar på en anmeldelse: takker, inviterer tilbake ved høy score,
  * adresserer kritikk saklig ved lav. Samme språk som anmeldelsen.
  */
