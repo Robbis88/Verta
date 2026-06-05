@@ -7,6 +7,7 @@ import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { ownerBookingSchema } from "@/lib/validation";
 import { logAudit } from "@/lib/audit";
+import { seamEnabled, removeAccessCode } from "@/lib/seam";
 
 export type OwnerBookingState = {
   error?: string;
@@ -81,11 +82,27 @@ export async function cancelBooking(formData: FormData): Promise<void> {
   if (!id) return;
 
   const supabase = await createClient();
+
+  // Hent en evt. smartlås-kode før vi avbestiller, så vi kan trekke den tilbake.
+  const { data: booking } = await supabase
+    .from("bookings")
+    .select("access_code_id")
+    .eq("id", id)
+    .maybeSingle();
+
   const { error } = await supabase
     .from("bookings")
-    .update({ status: "cancelled" })
+    .update({ status: "cancelled", access_code: null, access_code_id: null })
     .eq("id", id);
   if (error) return;
+
+  if (seamEnabled && booking?.access_code_id) {
+    try {
+      await removeAccessCode(booking.access_code_id);
+    } catch (err) {
+      console.error("Klarte ikke trekke tilbake smartlås-kode:", err);
+    }
+  }
 
   await logAudit({
     user_id: user.id,

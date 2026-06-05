@@ -21,6 +21,7 @@ export type PropertyDefaults = {
   bedrooms?: number | null;
   bathrooms?: number | null;
   max_guests?: number | null;
+  access_info?: string | null;
 };
 
 const initialState: PropertyFormState = {};
@@ -81,6 +82,22 @@ export function PropertyForm({
           />
         </Field>
       </div>
+
+      <Field
+        label="Tilkomstinfo (nøkkelboks / innsjekk)"
+        error={state.fieldErrors?.access_info}
+      >
+        <Textarea
+          name="access_info"
+          rows={3}
+          placeholder="F.eks: Nøkkelboks til høyre for inngangsdøren, kode 1234. Parkering på baksiden."
+          defaultValue={defaults?.access_info ?? ""}
+        />
+        <p className="text-xs text-muted-foreground">
+          Sendes til gjesten i bookingbekreftelsen. Har eiendommen smartlås,
+          lages en unik kode automatisk i stedet.
+        </p>
+      </Field>
 
       {state.error && <p className="text-sm text-destructive">{state.error}</p>}
 

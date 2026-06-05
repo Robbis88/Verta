@@ -1,5 +1,7 @@
 import { Resend } from "resend";
 
+import type { BookingAccess } from "@/lib/access";
+
 /**
  * Transaksjons-e-post via Resend. Av uten RESEND_API_KEY (da blir hver
  * send en stille no-op, så booking-flyten aldri feiler pga. e-post).
@@ -77,6 +79,33 @@ function detailRow(label: string, value: string): string {
   </tr>`;
 }
 
+/** «Slik kommer du inn»-seksjon: smartlås-kode, manuell info, eller fallback. */
+function accessSection(access: BookingAccess): string {
+  if (access?.type === "smartlock") {
+    return `
+    <div style="margin:20px 0 0;padding:16px;border-radius:8px;background:#f5f7fa;">
+      <p style="margin:0 0 6px;font-size:13px;color:#4b5563;">Slik kommer du inn</p>
+      <p style="margin:0 0 4px;font-size:28px;font-weight:700;letter-spacing:4px;color:#081b33;">
+        ${access.code}
+      </p>
+      <p style="margin:0;font-size:13px;color:#4b5563;">
+        Tast koden på smartlåsen. Den virker kun i løpet av oppholdet ditt.
+      </p>
+    </div>`;
+  }
+  if (access?.type === "manual") {
+    return `
+    <div style="margin:20px 0 0;padding:16px;border-radius:8px;background:#f5f7fa;">
+      <p style="margin:0 0 6px;font-size:13px;color:#4b5563;">Slik kommer du inn</p>
+      <p style="margin:0;font-size:14px;line-height:1.6;color:#081b33;white-space:pre-line;">${access.info}</p>
+    </div>`;
+  }
+  return `
+    <p style="font-size:14px;line-height:1.6;color:#4b5563;margin:16px 0 0;">
+      Du får tilkomstinformasjon fra verten før innsjekk. Gleder oss til å se deg!
+    </p>`;
+}
+
 /** Bookingbekreftelse til gjesten etter en direkte booking. */
 export async function sendBookingConfirmation(opts: {
   to: string;
@@ -85,6 +114,7 @@ export async function sendBookingConfirmation(opts: {
   checkIn: string;
   checkOut: string;
   nights: number;
+  access?: BookingAccess;
 }): Promise<boolean> {
   const body = `
     <p style="font-size:15px;line-height:1.6;margin:0 0 20px;">
@@ -96,10 +126,7 @@ export async function sendBookingConfirmation(opts: {
       ${detailRow("Utsjekk", formatDate(opts.checkOut))}
       ${detailRow("Netter", String(opts.nights))}
     </table>
-    <p style="font-size:14px;line-height:1.6;color:#4b5563;margin:16px 0 0;">
-      Du får praktisk informasjon (inkludert adgangskode hvis eiendommen har
-      smartlås) nærmere innsjekk. Gleder oss til å se deg!
-    </p>`;
+    ${accessSection(opts.access ?? null)}`;
   return send({
     to: opts.to,
     subject: `Bekreftet: ${opts.propertyName} – ${formatDate(opts.checkIn)}`,

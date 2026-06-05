@@ -22,6 +22,7 @@ export type Property = {
   bedrooms: number | null;
   bathrooms: number | null;
   max_guests: number | null;
+  access_info?: string | null;
   ical_urls?: IcalUrl[];
   created_at: string;
   updated_at: string;
@@ -52,5 +53,7 @@ export type Booking = {
   nights: number | null;
   source: BookingSource;
   status: string;
+  access_code?: string | null;
+  access_code_id?: string | null;
   created_at: string;
 };

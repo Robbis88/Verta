@@ -67,6 +67,7 @@ export async function createProperty(
       bedrooms: data.bedrooms ?? null,
       bathrooms: data.bathrooms ?? null,
       max_guests: data.max_guests ?? null,
+      access_info: data.access_info || null,
     })
     .select("id")
     .single();
@@ -110,6 +111,7 @@ export async function updateProperty(
       bedrooms: data.bedrooms ?? null,
       bathrooms: data.bathrooms ?? null,
       max_guests: data.max_guests ?? null,
+      access_info: data.access_info || null,
     })
     .eq("id", id);
 

@@ -105,6 +105,7 @@ export default async function PropertyDetailPage({
               bedrooms: p.bedrooms,
               bathrooms: p.bathrooms,
               max_guests: p.max_guests,
+              access_info: p.access_info,
             }}
           />
         </CardContent>
