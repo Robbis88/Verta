@@ -34,6 +34,12 @@ export default async function DashboardLayout({
             Eiendommer
           </Link>
           <Link
+            href="/dashboard/meldinger"
+            className="text-sm text-white/70 hover:text-white"
+          >
+            Meldinger
+          </Link>
+          <Link
             href="/dashboard/boosts"
             className="text-sm text-white/70 hover:text-white"
           >
