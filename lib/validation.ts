@@ -31,6 +31,23 @@ export const bookingSchema = z
   });
 export type BookingInput = z.infer<typeof bookingSchema>;
 
+export const expenseSchema = z.object({
+  property_id: z.string().uuid("Velg en eiendom"),
+  category: z.enum([
+    "cleaning",
+    "maintenance",
+    "supplies",
+    "insurance",
+    "fee",
+    "utilities",
+    "other",
+  ]),
+  amount: z.coerce.number().min(1, "Beløp må være over 0").max(10_000_000),
+  expense_date: z.string().min(1, "Velg dato"),
+  description: z.string().max(300).optional().or(z.literal("")),
+});
+export type ExpenseInput = z.infer<typeof expenseSchema>;
+
 export const boostSchema = z
   .object({
     property_id: z.string().uuid("Velg en eiendom"),
