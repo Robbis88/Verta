@@ -9,6 +9,7 @@ export const propertySchema = z.object({
   bedrooms: z.coerce.number().int().min(0).max(50).optional(),
   bathrooms: z.coerce.number().int().min(0).max(50).optional(),
   max_guests: z.coerce.number().int().min(1, "Minst 1 gjest").max(100).optional(),
+  access_info: z.string().max(1000).optional().or(z.literal("")),
 });
 export type PropertyInput = z.infer<typeof propertySchema>;
 
