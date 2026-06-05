@@ -88,6 +88,45 @@ export async function suggestGuestReply(input: {
 }
 
 /**
+ * Foreslår nattepriser per sesong for en norsk utleiebolig, basert på
+ * beliggenhet, størrelse og kommende belegg. Rådgivende (lagres ikke).
+ */
+export async function suggestPricing(input: {
+  propertyName: string;
+  address?: string | null;
+  bedrooms?: number | null;
+  maxGuests?: number | null;
+  occupancyPct: number;
+  currentPrice?: number | null;
+}): Promise<string> {
+  const message = await anthropic.messages.create({
+    model: DEFAULT_MODEL,
+    max_tokens: 600,
+    messages: [
+      {
+        role: "user",
+        content:
+          `Du er inntektsrådgiver for norsk korttidsutleie. Foreslå nattepriser ` +
+          `i NOK for boligen under. Ta hensyn til norsk sesongmønster (sommer og ` +
+          `vinterferie/påske er høysesong for hytter), størrelse og kommende ` +
+          `belegg. ${input.currentPrice ? `Nåværende pris er ca. ${input.currentPrice} kr/natt. ` : ""}` +
+          `Svar med disse seksjonene:\n\n` +
+          `ANBEFALT NÅ: <pris + kort begrunnelse ut fra belegget>\n\n` +
+          `SESONGPRISER:\n- Lavsesong: <kr/natt>\n- Mellomsesong: <kr/natt>\n- Høysesong: <kr/natt>\n\n` +
+          `TIPS: <1–2 konkrete råd for å øke inntekten>\n\n` +
+          `Bolig: ${input.propertyName}\n` +
+          `Sted: ${input.address ?? "Norge"}\n` +
+          `Soverom: ${input.bedrooms ?? "ukjent"} · Maks gjester: ${input.maxGuests ?? "ukjent"}\n` +
+          `Belegg neste 90 dager: ${input.occupancyPct} %`,
+      },
+    ],
+  });
+
+  const block = message.content.find((b) => b.type === "text");
+  return block && block.type === "text" ? block.text.trim() : "";
+}
+
+/**
  * Lager ferdig kampanjemateriale for et tomt-dato-varsel: e-post, Instagram,
  * Facebook og en foreslått rabatt — for å fylle ledige datoer.
  */

@@ -64,6 +64,12 @@ export default async function DashboardLayout({
             Lager
           </Link>
           <Link
+            href="/dashboard/prising"
+            className="text-sm text-white/70 hover:text-white"
+          >
+            Prising
+          </Link>
+          <Link
             href="/dashboard/boosts"
             className="text-sm text-white/70 hover:text-white"
           >
