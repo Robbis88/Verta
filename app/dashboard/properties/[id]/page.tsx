@@ -302,7 +302,10 @@ export default async function PropertyDetailPage({
               <input type="hidden" name="property_id" value={p.id} />
               <p className="text-sm text-muted-foreground">
                 Koble til smartlåsen din (Nuki, Igloohome eller Salto) for
-                automatiske adgangskoder ved booking.
+                automatiske adgangskoder ved booking.{" "}
+                <Link href="/dashboard/smartlas-guide" className="underline">
+                  Hvilken lås bør jeg kjøpe?
+                </Link>
               </p>
               <div>
                 <Button type="submit">Koble til smartlås</Button>
