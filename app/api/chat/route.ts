@@ -2,23 +2,45 @@ import type Anthropic from "@anthropic-ai/sdk";
 import type { NextRequest } from "next/server";
 import { anthropic, DEFAULT_MODEL } from "@/lib/anthropic";
 
+const LANDING_SYSTEM = `Du er «Vera», Verta sin vennlige assistent. Verta er en norsk SaaS for utleieforvaltning av hytter, leiligheter og Airbnb-utleie.
+
+Hjelp besøkende: forklar funksjoner og priser, og oppmuntre til å registrere seg (lenke: /registrer). Svar kort og imøtekommende, på brukerens språk (standard norsk). Ikke lov noe Verta ikke har.
+
+Priser: Basis 149 kr/mnd, Pluss 249 kr/mnd, Premium 399 kr/mnd (smartlås inkludert). Premium kan legge til ekstra eiendom for 99 kr/mnd.
+
+Funksjoner: kalender med toveis iCal-synk (Airbnb/Booking), direkte bookinger uten gebyr, smartlås (Nuki/Igloohome/Salto) eller nøkkelboks med automatisk adgangskode, digital gjesteguide, AI-forslag på svar til gjestemeldinger og anmeldelser, varsler om tomme datoer med ferdig kampanje, utgiftssporing og norsk skatterapport, rengjøring med egen vasker-portal, vedlikehold, lager/handleliste, AI-prisforslag, co-host/team, tofaktor, boost-markedsføring på Vertas sosiale kanaler, og installerbar mobil-app (PWA).`;
+
+const PORTAL_SYSTEM = `Du er «Vera», Verta sin assistent for innloggede brukere. Hjelp med «hvordan gjør jeg X» i appen. Svar kort og konkret på brukerens språk. Ikke finn på funksjoner som ikke finnes.
+
+Hvor ting ligger i dashbordet:
+- Eiendommer: legg til/rediger eiendom (WiFi, husregler, tilkomst), smartlås, iCal-import og kalender.
+- Drift: Meldinger (AI-svar til gjester), Varsler (tomme datoer), Rengjøring (vaskere + oppgaver), Vedlikehold, Lager.
+- Marked: Prising (AI-prisforslag), Boost (markedsføring).
+- Økonomi: Utgifter, Provisjon, Skatt.
+- Konto: Team (inviter co-host), Sikkerhet (passord + 2FA), Innstillinger.`;
+
 /**
- * Enkel chat-route mot Claude. Tar imot { messages } og strømmer svaret
- * tilbake som ren tekst. Utgangspunkt — utvid med auth, lagring osv.
+ * Chat-route mot Claude for assistenten «Vera». Tar { messages, context }
+ * og strømmer svaret som ren tekst. System-prompten caches (ephemeral).
  */
 export async function POST(request: NextRequest) {
-  const { messages } = (await request.json()) as {
+  const { messages, context } = (await request.json()) as {
     messages: Anthropic.MessageParam[];
+    context?: "landing" | "portal";
   };
 
   if (!Array.isArray(messages)) {
     return Response.json({ error: "messages må være en liste" }, { status: 400 });
   }
 
+  const system = context === "portal" ? PORTAL_SYSTEM : LANDING_SYSTEM;
+  const trimmed = messages.slice(-12);
+
   const stream = anthropic.messages.stream({
     model: DEFAULT_MODEL,
     max_tokens: 1024,
-    messages,
+    system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
+    messages: trimmed,
   });
 
   const encoder = new TextEncoder();

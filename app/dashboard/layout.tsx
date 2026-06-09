@@ -1,6 +1,7 @@
 import { getCurrentProfile, requireUser } from "@/lib/auth";
 import { isAdmin } from "@/lib/admin";
 import { DashboardNav } from "@/components/dashboard/dashboard-nav";
+import { ChatWidget } from "@/components/chat/chat-widget";
 
 export default async function DashboardLayout({
   children,
@@ -16,6 +17,7 @@ export default async function DashboardLayout({
         <DashboardNav email={profile?.email} isAdmin={isAdmin(profile?.email)} />
       </header>
       <main className="mx-auto w-full max-w-5xl flex-1 p-6">{children}</main>
+      <ChatWidget context="portal" />
     </div>
   );
 }
