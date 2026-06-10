@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { haversineKm } from "@/lib/geo";
 import { formatNok } from "@/lib/utils";
-import { requestCleaner, cancelRequest } from "./actions";
+import { requestCleaner, cancelRequest, reviewCleaner } from "./actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -88,6 +88,30 @@ export default async function FinnVaskehjelpPage({
     ((reqCleaners ?? []) as { id: string; name: string }[]).map((c) => [c.id, c.name]),
   );
   const propNameById = new Map(properties.map((p) => [p.id, p.name]));
+
+  // Snitt-vurdering for de matchede vaskerne (leses via admin).
+  const reviewStats = new Map<string, { avg: number; count: number }>();
+  const matchIds = matches.map((m) => m.id);
+  if (matchIds.length) {
+    const { data: rev } = await createAdminClient()
+      .from("cleaner_reviews")
+      .select("cleaner_id,rating")
+      .in("cleaner_id", matchIds);
+    const acc = new Map<string, { sum: number; count: number }>();
+    for (const r of (rev ?? []) as { cleaner_id: string; rating: number }[]) {
+      const a = acc.get(r.cleaner_id) ?? { sum: 0, count: 0 };
+      a.sum += r.rating;
+      a.count += 1;
+      acc.set(r.cleaner_id, a);
+    }
+    for (const [id, a] of acc) {
+      reviewStats.set(id, {
+        avg: Math.round((a.sum / a.count) * 10) / 10,
+        count: a.count,
+      });
+    }
+  }
+
   const REQ_STATUS: Record<string, string> = {
     pending: "Venter",
     accepted: "Godtatt",
@@ -165,6 +189,14 @@ export default async function FinnVaskehjelpPage({
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="flex flex-col gap-2 text-sm">
+                    {reviewStats.get(c.id) && (
+                      <p className="text-gold">
+                        ★ {reviewStats.get(c.id)!.avg}{" "}
+                        <span className="text-muted-foreground">
+                          ({reviewStats.get(c.id)!.count})
+                        </span>
+                      </p>
+                    )}
                     {c.bio && <p className="text-ink">{c.bio}</p>}
                     {c.hourly_rate != null && (
                       <p className="text-muted-foreground">
@@ -231,6 +263,27 @@ export default async function FinnVaskehjelpPage({
                           <input type="hidden" name="id" value={r.id} />
                           <Button type="submit" variant="ghost" size="sm">
                             Avbryt
+                          </Button>
+                        </form>
+                      )}
+                      {r.status === "accepted" && (
+                        <form action={reviewCleaner} className="flex items-center gap-1">
+                          <input type="hidden" name="cleaner_id" value={r.cleaner_id} />
+                          <input type="hidden" name="property_id" value={r.property_id} />
+                          <select
+                            name="rating"
+                            defaultValue="5"
+                            className="h-8 rounded-lg border border-input bg-background px-2 text-xs"
+                          >
+                            {[5, 4, 3, 2, 1].map((n) => (
+                              <option key={n} value={n}>
+                                {n}★
+                              </option>
+                            ))}
+                          </select>
+                          <Input name="comment" placeholder="Kommentar" className="h-8 w-28" />
+                          <Button type="submit" variant="ghost" size="sm">
+                            Vurder
                           </Button>
                         </form>
                       )}

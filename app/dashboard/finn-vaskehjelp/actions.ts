@@ -35,6 +35,39 @@ export async function requestCleaner(formData: FormData): Promise<void> {
   revalidatePath("/dashboard/finn-vaskehjelp");
 }
 
+/** Eier som har hatt et godtatt oppdrag gir vaskeren en vurdering (1–5). */
+export async function reviewCleaner(formData: FormData): Promise<void> {
+  const user = await requireUser();
+  const cleanerId = String(formData.get("cleaner_id") ?? "");
+  const rating = Number(formData.get("rating") ?? 0);
+  if (!cleanerId || rating < 1 || rating > 5) return;
+  const comment = String(formData.get("comment") ?? "").trim();
+  const propertyId = String(formData.get("property_id") ?? "");
+
+  const supabase = await createClient();
+  // Krev at det finnes et godtatt oppdrag med denne vaskeren.
+  const { data: accepted } = await supabase
+    .from("service_requests")
+    .select("id")
+    .eq("cleaner_id", cleanerId)
+    .eq("requester_user_id", user.id)
+    .eq("status", "accepted")
+    .limit(1);
+  if (!accepted || accepted.length === 0) return;
+
+  await supabase.from("cleaner_reviews").upsert(
+    {
+      cleaner_id: cleanerId,
+      reviewer_user_id: user.id,
+      property_id: propertyId || null,
+      rating,
+      comment: comment || null,
+    },
+    { onConflict: "cleaner_id,reviewer_user_id" },
+  );
+  revalidatePath("/dashboard/finn-vaskehjelp");
+}
+
 export async function cancelRequest(formData: FormData): Promise<void> {
   await requireUser();
   const id = String(formData.get("id") ?? "");
