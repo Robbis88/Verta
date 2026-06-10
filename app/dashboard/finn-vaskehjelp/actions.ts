@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { logAudit } from "@/lib/audit";
+import { MARKET_FEE_RATE } from "@/lib/constants";
 
 export async function requestCleaner(formData: FormData): Promise<void> {
   const user = await requireUser();
@@ -13,6 +14,10 @@ export async function requestCleaner(formData: FormData): Promise<void> {
   if (!cleanerId || !propertyId) return;
   const jobDate = String(formData.get("job_date") ?? "").trim();
   const message = String(formData.get("message") ?? "").trim();
+  const amountRaw = String(formData.get("amount") ?? "").trim();
+  const amount = amountRaw ? Number(amountRaw) : null;
+  const vertaFee =
+    amount != null ? Math.round(amount * MARKET_FEE_RATE * 100) / 100 : null;
 
   const supabase = await createClient();
   // RLS sikrer at brukeren eier eiendommen i forespørselen.
@@ -22,6 +27,8 @@ export async function requestCleaner(formData: FormData): Promise<void> {
     requester_user_id: user.id,
     job_date: jobDate || null,
     message: message || null,
+    amount,
+    verta_fee: vertaFee,
     status: "pending",
   });
   if (error) return;
@@ -76,6 +83,22 @@ export async function cancelRequest(formData: FormData): Promise<void> {
   await supabase
     .from("service_requests")
     .update({ status: "cancelled" })
+    .eq("id", id);
+  revalidatePath("/dashboard/finn-vaskehjelp");
+}
+
+/**
+ * Marker oppdrag som betalt. (Manuell nå — ekte Vipps/Stripe-betaling plugges
+ * inn her senere, samme dev-fallback-mønster som boost.)
+ */
+export async function markRequestPaid(formData: FormData): Promise<void> {
+  await requireUser();
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+  const supabase = await createClient();
+  await supabase
+    .from("service_requests")
+    .update({ payment_status: "paid" })
     .eq("id", id);
   revalidatePath("/dashboard/finn-vaskehjelp");
 }

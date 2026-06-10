@@ -69,7 +69,7 @@ export default async function CleanerPortal({
 
   const { data: reqData } = await supabase
     .from("service_requests")
-    .select("id,property_id,job_date,message")
+    .select("id,property_id,job_date,message,amount,verta_fee")
     .eq("cleaner_id", cleaner.id)
     .eq("status", "pending")
     .order("created_at", { ascending: true });
@@ -78,6 +78,8 @@ export default async function CleanerPortal({
     property_id: string;
     job_date: string | null;
     message: string | null;
+    amount: number | null;
+    verta_fee: number | null;
   }[];
 
   const propIds = [
@@ -125,6 +127,15 @@ export default async function CleanerPortal({
                   <p className="mt-1 text-sm text-ink">
                     {r.job_date ? `Ønsket dato: ${r.job_date}` : "Dato avtales"}
                   </p>
+                  {r.amount != null && (
+                    <p className="mt-1 text-sm font-medium text-navy">
+                      Du tjener {Number(r.amount) - Number(r.verta_fee ?? 0)} kr
+                      <span className="font-normal text-ink/60">
+                        {" "}
+                        (etter Verta-gebyr {Number(r.verta_fee ?? 0)} kr)
+                      </span>
+                    </p>
+                  )}
                   {r.message && (
                     <p className="mt-1 text-sm text-ink/70">«{r.message}»</p>
                   )}

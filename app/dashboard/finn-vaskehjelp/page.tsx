@@ -5,7 +5,12 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { haversineKm } from "@/lib/geo";
 import { formatNok } from "@/lib/utils";
-import { requestCleaner, cancelRequest, reviewCleaner } from "./actions";
+import {
+  requestCleaner,
+  cancelRequest,
+  reviewCleaner,
+  markRequestPaid,
+} from "./actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -71,7 +76,7 @@ export default async function FinnVaskehjelpPage({
   // Mine sendte forespørsler (RLS gir kun egne) + oppslag av vasker-navn.
   const { data: reqData } = await supabase
     .from("service_requests")
-    .select("id,cleaner_id,property_id,job_date,status,created_at")
+    .select("id,cleaner_id,property_id,job_date,status,amount,verta_fee,payment_status,created_at")
     .order("created_at", { ascending: false });
   const myRequests = (reqData ?? []) as {
     id: string;
@@ -79,6 +84,9 @@ export default async function FinnVaskehjelpPage({
     property_id: string;
     job_date: string | null;
     status: string;
+    amount: number | null;
+    verta_fee: number | null;
+    payment_status: string;
   }[];
   const reqCleanerIds = [...new Set(myRequests.map((r) => r.cleaner_id))];
   const { data: reqCleaners } = reqCleanerIds.length
@@ -226,6 +234,13 @@ export default async function FinnVaskehjelpPage({
                         <input type="hidden" name="cleaner_id" value={c.id} />
                         <input type="hidden" name="property_id" value={selected.id} />
                         <Input name="job_date" type="date" className="h-9" />
+                        <Input
+                          name="amount"
+                          type="number"
+                          min={0}
+                          placeholder="Avtalt pris (kr)"
+                          className="h-9"
+                        />
                         <Input name="message" placeholder="Melding (valgfritt)" className="h-9" />
                         <Button type="submit" size="sm" variant="outline">
                           Send forespørsel
@@ -246,10 +261,8 @@ export default async function FinnVaskehjelpPage({
               <CardContent>
                 <ul className="flex flex-col divide-y">
                   {myRequests.map((r) => (
-                    <li
-                      key={r.id}
-                      className="flex items-center justify-between gap-3 py-2 text-sm"
-                    >
+                    <li key={r.id} className="flex flex-col gap-2 py-2 text-sm">
+                      <div className="flex items-center justify-between gap-3">
                       <span className="flex-1">
                         {cleanerNameById.get(r.cleaner_id) ?? "Vasker"} ·{" "}
                         <span className="text-muted-foreground">
@@ -286,6 +299,29 @@ export default async function FinnVaskehjelpPage({
                             Vurder
                           </Button>
                         </form>
+                      )}
+                      </div>
+                      {r.amount != null && (
+                        <div className="flex items-center justify-between gap-3 text-xs">
+                          <span className="text-muted-foreground">
+                            Pris {formatNok(Number(r.amount))} · Verta-gebyr{" "}
+                            {formatNok(Number(r.verta_fee ?? 0))} · til vasker{" "}
+                            {formatNok(Number(r.amount) - Number(r.verta_fee ?? 0))}
+                          </span>
+                          {r.status === "accepted" &&
+                            (r.payment_status === "paid" ? (
+                              <span className="font-medium text-emerald-600">
+                                Betalt ✓
+                              </span>
+                            ) : (
+                              <form action={markRequestPaid}>
+                                <input type="hidden" name="id" value={r.id} />
+                                <Button type="submit" size="sm">
+                                  Marker betalt
+                                </Button>
+                              </form>
+                            ))}
+                        </div>
                       )}
                     </li>
                   ))}

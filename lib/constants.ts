@@ -39,3 +39,6 @@ export type BoostStatus = (typeof BOOST_STATUSES)[number];
 
 /** Verta tar 10 % provisjon av bookinger fra egne sosiale kanaler. */
 export const COMMISSION_RATE = 0.1;
+
+/** Verta sitt formidlingsgebyr på vaske-oppdrag i markedsplassen. */
+export const MARKET_FEE_RATE = 0.12;
