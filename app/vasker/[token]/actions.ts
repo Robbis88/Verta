@@ -3,6 +3,47 @@
 import { revalidatePath } from "next/cache";
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { geocodeNorway } from "@/lib/geocode";
+
+/**
+ * Vaskeren oppdaterer sin egen profil: tilgjengelig for andre oppdrag, hvor
+ * langt hun kjører, timepris og hjemmeadresse (geokodes for avstandsmatch).
+ */
+export async function updateCleanerProfile(formData: FormData): Promise<void> {
+  const token = String(formData.get("token") ?? "");
+  if (!token) return;
+
+  const available = formData.get("available_for_hire") === "on";
+  const maxKmRaw = String(formData.get("max_travel_km") ?? "").trim();
+  const rateRaw = String(formData.get("hourly_rate") ?? "").trim();
+  const bio = String(formData.get("bio") ?? "").trim();
+  const baseAddress = String(formData.get("base_address") ?? "").trim();
+
+  const supabase = createAdminClient();
+  const { data: cleaner } = await supabase
+    .from("cleaners")
+    .select("id")
+    .eq("access_token", token)
+    .maybeSingle();
+  if (!cleaner) return;
+
+  const coords = baseAddress ? await geocodeNorway(baseAddress) : null;
+
+  await supabase
+    .from("cleaners")
+    .update({
+      available_for_hire: available,
+      max_travel_km: maxKmRaw ? Number(maxKmRaw) : null,
+      hourly_rate: rateRaw ? Number(rateRaw) : null,
+      bio: bio || null,
+      base_address: baseAddress || null,
+      lat: coords?.lat ?? null,
+      lng: coords?.lng ?? null,
+    })
+    .eq("id", cleaner.id);
+
+  revalidatePath(`/vasker/${token}`);
+}
 
 /**
  * Vaskeren oppdaterer status på egen oppgave via portal-token (ingen innlogging).

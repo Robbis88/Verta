@@ -2,8 +2,20 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { createAdminClient } from "@/lib/supabase/admin";
-import { updateTaskByCleaner } from "./actions";
+import { updateTaskByCleaner, updateCleanerProfile } from "./actions";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+
+type Cleaner = {
+  id: string;
+  name: string;
+  available_for_hire: boolean | null;
+  max_travel_km: number | null;
+  hourly_rate: number | null;
+  bio: string | null;
+  base_address: string | null;
+};
 
 type Task = {
   id: string;
@@ -36,12 +48,13 @@ export default async function CleanerPortal({
   const { token } = await params;
   const supabase = createAdminClient();
 
-  const { data: cleaner } = await supabase
+  const { data: cleanerData } = await supabase
     .from("cleaners")
-    .select("id,name")
+    .select("id,name,available_for_hire,max_travel_km,hourly_rate,bio,base_address")
     .eq("access_token", token)
     .maybeSingle();
-  if (!cleaner) notFound();
+  if (!cleanerData) notFound();
+  const cleaner = cleanerData as Cleaner;
 
   const { data: taskData } = await supabase
     .from("cleaning_tasks")
@@ -145,6 +158,73 @@ export default async function CleanerPortal({
             </ul>
           </div>
         )}
+
+        <div className="mt-2 rounded-xl border border-hairline bg-white p-5">
+          <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-gold">
+            Min profil
+          </h2>
+          <p className="mb-4 text-sm text-ink/70">
+            Vil du ta oppdrag for andre utleiere i nærheten? Slå på og fyll inn,
+            så blir du synlig for dem.
+          </p>
+          <form action={updateCleanerProfile} className="flex flex-col gap-3">
+            <input type="hidden" name="token" value={token} />
+            <label className="flex items-center gap-2 text-sm text-navy">
+              <input
+                type="checkbox"
+                name="available_for_hire"
+                defaultChecked={cleaner.available_for_hire ?? false}
+                className="h-4 w-4"
+              />
+              Tilgjengelig for andre oppdrag
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="max_travel_km">Kjører maks (km)</Label>
+                <Input
+                  id="max_travel_km"
+                  name="max_travel_km"
+                  type="number"
+                  min={0}
+                  defaultValue={cleaner.max_travel_km ?? ""}
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="hourly_rate">Timepris (kr)</Label>
+                <Input
+                  id="hourly_rate"
+                  name="hourly_rate"
+                  type="number"
+                  min={0}
+                  defaultValue={cleaner.hourly_rate ?? ""}
+                />
+              </div>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="base_address">Hjemmeadresse (for avstand)</Label>
+              <Input
+                id="base_address"
+                name="base_address"
+                defaultValue={cleaner.base_address ?? ""}
+                placeholder="Gateadresse, poststed"
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="bio">Kort om deg (valgfritt)</Label>
+              <Input
+                id="bio"
+                name="bio"
+                defaultValue={cleaner.bio ?? ""}
+                placeholder="F.eks. erfaren, fleksibel, egne midler"
+              />
+            </div>
+            <div>
+              <Button type="submit" className="bg-gold text-navy hover:bg-gold/90">
+                Lagre profil
+              </Button>
+            </div>
+          </form>
+        </div>
 
         <p className="mt-2 text-center text-xs text-ink/50">Levert av Verta</p>
       </div>

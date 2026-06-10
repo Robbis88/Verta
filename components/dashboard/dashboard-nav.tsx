@@ -37,6 +37,7 @@ export function DashboardNav({
         { href: "/dashboard/meldinger", label: "Meldinger" },
         { href: "/dashboard/varsler", label: "Varsler" },
         { href: "/dashboard/rengjoring", label: "Rengjøring" },
+        { href: "/dashboard/finn-vaskehjelp", label: "Finn vaskehjelp" },
         { href: "/dashboard/vedlikehold", label: "Vedlikehold" },
         { href: "/dashboard/lager", label: "Lager" },
       ],

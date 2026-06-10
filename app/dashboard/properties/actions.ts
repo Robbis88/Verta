@@ -10,6 +10,7 @@ import { propertyLimit } from "@/lib/constants";
 import { propertySchema } from "@/lib/validation";
 import { slugify } from "@/lib/utils";
 import { logAudit } from "@/lib/audit";
+import { geocodeNorway } from "@/lib/geocode";
 
 export type PropertyFormState = {
   error?: string;
@@ -55,6 +56,7 @@ export async function createProperty(
 
   const data = parsed.data;
   const slug = `${slugify(data.name)}-${crypto.randomUUID().slice(0, 6)}`;
+  const coords = data.address ? await geocodeNorway(data.address) : null;
 
   const { data: created, error } = await supabase
     .from("properties")
@@ -72,6 +74,8 @@ export async function createProperty(
       wifi_password: data.wifi_password || null,
       house_rules: data.house_rules || null,
       checkout_info: data.checkout_info || null,
+      lat: coords?.lat ?? null,
+      lng: coords?.lng ?? null,
     })
     .select("id")
     .single();
@@ -104,6 +108,7 @@ export async function updateProperty(
 
   const supabase = await createClient();
   const data = parsed.data;
+  const coords = data.address ? await geocodeNorway(data.address) : null;
 
   // RLS sikrer at bare eieren kan oppdatere.
   const { error } = await supabase
@@ -120,6 +125,8 @@ export async function updateProperty(
       wifi_password: data.wifi_password || null,
       house_rules: data.house_rules || null,
       checkout_info: data.checkout_info || null,
+      lat: coords?.lat ?? null,
+      lng: coords?.lng ?? null,
     })
     .eq("id", id);
 
