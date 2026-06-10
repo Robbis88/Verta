@@ -5,7 +5,10 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { haversineKm } from "@/lib/geo";
 import { formatNok } from "@/lib/utils";
+import { requestCleaner, cancelRequest } from "./actions";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
@@ -64,6 +67,33 @@ export default async function FinnVaskehjelpPage({
       .filter((c) => c.max_travel_km == null || c.distance <= c.max_travel_km)
       .sort((a, b) => a.distance - b.distance);
   }
+
+  // Mine sendte forespørsler (RLS gir kun egne) + oppslag av vasker-navn.
+  const { data: reqData } = await supabase
+    .from("service_requests")
+    .select("id,cleaner_id,property_id,job_date,status,created_at")
+    .order("created_at", { ascending: false });
+  const myRequests = (reqData ?? []) as {
+    id: string;
+    cleaner_id: string;
+    property_id: string;
+    job_date: string | null;
+    status: string;
+  }[];
+  const reqCleanerIds = [...new Set(myRequests.map((r) => r.cleaner_id))];
+  const { data: reqCleaners } = reqCleanerIds.length
+    ? await createAdminClient().from("cleaners").select("id,name").in("id", reqCleanerIds)
+    : { data: [] };
+  const cleanerNameById = new Map(
+    ((reqCleaners ?? []) as { id: string; name: string }[]).map((c) => [c.id, c.name]),
+  );
+  const propNameById = new Map(properties.map((p) => [p.id, p.name]));
+  const REQ_STATUS: Record<string, string> = {
+    pending: "Venter",
+    accepted: "Godtatt",
+    declined: "Avslått",
+    cancelled: "Avbrutt",
+  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -156,10 +186,59 @@ export default async function FinnVaskehjelpPage({
                         </a>
                       )}
                     </div>
+                    {selected && (
+                      <form
+                        action={requestCleaner}
+                        className="flex flex-col gap-2 border-t pt-2"
+                      >
+                        <input type="hidden" name="cleaner_id" value={c.id} />
+                        <input type="hidden" name="property_id" value={selected.id} />
+                        <Input name="job_date" type="date" className="h-9" />
+                        <Input name="message" placeholder="Melding (valgfritt)" className="h-9" />
+                        <Button type="submit" size="sm" variant="outline">
+                          Send forespørsel
+                        </Button>
+                      </form>
+                    )}
                   </CardContent>
                 </Card>
               ))}
             </div>
+          )}
+
+          {myRequests.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Mine forespørsler</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ul className="flex flex-col divide-y">
+                  {myRequests.map((r) => (
+                    <li
+                      key={r.id}
+                      className="flex items-center justify-between gap-3 py-2 text-sm"
+                    >
+                      <span className="flex-1">
+                        {cleanerNameById.get(r.cleaner_id) ?? "Vasker"} ·{" "}
+                        <span className="text-muted-foreground">
+                          {propNameById.get(r.property_id) ?? "—"}
+                          {r.job_date ? ` · ${r.job_date}` : ""}
+                        </span>
+                      </span>
+                      <Badge>{REQ_STATUS[r.status] ?? r.status}</Badge>
+                      {r.status === "pending" && (
+                        <form action={cancelRequest}>
+                          <input type="hidden" name="id" value={r.id} />
+                          <Button type="submit" variant="ghost" size="sm">
+                            Avbryt
+                          </Button>
+                        </form>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
           )}
         </>
       )}

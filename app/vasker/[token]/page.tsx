@@ -2,7 +2,11 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { createAdminClient } from "@/lib/supabase/admin";
-import { updateTaskByCleaner, updateCleanerProfile } from "./actions";
+import {
+  updateTaskByCleaner,
+  updateCleanerProfile,
+  respondToRequest,
+} from "./actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -63,7 +67,25 @@ export default async function CleanerPortal({
     .order("task_date", { ascending: true });
   const tasks = (taskData ?? []) as Task[];
 
-  const propIds = [...new Set(tasks.map((t) => t.property_id))];
+  const { data: reqData } = await supabase
+    .from("service_requests")
+    .select("id,property_id,job_date,message")
+    .eq("cleaner_id", cleaner.id)
+    .eq("status", "pending")
+    .order("created_at", { ascending: true });
+  const requests = (reqData ?? []) as {
+    id: string;
+    property_id: string;
+    job_date: string | null;
+    message: string | null;
+  }[];
+
+  const propIds = [
+    ...new Set([
+      ...tasks.map((t) => t.property_id),
+      ...requests.map((r) => r.property_id),
+    ]),
+  ];
   const { data: props } = propIds.length
     ? await supabase.from("properties").select("id,name,address").in("id", propIds)
     : { data: [] };
@@ -84,6 +106,56 @@ export default async function CleanerPortal({
       </header>
 
       <div className="mx-auto flex max-w-xl flex-col gap-4 p-6">
+        {requests.length > 0 && (
+          <div className="rounded-xl border-2 border-gold bg-white p-5">
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gold">
+              Nye forespørsler ({requests.length})
+            </h2>
+            <ul className="flex flex-col gap-4">
+              {requests.map((r) => (
+                <li key={r.id} className="border-t border-hairline pt-3 first:border-0 first:pt-0">
+                  <p className="font-semibold text-navy">
+                    {propById.get(r.property_id)?.name ?? "Eiendom"}
+                  </p>
+                  {propById.get(r.property_id)?.address && (
+                    <p className="text-sm text-ink/60">
+                      {propById.get(r.property_id)?.address}
+                    </p>
+                  )}
+                  <p className="mt-1 text-sm text-ink">
+                    {r.job_date ? `Ønsket dato: ${r.job_date}` : "Dato avtales"}
+                  </p>
+                  {r.message && (
+                    <p className="mt-1 text-sm text-ink/70">«{r.message}»</p>
+                  )}
+                  <div className="mt-3 flex gap-2">
+                    <form action={respondToRequest}>
+                      <input type="hidden" name="token" value={token} />
+                      <input type="hidden" name="request_id" value={r.id} />
+                      <input type="hidden" name="decision" value="accepted" />
+                      <Button
+                        type="submit"
+                        size="sm"
+                        className="bg-gold text-navy hover:bg-gold/90"
+                      >
+                        Godta
+                      </Button>
+                    </form>
+                    <form action={respondToRequest}>
+                      <input type="hidden" name="token" value={token} />
+                      <input type="hidden" name="request_id" value={r.id} />
+                      <input type="hidden" name="decision" value="declined" />
+                      <Button type="submit" size="sm" variant="outline">
+                        Avslå
+                      </Button>
+                    </form>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         {active.length === 0 ? (
           <p className="rounded-xl border border-hairline bg-white p-6 text-center text-sm text-ink/60">
             Ingen aktive oppgaver akkurat nå. 🎉

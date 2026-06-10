@@ -73,3 +73,46 @@ export async function updateTaskByCleaner(formData: FormData): Promise<void> {
 
   revalidatePath(`/vasker/${token}`);
 }
+
+/** Vaskeren godtar eller avslår en forespørsel. Ved godtatt lages en oppgave. */
+export async function respondToRequest(formData: FormData): Promise<void> {
+  const token = String(formData.get("token") ?? "");
+  const requestId = String(formData.get("request_id") ?? "");
+  const decision = String(formData.get("decision") ?? "");
+  if (!token || !requestId) return;
+  if (!["accepted", "declined"].includes(decision)) return;
+
+  const supabase = createAdminClient();
+  const { data: cleaner } = await supabase
+    .from("cleaners")
+    .select("id")
+    .eq("access_token", token)
+    .maybeSingle();
+  if (!cleaner) return;
+
+  const { data: req } = await supabase
+    .from("service_requests")
+    .select("id,property_id,job_date,status")
+    .eq("id", requestId)
+    .eq("cleaner_id", cleaner.id)
+    .maybeSingle();
+  if (!req || req.status !== "pending") return;
+
+  await supabase
+    .from("service_requests")
+    .update({ status: decision, responded_at: new Date().toISOString() })
+    .eq("id", req.id);
+
+  // Godtatt + dato → opprett en rengjøringsoppgave tildelt vaskeren.
+  if (decision === "accepted" && req.job_date) {
+    await supabase.from("cleaning_tasks").insert({
+      property_id: req.property_id,
+      cleaner_id: cleaner.id,
+      task_date: req.job_date,
+      type: "turnover",
+      status: "assigned",
+    });
+  }
+
+  revalidatePath(`/vasker/${token}`);
+}
