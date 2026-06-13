@@ -26,12 +26,12 @@ const features: { icon: LucideIcon; title: string; text: string }[] = [
   },
   {
     icon: FolderArchive,
-    title: "Dokumentarkiv",
+    title: "Dokumenter",
     text: "Kontrakter, forsikring, manualer og kvitteringer trygt lagret per eiendom.",
   },
   {
     icon: MessageSquare,
-    title: "Gjestehåndtering",
+    title: "Gjester",
     text: "Digital gjesteguide, adgangskoder og forslag til svar — proff opplevelse for gjesten.",
   },
   {
