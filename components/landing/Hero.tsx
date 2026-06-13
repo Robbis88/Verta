@@ -1,44 +1,48 @@
-import Image from "next/image";
-import Link from "next/link";
-
-import { Button } from "@/components/ui/button";
-import { IMG } from "@/lib/images";
+import { LazyVideo } from "./LazyVideo";
 
 export function Hero() {
   return (
-    <section className="relative flex min-h-screen items-center justify-center overflow-hidden">
-      <Image
-        src={IMG.hero}
-        alt="Norsk hytte ved fjorden i Lofoten"
-        fill
-        priority
-        sizes="100vw"
-        className="object-cover"
-      />
-      <div className="absolute inset-0 bg-gradient-to-b from-navy/80 via-navy/65 to-navy/90" />
+    <section className="relative overflow-hidden bg-gradient-to-b from-navy to-navy-dark">
+      <div className="pointer-events-none absolute -right-40 -top-40 h-96 w-96 rounded-full bg-gold/10 blur-3xl" />
 
-      <div className="relative z-10 mx-auto max-w-3xl px-6 text-center">
-        <h1 className="mb-6 text-4xl font-bold leading-tight tracking-tight text-white sm:text-5xl md:text-6xl">
-          Full kontroll over dine utleieeiendommer
-        </h1>
-        <p className="mx-auto mb-10 max-w-xl text-lg leading-relaxed text-gold-light md:text-xl">
-          Enkel kalender, direkte bookinger, smartere markedsføring og skatt på
-          autopilot — for norske hytter og leiligheter.
-        </p>
-        <div className="flex flex-col justify-center gap-4 sm:flex-row">
-          <Button
-            asChild
-            className="h-auto rounded-lg bg-gold px-8 py-4 text-base font-semibold text-navy hover:bg-gold/90"
-          >
-            <Link href="/login">Kom i gang gratis</Link>
-          </Button>
-          <Button
-            asChild
-            variant="outline"
-            className="h-auto rounded-lg border-2 border-white/40 bg-white/5 px-8 py-4 text-base font-semibold text-white backdrop-blur hover:bg-white/15 hover:text-white dark:bg-white/5"
-          >
-            <Link href="#priser">Se priser</Link>
-          </Button>
+      <div className="mx-auto grid max-w-6xl items-center gap-12 px-6 py-16 md:grid-cols-2 md:py-24">
+        <div>
+          <span className="inline-block rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-medium text-gold-light">
+            Plattform for ferieboliger
+          </span>
+          <h1 className="mt-5 text-4xl font-bold leading-[1.1] tracking-tight text-white sm:text-5xl">
+            Administrer ferieboliger fra én plattform
+          </h1>
+          <p className="mt-5 max-w-lg text-lg leading-relaxed text-white/70">
+            Samle bookinger, økonomi, dokumenter og gjestekommunikasjon på ett
+            sted.
+          </p>
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+            <a
+              href="mailto:hei@verta.no?subject=Book%20demo%20av%20Verta"
+              className="rounded-lg bg-gold px-7 py-3.5 text-center text-base font-semibold text-navy transition hover:bg-gold/90"
+            >
+              Book demo
+            </a>
+            <a
+              href="#funksjoner"
+              className="rounded-lg border border-white/20 bg-white/5 px-7 py-3.5 text-center text-base font-semibold text-white backdrop-blur transition hover:bg-white/10"
+            >
+              Se hvordan det fungerer
+            </a>
+          </div>
+          <p className="mt-6 text-sm text-white/50">
+            Norsk skatterapport · Smartlås · Direkte bookinger uten gebyr
+          </p>
+        </div>
+
+        <div className="md:pl-4">
+          <div className="overflow-hidden rounded-2xl border border-white/10 shadow-2xl">
+            <LazyVideo
+              src="/videos/hero-1.mp4"
+              className="aspect-video w-full object-cover"
+            />
+          </div>
         </div>
       </div>
     </section>
