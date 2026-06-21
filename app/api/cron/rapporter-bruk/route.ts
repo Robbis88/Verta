@@ -1,0 +1,47 @@
+import { createAdminClient } from "@/lib/supabase/admin";
+import { PLANS, EXTRA_PROPERTY_PRICE_NOK, type Plan } from "@/lib/constants";
+import { rapporterBruk } from "@/lib/kontrollrom";
+
+/**
+ * Daglig (se vercel.json): rapporterer brukere + planpris til kontrollrommet.
+ * Krever CRON_SECRET kun hvis satt.
+ */
+export async function GET(request: Request) {
+  if (process.env.CRON_SECRET) {
+    const auth = request.headers.get("authorization");
+    if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
+      return new Response("Unauthorized", { status: 401 });
+    }
+  }
+
+  const supabase = createAdminClient();
+  const { data: users } = await supabase
+    .from("users")
+    .select("id, email, plan, extra_properties_count");
+
+  const abonnement = (users ?? [])
+    .map((u) => {
+      const plan = (u.plan ?? "gratis") as Plan;
+      if (plan === "gratis") return null;
+      let belop = PLANS[plan]?.priceNok ?? 0;
+      if (plan === "premium") {
+        belop += (u.extra_properties_count ?? 0) * EXTRA_PROPERTY_PRICE_NOK;
+      }
+      return {
+        ekstern_ref: u.id as string,
+        navn: (u.email as string) ?? "Ukjent",
+        epost: (u.email as string) ?? null,
+        belop,
+        intervall: "mnd" as const,
+        status: "active" as const,
+      };
+    })
+    .filter((x): x is NonNullable<typeof x> => x !== null);
+
+  const ok = await rapporterBruk({
+    antall_brukere: users?.length ?? 0,
+    abonnement,
+  });
+
+  return Response.json({ ok, antall: abonnement.length });
+}
