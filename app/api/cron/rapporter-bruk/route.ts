@@ -18,34 +18,45 @@ export async function GET(request: Request) {
     }
   }
 
-  const supabase = createAdminClient();
-  const { data: users } = await supabase
-    .from("users")
-    .select("id, email, plan, extra_properties_count");
+  try {
+    const supabase = createAdminClient();
+    const { data: users, error } = await supabase
+      .from("users")
+      .select("id, email, plan, extra_properties_count");
 
-  const abonnement = (users ?? [])
-    .map((u) => {
-      const plan = (u.plan ?? "gratis") as Plan;
-      if (plan === "gratis") return null;
-      let belop = PLANS[plan]?.priceNok ?? 0;
-      if (plan === "premium") {
-        belop += (u.extra_properties_count ?? 0) * EXTRA_PROPERTY_PRICE_NOK;
-      }
-      return {
-        ekstern_ref: u.id as string,
-        navn: (u.email as string) ?? "Ukjent",
-        epost: (u.email as string) ?? null,
-        belop,
-        intervall: "mnd" as const,
-        status: "active" as const,
-      };
-    })
-    .filter((x): x is NonNullable<typeof x> => x !== null);
+    if (error) {
+      return Response.json({ feil: `users: ${error.message}` }, { status: 200 });
+    }
 
-  const ok = await rapporterBruk({
-    antall_brukere: users?.length ?? 0,
-    abonnement,
-  });
+    const abonnement = (users ?? [])
+      .map((u) => {
+        const plan = (u.plan ?? "gratis") as Plan;
+        if (plan === "gratis") return null;
+        let belop = PLANS[plan]?.priceNok ?? 0;
+        if (plan === "premium") {
+          belop += (u.extra_properties_count ?? 0) * EXTRA_PROPERTY_PRICE_NOK;
+        }
+        return {
+          ekstern_ref: u.id as string,
+          navn: (u.email as string) ?? "Ukjent",
+          epost: (u.email as string) ?? null,
+          belop,
+          intervall: "mnd" as const,
+          status: "active" as const,
+        };
+      })
+      .filter((x): x is NonNullable<typeof x> => x !== null);
 
-  return Response.json({ ok, antall: abonnement.length });
+    const ok = await rapporterBruk({
+      antall_brukere: users?.length ?? 0,
+      abonnement,
+    });
+
+    return Response.json({ ok, antall: abonnement.length });
+  } catch (e) {
+    return Response.json(
+      { feil: e instanceof Error ? e.message : String(e) },
+      { status: 200 },
+    );
+  }
 }
