@@ -10,6 +10,7 @@ import {
   sendOwnerBookingNotification,
 } from "@/lib/email";
 import { provisionBookingAccess } from "@/lib/access";
+import { loggHendelse } from "@/lib/kontrollrom";
 
 export type BookingFormState = {
   error?: string;
@@ -93,6 +94,19 @@ export async function createDirectBooking(
     resource_type: "booking",
     resource_id: booking.id,
     changes: { source: "verta_direct" },
+  });
+
+  await loggHendelse({
+    type: "system",
+    alvorlighet: "info",
+    tittel: `Ny booking · ${property.name}`,
+    detaljer: {
+      gjest: data.guest_name,
+      innsjekk: data.check_in,
+      utsjekk: data.check_out,
+      kilde: "verta_direct",
+    },
+    bruker_ref: data.guest_name,
   });
 
   // Skaff tilkomst: smartlås-kode (auto) eller eierens nøkkelboks-info.
