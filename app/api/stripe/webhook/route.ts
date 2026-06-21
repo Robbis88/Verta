@@ -2,6 +2,7 @@ import type Stripe from "stripe";
 
 import { stripe, planFromPriceId, EXTRA_PROPERTY_PRICE_ID } from "@/lib/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { loggHendelse } from "@/lib/kontrollrom";
 
 /**
  * Stripe webhook. Oppdaterer users.plan og extra_properties_count basert på
@@ -66,6 +67,27 @@ export async function POST(request: Request) {
         .from("users")
         .update({ plan: "gratis", extra_properties_count: 0 })
         .eq("stripe_customer_id", String(subscription.customer));
+      break;
+    }
+
+    case "invoice.payment_failed": {
+      const invoice = event.data.object as Stripe.Invoice;
+      const { data: bruker } = await supabase
+        .from("users")
+        .select("email")
+        .eq("stripe_customer_id", String(invoice.customer))
+        .maybeSingle();
+      await loggHendelse({
+        type: "system",
+        alvorlighet: "warning",
+        tittel: "Abonnementsbetaling feilet",
+        detaljer: {
+          kunde: bruker?.email ?? String(invoice.customer),
+          belop: (invoice.amount_due ?? 0) / 100,
+          forsok: invoice.attempt_count,
+        },
+        bruker_ref: bruker?.email ?? undefined,
+      });
       break;
     }
 
