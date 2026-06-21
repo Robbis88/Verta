@@ -5,6 +5,10 @@
       "schedule": "*/5 * * * *"
     },
     {
+      "path": "/api/cron/rapporter-bruk",
+      "schedule": "0 6 * * *"
+    },
+    {
       "path": "/api/cron/commissions",
       "schedule": "0 6 1 * *"
     },
