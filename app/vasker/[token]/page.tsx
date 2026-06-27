@@ -6,10 +6,20 @@ import {
   updateTaskByCleaner,
   updateCleanerProfile,
   respondToRequest,
+  uploadCleaningPhoto,
+  deleteCleaningPhoto,
 } from "./actions";
+import { signedPhotoUrls } from "@/lib/storage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+
+type Photo = {
+  id: string;
+  task_id: string;
+  kind: string;
+  storage_path: string;
+};
 
 type Cleaner = {
   id: string;
@@ -66,6 +76,24 @@ export default async function CleanerPortal({
     .eq("cleaner_id", cleaner.id)
     .order("task_date", { ascending: true });
   const tasks = (taskData ?? []) as Task[];
+
+  // Bilder per oppgave + kortlevde signerte URL-er (privat bucket).
+  const taskIds = tasks.map((t) => t.id);
+  const { data: photoData } = taskIds.length
+    ? await supabase
+        .from("cleaning_photos")
+        .select("id,task_id,kind,storage_path")
+        .in("task_id", taskIds)
+        .order("created_at", { ascending: true })
+    : { data: [] };
+  const photos = (photoData ?? []) as Photo[];
+  const urlByPath = await signedPhotoUrls(photos.map((p) => p.storage_path));
+  const photosByTask = new Map<string, Photo[]>();
+  for (const ph of photos) {
+    const list = photosByTask.get(ph.task_id) ?? [];
+    list.push(ph);
+    photosByTask.set(ph.task_id, list);
+  }
 
   const { data: reqData } = await supabase
     .from("service_requests")
@@ -222,6 +250,13 @@ export default async function CleanerPortal({
                     </Button>
                   </form>
                 </div>
+
+                <TaskPhotos
+                  token={token}
+                  taskId={t.id}
+                  photos={photosByTask.get(t.id) ?? []}
+                  urlByPath={urlByPath}
+                />
               </div>
             );
           })
@@ -312,5 +347,82 @@ export default async function CleanerPortal({
         <p className="mt-2 text-center text-xs text-ink/50">Levert av Verta</p>
       </div>
     </main>
+  );
+}
+
+function TaskPhotos({
+  token,
+  taskId,
+  photos,
+  urlByPath,
+}: {
+  token: string;
+  taskId: string;
+  photos: Photo[];
+  urlByPath: Map<string, string>;
+}) {
+  const groups: { kind: "before" | "after"; label: string }[] = [
+    { kind: "before", label: "Før" },
+    { kind: "after", label: "Etter" },
+  ];
+
+  return (
+    <div className="mt-4 grid grid-cols-2 gap-3 border-t border-hairline pt-4">
+      {groups.map(({ kind, label }) => {
+        const items = photos.filter((p) => p.kind === kind);
+        return (
+          <div key={kind} className="flex flex-col gap-2">
+            <p className="text-xs font-semibold uppercase tracking-wide text-ink/50">
+              {label} ({items.length})
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {items.map((ph) => {
+                const url = urlByPath.get(ph.storage_path);
+                if (!url) return null;
+                return (
+                  <div key={ph.id} className="relative">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={url}
+                      alt={`${label}-bilde`}
+                      className="h-16 w-16 rounded-md object-cover"
+                    />
+                    <form
+                      action={deleteCleaningPhoto}
+                      className="absolute -right-1.5 -top-1.5"
+                    >
+                      <input type="hidden" name="token" value={token} />
+                      <input type="hidden" name="photo_id" value={ph.id} />
+                      <button
+                        type="submit"
+                        aria-label="Slett bilde"
+                        className="flex h-5 w-5 items-center justify-center rounded-full bg-navy text-xs text-white"
+                      >
+                        ×
+                      </button>
+                    </form>
+                  </div>
+                );
+              })}
+            </div>
+            <form action={uploadCleaningPhoto} className="flex flex-col gap-1">
+              <input type="hidden" name="token" value={token} />
+              <input type="hidden" name="task_id" value={taskId} />
+              <input type="hidden" name="kind" value={kind} />
+              <input
+                type="file"
+                name="photo"
+                accept="image/jpeg,image/png,image/webp"
+                required
+                className="text-xs file:mr-2 file:rounded-md file:border-0 file:bg-cloud file:px-2 file:py-1 file:text-xs file:text-navy"
+              />
+              <Button type="submit" size="sm" variant="outline">
+                Last opp {label.toLowerCase()}-bilde
+              </Button>
+            </form>
+          </div>
+        );
+      })}
+    </div>
   );
 }

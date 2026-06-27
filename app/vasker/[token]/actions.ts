@@ -4,6 +4,10 @@ import { revalidatePath } from "next/cache";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { geocodeNorway } from "@/lib/geocode";
+import { CLEANING_PHOTOS_BUCKET } from "@/lib/storage";
+
+const MAX_PHOTO_BYTES = 10 * 1024 * 1024; // 10 MB
+const ALLOWED_PHOTO_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 /**
  * Vaskeren oppdaterer sin egen profil: tilgjengelig for andre oppdrag, hvor
@@ -70,6 +74,92 @@ export async function updateTaskByCleaner(formData: FormData): Promise<void> {
     .update({ status })
     .eq("id", taskId)
     .eq("cleaner_id", cleaner.id);
+
+  revalidatePath(`/vasker/${token}`);
+}
+
+/**
+ * Vaskeren laster opp et før/etter-bilde for en oppgave hen er tildelt.
+ * Token er tilgangsnøkkelen; bildet lagres i en privat bucket via service-role.
+ */
+export async function uploadCleaningPhoto(formData: FormData): Promise<void> {
+  const token = String(formData.get("token") ?? "");
+  const taskId = String(formData.get("task_id") ?? "");
+  const kind = String(formData.get("kind") ?? "after");
+  const file = formData.get("photo");
+  if (!token || !taskId) return;
+  if (!["before", "after"].includes(kind)) return;
+  if (!(file instanceof File) || file.size === 0) return;
+  if (file.size > MAX_PHOTO_BYTES) return;
+  if (!ALLOWED_PHOTO_TYPES.includes(file.type)) return;
+
+  const supabase = createAdminClient();
+  const { data: cleaner } = await supabase
+    .from("cleaners")
+    .select("id")
+    .eq("access_token", token)
+    .maybeSingle();
+  if (!cleaner) return;
+
+  // Verifiser at oppgaven tilhører denne vaskeren før vi lagrer noe.
+  const { data: task } = await supabase
+    .from("cleaning_tasks")
+    .select("id,property_id")
+    .eq("id", taskId)
+    .eq("cleaner_id", cleaner.id)
+    .maybeSingle();
+  if (!task) return;
+
+  const ext = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
+  const path = `${task.property_id}/${taskId}/${kind}-${crypto.randomUUID()}.${ext}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from(CLEANING_PHOTOS_BUCKET)
+    .upload(path, file, { contentType: file.type, upsert: false });
+  if (uploadError) return;
+
+  await supabase.from("cleaning_photos").insert({
+    task_id: taskId,
+    property_id: task.property_id,
+    kind,
+    storage_path: path,
+  });
+
+  revalidatePath(`/vasker/${token}`);
+}
+
+/** Vaskeren sletter et bilde hen har lastet opp. */
+export async function deleteCleaningPhoto(formData: FormData): Promise<void> {
+  const token = String(formData.get("token") ?? "");
+  const photoId = String(formData.get("photo_id") ?? "");
+  if (!token || !photoId) return;
+
+  const supabase = createAdminClient();
+  const { data: cleaner } = await supabase
+    .from("cleaners")
+    .select("id")
+    .eq("access_token", token)
+    .maybeSingle();
+  if (!cleaner) return;
+
+  const { data: photo } = await supabase
+    .from("cleaning_photos")
+    .select("id,storage_path,task_id")
+    .eq("id", photoId)
+    .maybeSingle();
+  if (!photo) return;
+
+  // Bildet må tilhøre en oppgave tildelt denne vaskeren.
+  const { data: task } = await supabase
+    .from("cleaning_tasks")
+    .select("id")
+    .eq("id", photo.task_id)
+    .eq("cleaner_id", cleaner.id)
+    .maybeSingle();
+  if (!task) return;
+
+  await supabase.storage.from(CLEANING_PHOTOS_BUCKET).remove([photo.storage_path]);
+  await supabase.from("cleaning_photos").delete().eq("id", photo.id);
 
   revalidatePath(`/vasker/${token}`);
 }
