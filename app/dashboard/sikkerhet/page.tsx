@@ -35,10 +35,10 @@ const SEVERITY_STYLE: Record<string, string> = {
 export default async function SikkerhetPage({
   searchParams,
 }: {
-  searchParams: Promise<{ severity?: string }>;
+  searchParams: Promise<{ severity?: string; mfa?: string }>;
 }) {
   await requireUser();
-  const { severity } = await searchParams;
+  const { severity, mfa } = await searchParams;
   const supabase = await createClient();
 
   let query = supabase
@@ -72,7 +72,13 @@ export default async function SikkerhetPage({
         <CardHeader>
           <CardTitle>Tofaktor-autentisering (2FA)</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex flex-col gap-4">
+          {mfa === "required" && (
+            <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-700">
+              Administratorkontoer må ha tofaktor aktivert. Aktiver det under for
+              å få tilgang til admin-området.
+            </p>
+          )}
           <TwoFactor />
         </CardContent>
       </Card>
