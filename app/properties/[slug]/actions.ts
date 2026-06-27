@@ -10,6 +10,7 @@ import {
   sendOwnerBookingNotification,
 } from "@/lib/email";
 import { provisionBookingAccess } from "@/lib/access";
+import { calculateBookingTotal, quoteBookingTotal, type Quote } from "@/lib/pricing";
 import { loggHendelse } from "@/lib/kontrollrom";
 
 export type BookingFormState = {
@@ -80,6 +81,11 @@ export async function createDirectBooking(
       check_in: data.check_in,
       check_out: data.check_out,
       nights: nightsBetween(data.check_in, data.check_out),
+      total_price: await calculateBookingTotal(
+        property.id,
+        data.check_in,
+        data.check_out,
+      ),
       source: "verta_direct",
       status: "confirmed",
     })
@@ -160,4 +166,24 @@ export async function createDirectBooking(
   ]);
 
   return { success: true };
+}
+
+/**
+ * Beregner et pristilbud for visning i booking-skjemaet før gjesten sender inn.
+ * Returnerer null hvis eiendommen ikke har priser satt eller datoene er ugyldige.
+ */
+export async function quoteBooking(
+  slug: string,
+  checkIn: string,
+  checkOut: string,
+): Promise<Quote | null> {
+  if (!checkIn || !checkOut || checkOut <= checkIn) return null;
+  const supabase = createAdminClient();
+  const { data: property } = await supabase
+    .from("properties")
+    .select("id")
+    .eq("slug", slug)
+    .single();
+  if (!property) return null;
+  return quoteBookingTotal(property.id, checkIn, checkOut);
 }

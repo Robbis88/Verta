@@ -2,10 +2,11 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createDirectBooking } from "./actions";
+import { createDirectBooking, quoteBooking } from "./actions";
 import { BookingForm } from "@/components/booking/booking-form";
 import { AvailabilityCalendar } from "@/components/calendar/availability-calendar";
 import { bookedDateSet } from "@/lib/availability";
+import { formatNok } from "@/lib/utils";
 
 type PublicProperty = {
   id: string;
@@ -15,6 +16,8 @@ type PublicProperty = {
   bedrooms: number | null;
   bathrooms: number | null;
   max_guests: number | null;
+  base_nightly_rate: number | null;
+  cleaning_fee: number | null;
 };
 
 // Henter kun offentlig-trygge felter via admin-klienten (omgår RLS).
@@ -22,7 +25,9 @@ async function getProperty(slug: string): Promise<PublicProperty | null> {
   const supabase = createAdminClient();
   const { data } = await supabase
     .from("properties")
-    .select("id,name,description,address,bedrooms,bathrooms,max_guests")
+    .select(
+      "id,name,description,address,bedrooms,bathrooms,max_guests,base_nightly_rate,cleaning_fee",
+    )
     .eq("slug", slug)
     .single();
   return (data as PublicProperty) ?? null;
@@ -83,8 +88,24 @@ export default async function PublicPropertyPage({
         </div>
 
         <div className="rounded-xl border border-hairline p-6 shadow-sm">
-          <h2 className="mb-4 text-xl font-semibold text-navy">Book direkte</h2>
-          <BookingForm action={createDirectBooking.bind(null, slug)} />
+          <h2 className="text-xl font-semibold text-navy">Book direkte</h2>
+          {property.base_nightly_rate != null && (
+            <p className="mb-4 mt-1 text-sm text-ink">
+              <span className="font-semibold text-navy">
+                fra {formatNok(Number(property.base_nightly_rate))}
+              </span>{" "}
+              / natt
+              {property.cleaning_fee != null && Number(property.cleaning_fee) > 0
+                ? ` · + ${formatNok(Number(property.cleaning_fee))} rengjøring`
+                : ""}
+            </p>
+          )}
+          <div className="mt-4">
+            <BookingForm
+              action={createDirectBooking.bind(null, slug)}
+              quoteAction={quoteBooking.bind(null, slug)}
+            />
+          </div>
         </div>
       </div>
 

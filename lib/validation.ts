@@ -9,6 +9,8 @@ export const propertySchema = z.object({
   bedrooms: z.coerce.number().int().min(0).max(50).optional(),
   bathrooms: z.coerce.number().int().min(0).max(50).optional(),
   max_guests: z.coerce.number().int().min(1, "Minst 1 gjest").max(100).optional(),
+  base_nightly_rate: z.coerce.number().min(0).max(1_000_000).optional(),
+  cleaning_fee: z.coerce.number().min(0).max(1_000_000).optional(),
   access_info: z.string().max(1000).optional().or(z.literal("")),
   wifi_name: z.string().max(100).optional().or(z.literal("")),
   wifi_password: z.string().max(100).optional().or(z.literal("")),
@@ -30,6 +32,20 @@ export const bookingSchema = z
     path: ["check_out"],
   });
 export type BookingInput = z.infer<typeof bookingSchema>;
+
+export const seasonalRateSchema = z
+  .object({
+    property_id: z.string().uuid("Velg en eiendom"),
+    name: z.string().min(1, "Gi sesongen et navn").max(60),
+    date_from: z.string().min(1, "Velg fra-dato"),
+    date_to: z.string().min(1, "Velg til-dato"),
+    nightly_rate: z.coerce.number().min(1, "Pris må være over 0").max(1_000_000),
+  })
+  .refine((d) => d.date_to >= d.date_from, {
+    message: "Til-dato må være lik eller etter fra-dato",
+    path: ["date_to"],
+  });
+export type SeasonalRateInput = z.infer<typeof seasonalRateSchema>;
 
 export const expenseSchema = z.object({
   property_id: z.string().uuid("Velg en eiendom"),
