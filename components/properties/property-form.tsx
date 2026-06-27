@@ -21,6 +21,8 @@ export type PropertyDefaults = {
   bedrooms?: number | null;
   bathrooms?: number | null;
   max_guests?: number | null;
+  base_nightly_rate?: number | null;
+  cleaning_fee?: number | null;
   access_info?: string | null;
   wifi_name?: string | null;
   wifi_password?: string | null;
@@ -86,6 +88,37 @@ export function PropertyForm({
           />
         </Field>
       </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Pris per natt (kr)" error={state.fieldErrors?.base_nightly_rate}>
+          <Input
+            name="base_nightly_rate"
+            type="number"
+            min={0}
+            step={1}
+            placeholder="F.eks. 1500"
+            defaultValue={defaults?.base_nightly_rate ?? ""}
+          />
+        </Field>
+        <Field label="Rengjøringsgebyr (kr)" error={state.fieldErrors?.cleaning_fee}>
+          <Input
+            name="cleaning_fee"
+            type="number"
+            min={0}
+            step={1}
+            placeholder="F.eks. 600"
+            defaultValue={defaults?.cleaning_fee ?? ""}
+          />
+        </Field>
+      </div>
+      <p className="-mt-2 text-xs text-muted-foreground">
+        Brukes til å regne ut totalpris automatisk på bookinger. Sesongpriser
+        setter du under{" "}
+        <a href="/dashboard/prising" className="underline">
+          Prising
+        </a>
+        .
+      </p>
 
       <Field
         label="Tilkomstinfo (nøkkelboks / innsjekk)"

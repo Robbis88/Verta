@@ -105,6 +105,8 @@ export default async function PropertyDetailPage({
               bedrooms: p.bedrooms,
               bathrooms: p.bathrooms,
               max_guests: p.max_guests,
+              base_nightly_rate: p.base_nightly_rate,
+              cleaning_fee: p.cleaning_fee,
               access_info: p.access_info,
               wifi_name: p.wifi_name,
               wifi_password: p.wifi_password,
