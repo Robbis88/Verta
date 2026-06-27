@@ -15,9 +15,9 @@ const columns = [
   {
     heading: "Juridisk",
     links: [
-      { label: "Vilkår", href: "#" },
+      { label: "Vilkår", href: "/vilkar" },
       { label: "Personvern", href: "/personvern" },
-      { label: "Cookies", href: "/personvern" },
+      { label: "Databehandleravtale", href: "/databehandleravtale" },
     ],
   },
   {
