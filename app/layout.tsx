@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { CookieConsent } from "@/components/cookie-consent";
+import { ServiceWorkerRegister } from "@/components/pwa/service-worker-register";
 
 const inter = Inter({
   variable: "--font-sans",
@@ -17,6 +18,11 @@ export const metadata: Metadata = {
   title: "Verta — Full kontroll over dine utleieeiendommer",
   description:
     "Enkel kalender, direkte bookinger, smartere markedsføring og skatt på autopilot — for norske hytte- og leilighetseiere.",
+  appleWebApp: {
+    capable: true,
+    title: "Verta",
+    statusBarStyle: "default",
+  },
 };
 
 export const viewport: Viewport = {
@@ -36,6 +42,7 @@ export default function RootLayout({
       <body className="min-h-full">
         {children}
         <CookieConsent />
+        <ServiceWorkerRegister />
       </body>
     </html>
   );
