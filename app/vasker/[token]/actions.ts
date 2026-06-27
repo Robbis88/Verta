@@ -74,6 +74,72 @@ export async function updateTaskByCleaner(formData: FormData): Promise<void> {
   revalidatePath(`/vasker/${token}`);
 }
 
+function parseCoord(value: FormDataEntryValue | null): number | null {
+  const n = Number(String(value ?? "").trim());
+  return Number.isFinite(n) && n !== 0 ? n : null;
+}
+
+/**
+ * Vaskeren stempler inn på en oppgave med tidspunkt + posisjon (GPS valgfritt).
+ * Setter også status til 'in_progress'. Token verifiserer tilgang.
+ */
+export async function clockInTask(formData: FormData): Promise<void> {
+  const token = String(formData.get("token") ?? "");
+  const taskId = String(formData.get("task_id") ?? "");
+  if (!token || !taskId) return;
+
+  const supabase = createAdminClient();
+  const { data: cleaner } = await supabase
+    .from("cleaners")
+    .select("id")
+    .eq("access_token", token)
+    .maybeSingle();
+  if (!cleaner) return;
+
+  await supabase
+    .from("cleaning_tasks")
+    .update({
+      status: "in_progress",
+      clock_in_at: new Date().toISOString(),
+      clock_in_lat: parseCoord(formData.get("lat")),
+      clock_in_lng: parseCoord(formData.get("lng")),
+    })
+    .eq("id", taskId)
+    .eq("cleaner_id", cleaner.id);
+
+  revalidatePath(`/vasker/${token}`);
+}
+
+/**
+ * Vaskeren stempler ut: tidspunkt + posisjon, og status settes til 'completed'.
+ */
+export async function clockOutTask(formData: FormData): Promise<void> {
+  const token = String(formData.get("token") ?? "");
+  const taskId = String(formData.get("task_id") ?? "");
+  if (!token || !taskId) return;
+
+  const supabase = createAdminClient();
+  const { data: cleaner } = await supabase
+    .from("cleaners")
+    .select("id")
+    .eq("access_token", token)
+    .maybeSingle();
+  if (!cleaner) return;
+
+  await supabase
+    .from("cleaning_tasks")
+    .update({
+      status: "completed",
+      clock_out_at: new Date().toISOString(),
+      clock_out_lat: parseCoord(formData.get("lat")),
+      clock_out_lng: parseCoord(formData.get("lng")),
+    })
+    .eq("id", taskId)
+    .eq("cleaner_id", cleaner.id);
+
+  revalidatePath(`/vasker/${token}`);
+}
+
 /** Vaskeren godtar eller avslår en forespørsel. Ved godtatt lages en oppgave. */
 export async function respondToRequest(formData: FormData): Promise<void> {
   const token = String(formData.get("token") ?? "");

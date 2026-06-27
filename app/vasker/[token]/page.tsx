@@ -3,10 +3,10 @@ import { notFound } from "next/navigation";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
-  updateTaskByCleaner,
   updateCleanerProfile,
   respondToRequest,
 } from "./actions";
+import { ClockButtons } from "@/components/cleaning/clock-buttons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,6 +28,8 @@ type Task = {
   type: string;
   status: string;
   notes: string | null;
+  clock_in_at: string | null;
+  clock_out_at: string | null;
 };
 
 const TYPE_LABEL: Record<string, string> = {
@@ -62,7 +64,9 @@ export default async function CleanerPortal({
 
   const { data: taskData } = await supabase
     .from("cleaning_tasks")
-    .select("id,property_id,task_date,type,status,notes")
+    .select(
+      "id,property_id,task_date,type,status,notes,clock_in_at,clock_out_at",
+    )
     .eq("cleaner_id", cleaner.id)
     .order("task_date", { ascending: true });
   const tasks = (taskData ?? []) as Task[];
@@ -198,29 +202,22 @@ export default async function CleanerPortal({
                 {t.notes && (
                   <p className="mt-1 text-sm text-ink/70">{t.notes}</p>
                 )}
-                <div className="mt-4 flex gap-2">
-                  {t.status !== "in_progress" && (
-                    <form action={updateTaskByCleaner}>
-                      <input type="hidden" name="token" value={token} />
-                      <input type="hidden" name="task_id" value={t.id} />
-                      <input type="hidden" name="status" value="in_progress" />
-                      <Button type="submit" variant="outline" size="sm">
-                        Start
-                      </Button>
-                    </form>
+                <div className="mt-4 flex flex-col gap-2">
+                  <ClockButtons
+                    token={token}
+                    taskId={t.id}
+                    clockedIn={t.clock_in_at != null}
+                    clockedOut={t.clock_out_at != null}
+                  />
+                  {t.clock_in_at && (
+                    <p className="text-xs text-ink/50">
+                      Stemplet inn{" "}
+                      {new Date(t.clock_in_at).toLocaleString("nb-NO", {
+                        dateStyle: "short",
+                        timeStyle: "short",
+                      })}
+                    </p>
                   )}
-                  <form action={updateTaskByCleaner}>
-                    <input type="hidden" name="token" value={token} />
-                    <input type="hidden" name="task_id" value={t.id} />
-                    <input type="hidden" name="status" value="completed" />
-                    <Button
-                      type="submit"
-                      size="sm"
-                      className="bg-gold text-navy hover:bg-gold/90"
-                    >
-                      Fullfør
-                    </Button>
-                  </form>
                 </div>
               </div>
             );
