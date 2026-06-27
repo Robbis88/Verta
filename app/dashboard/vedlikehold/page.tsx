@@ -2,8 +2,15 @@ import Link from "next/link";
 
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { createRequest, updateRequest, deleteRequest } from "./actions";
+import {
+  createRequest,
+  updateRequest,
+  deleteRequest,
+  addContractor,
+  deleteContractor,
+} from "./actions";
 import { formatNok } from "@/lib/utils";
+import { CopyButton } from "@/components/shared/copy-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,7 +30,17 @@ type Request = {
   status: string;
   priority: string;
   assignee: string | null;
+  contractor_id: string | null;
   cost: number | null;
+};
+
+type Contractor = {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  trade: string | null;
+  access_token: string;
 };
 
 const STATUS = [
@@ -51,6 +68,7 @@ const inputClass =
 export default async function VedlikeholdPage() {
   await requireUser();
   const supabase = await createClient();
+  const site = process.env.NEXT_PUBLIC_SITE_URL ?? "";
 
   const { data: props } = await supabase
     .from("properties")
@@ -59,9 +77,18 @@ export default async function VedlikeholdPage() {
   const properties = (props ?? []) as { id: string; name: string }[];
   const nameById = new Map(properties.map((p) => [p.id, p.name]));
 
+  const { data: contractorData } = await supabase
+    .from("contractors")
+    .select("id,name,email,phone,trade,access_token")
+    .order("name");
+  const contractors = (contractorData ?? []) as Contractor[];
+  const contractorById = new Map(contractors.map((c) => [c.id, c.name]));
+
   const { data: reqData } = await supabase
     .from("maintenance_requests")
-    .select("id,property_id,title,description,status,priority,assignee,cost")
+    .select(
+      "id,property_id,title,description,status,priority,assignee,contractor_id,cost",
+    )
     .order("created_at", { ascending: false });
   const requests = (reqData ?? []) as Request[];
 
@@ -131,6 +158,73 @@ export default async function VedlikeholdPage() {
 
       <Card>
         <CardHeader>
+          <CardTitle>Håndverkere ({contractors.length})</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <p className="text-sm text-muted-foreground">
+            Registrer håndverkere og gi dem en egen lenke der de ser og
+            oppdaterer sakene du tildeler dem — uten innlogging.
+          </p>
+          <form
+            action={addContractor}
+            className="flex flex-col gap-2 sm:flex-row sm:items-end"
+          >
+            <div className="flex flex-1 flex-col gap-1.5">
+              <Label htmlFor="c-name">Navn</Label>
+              <Input id="c-name" name="name" required />
+            </div>
+            <div className="flex flex-1 flex-col gap-1.5">
+              <Label htmlFor="c-trade">Fag</Label>
+              <Input id="c-trade" name="trade" placeholder="F.eks. rørlegger" />
+            </div>
+            <div className="flex flex-1 flex-col gap-1.5">
+              <Label htmlFor="c-email">E-post</Label>
+              <Input id="c-email" name="email" type="email" />
+            </div>
+            <div className="flex flex-1 flex-col gap-1.5">
+              <Label htmlFor="c-phone">Telefon</Label>
+              <Input id="c-phone" name="phone" />
+            </div>
+            <Button type="submit">Legg til</Button>
+          </form>
+
+          {contractors.length > 0 && (
+            <ul className="flex flex-col divide-y">
+              {contractors.map((c) => (
+                <li
+                  key={c.id}
+                  className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm"
+                >
+                  <span className="font-medium">
+                    {c.name}
+                    {c.trade && (
+                      <span className="font-normal text-muted-foreground">
+                        {" "}
+                        · {c.trade}
+                      </span>
+                    )}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <CopyButton
+                      text={`${site}/handverker/${c.access_token}`}
+                      label="Kopier portal-lenke"
+                    />
+                    <form action={deleteContractor}>
+                      <input type="hidden" name="id" value={c.id} />
+                      <Button type="submit" variant="ghost" size="sm">
+                        Slett
+                      </Button>
+                    </form>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle>Saker ({requests.length})</CardTitle>
         </CardHeader>
         <CardContent>
@@ -149,6 +243,11 @@ export default async function VedlikeholdPage() {
                           {PRIORITY.find(([v]) => v === r.priority)?.[1] ??
                             r.priority}
                         </span>
+                        {r.contractor_id && contractorById.has(r.contractor_id)
+                          ? ` · ${contractorById.get(r.contractor_id)}`
+                          : r.assignee
+                            ? ` · ${r.assignee}`
+                            : ""}
                       </p>
                       {r.description && (
                         <p className="mt-1 text-sm text-muted-foreground">
@@ -190,13 +289,19 @@ export default async function VedlikeholdPage() {
                       </select>
                     </div>
                     <div className="flex flex-col gap-1">
-                      <Label className="text-xs">Ansvarlig</Label>
-                      <Input
-                        name="assignee"
-                        defaultValue={r.assignee ?? ""}
-                        placeholder="Håndverker"
-                        className="h-9 w-36"
-                      />
+                      <Label className="text-xs">Håndverker</Label>
+                      <select
+                        name="contractor_id"
+                        defaultValue={r.contractor_id ?? ""}
+                        className={`${inputClass} w-40`}
+                      >
+                        <option value="">Ikke tildelt</option>
+                        {contractors.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.name}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                     <div className="flex flex-col gap-1">
                       <Label className="text-xs">Kostnad (kr)</Label>
