@@ -10,6 +10,7 @@ import {
   deleteTask,
   generateTasks,
 } from "./actions";
+import { haversineMeters } from "@/lib/geo";
 import { signedPhotoUrls } from "@/lib/storage";
 import { CopyButton } from "@/components/shared/copy-button";
 import { Button } from "@/components/ui/button";
@@ -37,6 +38,10 @@ type Task = {
   task_date: string;
   type: string;
   status: string;
+  clock_in_at: string | null;
+  clock_out_at: string | null;
+  clock_in_lat: number | null;
+  clock_in_lng: number | null;
 };
 
 const TYPE_LABEL: Record<string, string> = {
@@ -67,15 +72,23 @@ export default async function RengjoringPage() {
 
   const { data: props } = await supabase
     .from("properties")
-    .select("id,name")
+    .select("id,name,lat,lng")
     .order("name");
-  const properties = (props ?? []) as { id: string; name: string }[];
+  const properties = (props ?? []) as {
+    id: string;
+    name: string;
+    lat: number | null;
+    lng: number | null;
+  }[];
   const nameById = new Map(properties.map((p) => [p.id, p.name]));
+  const propById = new Map(properties.map((p) => [p.id, p]));
   const cleanerById = new Map(cleaners.map((c) => [c.id, c.name]));
 
   const { data: taskData } = await supabase
     .from("cleaning_tasks")
-    .select("id,property_id,cleaner_id,task_date,type,status")
+    .select(
+      "id,property_id,cleaner_id,task_date,type,status,clock_in_at,clock_out_at,clock_in_lat,clock_in_lng",
+    )
     .order("task_date", { ascending: true });
   const tasks = (taskData ?? []) as Task[];
 
@@ -245,6 +258,52 @@ export default async function RengjoringPage() {
                       Slett
                     </Button>
                   </form>
+                  {t.clock_in_at &&
+                    (() => {
+                      const prop = propById.get(t.property_id);
+                      const dist =
+                        t.clock_in_lat != null &&
+                        t.clock_in_lng != null &&
+                        prop?.lat != null &&
+                        prop?.lng != null
+                          ? haversineMeters(
+                              { lat: t.clock_in_lat, lng: t.clock_in_lng },
+                              { lat: prop.lat, lng: prop.lng },
+                            )
+                          : null;
+                      const fmt = (s: string) =>
+                        new Date(s).toLocaleTimeString("nb-NO", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        });
+                      return (
+                        <div className="flex basis-full flex-wrap items-center gap-x-3 gap-y-1 pt-1 text-xs text-muted-foreground">
+                          <span>
+                            Inn {fmt(t.clock_in_at)}
+                            {t.clock_out_at ? ` · ut ${fmt(t.clock_out_at)}` : ""}
+                          </span>
+                          {dist != null && (
+                            <span
+                              className={
+                                dist <= 300 ? "text-emerald-600" : "text-amber-600"
+                              }
+                            >
+                              {dist} m fra eiendommen
+                            </span>
+                          )}
+                          {t.clock_in_lat != null && t.clock_in_lng != null && (
+                            <a
+                              href={`https://www.google.com/maps?q=${t.clock_in_lat},${t.clock_in_lng}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="underline hover:text-foreground"
+                            >
+                              Vis på kart
+                            </a>
+                          )}
+                        </div>
+                      );
+                    })()}
                   {(photosByTask.get(t.id)?.length ?? 0) > 0 && (
                     <div className="flex basis-full flex-wrap gap-2 pt-1">
                       {(photosByTask.get(t.id) ?? []).map((ph) => {
