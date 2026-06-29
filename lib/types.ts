@@ -22,6 +22,8 @@ export type Property = {
   bedrooms: number | null;
   bathrooms: number | null;
   max_guests: number | null;
+  base_nightly_rate?: number | null;
+  cleaning_fee?: number | null;
   access_info?: string | null;
   wifi_name?: string | null;
   wifi_password?: string | null;

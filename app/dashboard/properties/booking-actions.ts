@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/server";
 import { ownerBookingSchema } from "@/lib/validation";
 import { logAudit } from "@/lib/audit";
 import { seamEnabled, removeAccessCode } from "@/lib/seam";
+import { calculateBookingTotal } from "@/lib/pricing";
 
 export type OwnerBookingState = {
   error?: string;
@@ -45,6 +46,12 @@ export async function createOwnerBooking(
 
   // RLS (owns_property) sikrer at eiendommen tilhører brukeren.
   const supabase = await createClient();
+
+  // Oppgitt pris vinner; ellers beregn fra eiendommens lagrede priser.
+  const total_price = data.total_price
+    ? data.total_price
+    : await calculateBookingTotal(propertyId, data.check_in, data.check_out);
+
   const { data: booking, error } = await supabase
     .from("bookings")
     .insert({
@@ -54,7 +61,7 @@ export async function createOwnerBooking(
       check_in: data.check_in,
       check_out: data.check_out,
       nights: nightsBetween(data.check_in, data.check_out),
-      total_price: data.total_price ? data.total_price : null,
+      total_price,
       source: data.source,
       status: "confirmed",
     })

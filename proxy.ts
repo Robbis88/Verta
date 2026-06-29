@@ -18,6 +18,6 @@ export const config = {
      * - favicon.ico og vanlige bildefiler
      * Legg til andre offentlige stier ved behov.
      */
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|sw.js|offline.html|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

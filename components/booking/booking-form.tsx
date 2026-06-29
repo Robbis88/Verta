@@ -1,21 +1,47 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useRef, useState } from "react";
 
 import type { BookingFormState } from "@/app/properties/[slug]/actions";
+import type { Quote } from "@/lib/pricing";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { formatNok } from "@/lib/utils";
 
 type BookingAction = (
   prev: BookingFormState,
   formData: FormData,
 ) => Promise<BookingFormState>;
 
+type QuoteAction = (checkIn: string, checkOut: string) => Promise<Quote | null>;
+
 const initialState: BookingFormState = {};
 
-export function BookingForm({ action }: { action: BookingAction }) {
+export function BookingForm({
+  action,
+  quoteAction,
+}: {
+  action: BookingAction;
+  quoteAction?: QuoteAction;
+}) {
   const [state, formAction, pending] = useActionState(action, initialState);
+  const [checkIn, setCheckIn] = useState("");
+  const [checkOut, setCheckOut] = useState("");
+  const [quote, setQuote] = useState<Quote | null>(null);
+  const reqId = useRef(0);
+
+  // Henter pristilbud når begge datoene er satt. Siste forespørsel vinner.
+  function refreshQuote(ci: string, co: string) {
+    if (!quoteAction || !ci || !co || co <= ci) {
+      setQuote(null);
+      return;
+    }
+    const id = ++reqId.current;
+    quoteAction(ci, co).then((q) => {
+      if (id === reqId.current) setQuote(q);
+    });
+  }
 
   if (state.success) {
     return (
@@ -41,12 +67,52 @@ export function BookingForm({ action }: { action: BookingAction }) {
       </Field>
       <div className="grid grid-cols-2 gap-3">
         <Field label="Innsjekk" error={state.fieldErrors?.check_in}>
-          <Input name="check_in" type="date" required />
+          <Input
+            name="check_in"
+            type="date"
+            required
+            value={checkIn}
+            onChange={(e) => {
+              setCheckIn(e.target.value);
+              refreshQuote(e.target.value, checkOut);
+            }}
+          />
         </Field>
         <Field label="Utsjekk" error={state.fieldErrors?.check_out}>
-          <Input name="check_out" type="date" required />
+          <Input
+            name="check_out"
+            type="date"
+            required
+            value={checkOut}
+            onChange={(e) => {
+              setCheckOut(e.target.value);
+              refreshQuote(checkIn, e.target.value);
+            }}
+          />
         </Field>
       </div>
+
+      {quote && (
+        <div className="flex flex-col gap-1 rounded-lg border border-hairline bg-cloud p-3 text-sm text-navy">
+          <div className="flex justify-between">
+            <span>
+              {formatNok(quote.nightlyTotal / quote.nights)} × {quote.nights}{" "}
+              {quote.nights === 1 ? "natt" : "netter"}
+            </span>
+            <span>{formatNok(quote.nightlyTotal)}</span>
+          </div>
+          {quote.cleaningFee > 0 && (
+            <div className="flex justify-between">
+              <span>Rengjøring</span>
+              <span>{formatNok(quote.cleaningFee)}</span>
+            </div>
+          )}
+          <div className="flex justify-between border-t border-hairline pt-1 font-semibold">
+            <span>Totalt</span>
+            <span>{formatNok(quote.total)}</span>
+          </div>
+        </div>
+      )}
 
       {state.error && <p className="text-sm text-destructive">{state.error}</p>}
 

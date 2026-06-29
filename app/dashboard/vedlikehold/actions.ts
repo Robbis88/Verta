@@ -8,6 +8,31 @@ import { logAudit } from "@/lib/audit";
 
 type DbClient = Awaited<ReturnType<typeof createClient>>;
 
+export async function addContractor(formData: FormData): Promise<void> {
+  const user = await requireUser();
+  const name = String(formData.get("name") ?? "").trim();
+  if (!name) return;
+
+  const supabase = await createClient();
+  await supabase.from("contractors").insert({
+    user_id: user.id,
+    name,
+    email: String(formData.get("email") ?? "").trim() || null,
+    phone: String(formData.get("phone") ?? "").trim() || null,
+    trade: String(formData.get("trade") ?? "").trim() || null,
+  });
+  revalidatePath("/dashboard/vedlikehold");
+}
+
+export async function deleteContractor(formData: FormData): Promise<void> {
+  await requireUser();
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+  const supabase = await createClient();
+  await supabase.from("contractors").delete().eq("id", id);
+  revalidatePath("/dashboard/vedlikehold");
+}
+
 export async function createRequest(formData: FormData): Promise<void> {
   const user = await requireUser();
   const propertyId = String(formData.get("property_id") ?? "");
@@ -88,7 +113,7 @@ export async function updateRequest(formData: FormData): Promise<void> {
 
   const status = String(formData.get("status") ?? "open");
   const priority = String(formData.get("priority") ?? "normal");
-  const assignee = String(formData.get("assignee") ?? "").trim();
+  const contractorId = String(formData.get("contractor_id") ?? "").trim();
   const costRaw = String(formData.get("cost") ?? "").trim();
   const cost = costRaw ? Number(costRaw) : null;
 
@@ -98,7 +123,7 @@ export async function updateRequest(formData: FormData): Promise<void> {
     .update({
       status,
       priority,
-      assignee: assignee || null,
+      contractor_id: contractorId || null,
       cost,
       resolved_at: status === "resolved" ? new Date().toISOString() : null,
     })

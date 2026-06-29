@@ -11,6 +11,7 @@ import {
   generateTasks,
 } from "./actions";
 import { haversineMeters } from "@/lib/geo";
+import { signedPhotoUrls } from "@/lib/storage";
 import { CopyButton } from "@/components/shared/copy-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -90,6 +91,25 @@ export default async function RengjoringPage() {
     )
     .order("task_date", { ascending: true });
   const tasks = (taskData ?? []) as Task[];
+
+  // Vaskebilder per oppgave (RLS gir kun egne eiendommer) + signerte URL-er.
+  const { data: photoData } = await supabase
+    .from("cleaning_photos")
+    .select("id,task_id,kind,storage_path")
+    .order("created_at", { ascending: true });
+  const photos = (photoData ?? []) as {
+    id: string;
+    task_id: string;
+    kind: string;
+    storage_path: string;
+  }[];
+  const urlByPath = await signedPhotoUrls(photos.map((p) => p.storage_path));
+  const photosByTask = new Map<string, typeof photos>();
+  for (const ph of photos) {
+    const list = photosByTask.get(ph.task_id) ?? [];
+    list.push(ph);
+    photosByTask.set(ph.task_id, list);
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -284,6 +304,30 @@ export default async function RengjoringPage() {
                         </div>
                       );
                     })()}
+                  {(photosByTask.get(t.id)?.length ?? 0) > 0 && (
+                    <div className="flex basis-full flex-wrap gap-2 pt-1">
+                      {(photosByTask.get(t.id) ?? []).map((ph) => {
+                        const url = urlByPath.get(ph.storage_path);
+                        if (!url) return null;
+                        return (
+                          <a
+                            key={ph.id}
+                            href={url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title={ph.kind === "before" ? "Før" : "Etter"}
+                          >
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={url}
+                              alt={ph.kind === "before" ? "Før" : "Etter"}
+                              className="h-14 w-14 rounded-md object-cover ring-1 ring-hairline"
+                            />
+                          </a>
+                        );
+                      })}
+                    </div>
+                  )}
                 </li>
               ))}
             </ul>
