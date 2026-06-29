@@ -13,6 +13,19 @@ export default function Error({
 }) {
   useEffect(() => {
     console.error(error);
+    void fetch("/api/feil", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        alvorlighet: "warning",
+        tittel: `Feil på side: ${error.message}`,
+        detaljer: {
+          melding: error.message,
+          digest: error.digest,
+          sti: typeof window !== "undefined" ? window.location.pathname : null,
+        },
+      }),
+    }).catch(() => {});
   }, [error]);
 
   return (
