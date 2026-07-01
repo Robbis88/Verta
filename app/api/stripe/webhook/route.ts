@@ -36,6 +36,19 @@ export async function POST(request: Request) {
       const subscription = event.data.object as Stripe.Subscription;
       const customerId = String(subscription.customer);
 
+      // Betalingsmur: kun aktive/trialende (og past_due som nådefrist) gir
+      // tilgang. Kansellert/ubetalt/utløpt → tilbake til gratis (låses ute).
+      const harTilgang = ["active", "trialing", "past_due"].includes(
+        subscription.status,
+      );
+      if (!harTilgang) {
+        await supabase
+          .from("users")
+          .update({ plan: "gratis", extra_properties_count: 0 })
+          .eq("stripe_customer_id", customerId);
+        break;
+      }
+
       // Finn plan fra abonnementets price-IDer.
       let plan: string | null = null;
       let extraProperties = 0;

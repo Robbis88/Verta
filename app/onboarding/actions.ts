@@ -105,7 +105,11 @@ export async function choosePlan(formData: FormData): Promise<void> {
       customer: customerId,
       mode: "subscription",
       line_items: [{ price: PRICE_IDS[tier as (typeof TIERS)[number]]!, quantity: 1 }],
-      success_url: `${origin}/dashboard?welcome=1`,
+      // 14 dager gratis prøve: kort kreves, men trekkes først etter prøveperioden.
+      subscription_data: { trial_period_days: 14 },
+      // Verifiser sesjonen ved retur og sett planen synkront, så brukeren ikke
+      // bounces tilbake av betalingsmuren før webhooken rekker å oppdatere DB-en.
+      success_url: `${origin}/onboarding/fullfort?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/onboarding/plan`,
       metadata: { user_id: user.id, plan: tier },
     });
