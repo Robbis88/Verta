@@ -40,6 +40,12 @@ export default async function PlanPage() {
       <div>
         <p className="text-sm text-muted-foreground">Steg 2 av 2</p>
         <h1 className="text-2xl font-semibold">Velg plan</h1>
+        {stripeEnabled && (
+          <p className="mt-2 text-sm text-muted-foreground">
+            Prøv gratis i 14 dager. Kortet trekkes først når prøveperioden er
+            over — du kan avslutte når som helst.
+          </p>
+        )}
         {!stripeEnabled && (
           <p className="mt-2 text-xs text-muted-foreground">
             Dev-modus: Stripe er ikke konfigurert, så planen aktiveres direkte
@@ -69,7 +75,7 @@ export default async function PlanPage() {
                 <form action={choosePlan}>
                   <input type="hidden" name="tier" value={tier.key} />
                   <Button type="submit" variant={tier.highlighted ? "default" : "outline"}>
-                    Velg {plan.label}
+                    {stripeEnabled ? `Start ${plan.label}` : `Velg ${plan.label}`}
                   </Button>
                 </form>
               </CardContent>

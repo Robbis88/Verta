@@ -1,3 +1,5 @@
+import { redirect } from "next/navigation";
+
 import { getCurrentProfile, requireUser } from "@/lib/auth";
 import { isAdmin } from "@/lib/admin";
 import { DashboardNav } from "@/components/dashboard/dashboard-nav";
@@ -10,6 +12,13 @@ export default async function DashboardLayout({
 }) {
   await requireUser();
   const profile = await getCurrentProfile();
+
+  // Betalingsmur: appen har ingen brukbar gratis-plan. Uten aktivt abonnement
+  // (plan = "gratis") sendes brukeren til planvalg/betaling. Trialende brukere
+  // har allerede en betalt plan satt, så de slipper forbi. Admin unntas.
+  if (profile?.plan === "gratis" && !isAdmin(profile?.email)) {
+    redirect("/onboarding/plan");
+  }
 
   return (
     <div className="flex min-h-screen flex-col">
