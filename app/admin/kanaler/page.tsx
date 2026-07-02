@@ -1,8 +1,6 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
 
-import { getCurrentUser } from "@/lib/auth";
-import { isAdmin } from "@/lib/admin";
+import { requireAdmin } from "@/lib/admin";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { PLATFORMS, platformLabel } from "@/lib/social";
 import { connectChannel, disconnectChannel, markBoostPublished } from "./actions";
@@ -28,8 +26,7 @@ type Boost = {
 };
 
 export default async function KanalerPage() {
-  const user = await getCurrentUser();
-  if (!isAdmin(user?.email)) notFound();
+  await requireAdmin();
 
   const supabase = createAdminClient();
 
