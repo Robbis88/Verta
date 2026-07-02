@@ -5,8 +5,8 @@
  */
 export const COMPANY = {
   legalName: "R-G Invest AS",
-  orgNr: "", // TODO: R-G Invest AS org.nr (9 siffer)
-  address: "", // TODO: forretningsadresse
+  orgNr: "937 861 621",
+  address: "Sundby-Hvorups vei 99, 5178 Loddefjord",
   contactEmail: "hei@verta.no",
   privacyEmail: "personvern@verta.no",
   /** Dato for siste oppdatering av de juridiske sidene. */
