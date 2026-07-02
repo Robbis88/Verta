@@ -1,15 +1,16 @@
 /**
- * Selskaps- og compliance-detaljer ett sted. Fyll inn org.nr og adresse når
- * Verta AS er registrert i Brønnøysund — da oppdateres alle juridiske sider.
+ * Selskaps- og compliance-detaljer ett sted. Verta driftes av R-G Invest AS
+ * (Verta AS finnes ikke). Fyll inn org.nr og forretningsadresse for R-G Invest AS
+ * → da oppdateres alle juridiske sider automatisk.
  */
 export const COMPANY = {
-  legalName: "Verta AS",
-  orgNr: "under registrering", // TODO: sett inn org.nr ved registrering
-  address: "—", // TODO: forretningsadresse
+  legalName: "R-G Invest AS",
+  orgNr: "", // TODO: R-G Invest AS org.nr (9 siffer)
+  address: "", // TODO: forretningsadresse
   contactEmail: "hei@verta.no",
   privacyEmail: "personvern@verta.no",
   /** Dato for siste oppdatering av de juridiske sidene. */
-  lastUpdated: "27. juni 2026",
+  lastUpdated: "2. juli 2026",
 } as const;
 
 /** Underdatabehandlere Verta bruker for å levere tjenesten (GDPR art. 28 nr. 4). */

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { choosePlan } from "../actions";
@@ -6,6 +7,7 @@ import { PLANS } from "@/lib/constants";
 import { stripeEnabled } from "@/lib/stripe";
 import { cn, formatNok } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { DeleteAccountButton } from "@/components/settings/delete-account-button";
 import {
   Card,
   CardContent,
@@ -82,6 +84,19 @@ export default async function PlanPage() {
             </Card>
           );
         })}
+      </div>
+
+      {/* Alltid tilgjengelig — også for brukere uten aktivt abonnement som havner
+          her via betalingsmuren. GDPR: rett til dataeksport og sletting skal ikke
+          være låst bak betaling. */}
+      <div className="mt-4 flex flex-col items-start gap-3 border-t border-hairline pt-6">
+        <p className="text-sm font-medium">Vil du ikke fortsette?</p>
+        <Button asChild variant="outline" size="sm">
+          <Link href="/api/gdpr/export" target="_blank">
+            Last ned mine data (JSON)
+          </Link>
+        </Button>
+        <DeleteAccountButton />
       </div>
     </div>
   );
