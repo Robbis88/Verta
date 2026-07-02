@@ -14,10 +14,39 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+const description =
+  "Enkel kalender, direkte bookinger, smartere markedsføring og skatt på autopilot — for norske hytte- og leilighetseiere.";
+
 export const metadata: Metadata = {
-  title: "Verta — Full kontroll over dine utleieeiendommer",
-  description:
-    "Enkel kalender, direkte bookinger, smartere markedsføring og skatt på autopilot — for norske hytte- og leilighetseiere.",
+  metadataBase: new URL(siteUrl),
+  title: {
+    default: "Verta — Full kontroll over dine utleieeiendommer",
+    template: "%s — Verta",
+  },
+  description,
+  keywords: [
+    "hytteutleie",
+    "Airbnb-forvaltning",
+    "korttidsutleie",
+    "booking",
+    "skatt utleie",
+    "smartlås",
+    "Norge",
+  ],
+  openGraph: {
+    type: "website",
+    locale: "nb_NO",
+    url: siteUrl,
+    siteName: "Verta",
+    title: "Verta — Full kontroll over dine utleieeiendommer",
+    description,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Verta — Full kontroll over dine utleieeiendommer",
+    description,
+  },
   appleWebApp: {
     capable: true,
     title: "Verta",

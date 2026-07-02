@@ -50,7 +50,21 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const property = await getProperty(slug);
-  return { title: property ? `${property.name} — Verta` : "Verta" };
+  if (!property) return {};
+
+  const description =
+    property.description?.slice(0, 160) ??
+    `Book ${property.name} direkte — se ledige datoer og bestill uten gebyr.`;
+
+  return {
+    title: property.name,
+    description,
+    openGraph: {
+      title: `${property.name} — Verta`,
+      description,
+      type: "website",
+    },
+  };
 }
 
 export default async function PublicPropertyPage({
