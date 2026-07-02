@@ -73,6 +73,21 @@ export default async function SettingsPage() {
               Last ned mine data (JSON)
             </Link>
           </Button>
+          <p className="text-muted-foreground">
+            Se også{" "}
+            <Link href="/personvern" className="underline">
+              personvernerklæringen
+            </Link>
+            ,{" "}
+            <Link href="/databehandleravtale" className="underline">
+              databehandleravtalen
+            </Link>{" "}
+            og{" "}
+            <Link href="/vilkar" className="underline">
+              vilkårene
+            </Link>
+            .
+          </p>
         </CardContent>
       </Card>
 
