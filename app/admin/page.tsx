@@ -1,8 +1,6 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
 
-import { getCurrentUser } from "@/lib/auth";
-import { isAdmin, getAdminMetrics, getAdminUsers } from "@/lib/admin";
+import { requireAdmin, getAdminMetrics, getAdminUsers } from "@/lib/admin";
 import { PLANS } from "@/lib/constants";
 import { formatNok } from "@/lib/utils";
 import {
@@ -13,8 +11,7 @@ import {
 } from "@/components/ui/card";
 
 export default async function AdminPage() {
-  const user = await getCurrentUser();
-  if (!isAdmin(user?.email)) notFound();
+  await requireAdmin();
 
   const m = await getAdminMetrics();
   const users = await getAdminUsers();

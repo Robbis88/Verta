@@ -1,4 +1,8 @@
+import { notFound, redirect } from "next/navigation";
+
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/auth";
 import { PLANS, EXTRA_PROPERTY_PRICE_NOK, type Plan } from "@/lib/constants";
 
 /** Admin-tilgang styres av ADMIN_EMAILS (komma-separert liste). */
@@ -9,6 +13,30 @@ export function isAdmin(email: string | null | undefined): boolean {
     .map((s) => s.trim().toLowerCase())
     .filter(Boolean);
   return list.includes(email.toLowerCase());
+}
+
+/**
+ * Vakt for admin-sider: krever at brukeren er admin OG har bekreftet tofaktor
+ * (AAL2) i denne sesjonen. Admin ser alle brukeres data, så her er MFA påkrevd.
+ * - Ikke admin → notFound (avslører ikke at siden finnes).
+ * - Admin uten MFA registrert → til /dashboard/sikkerhet for å aktivere.
+ * - Admin med MFA, men ikke bekreftet i sesjonen → til /mfa for opptrapping.
+ */
+export async function requireAdmin() {
+  const user = await getCurrentUser();
+  if (!isAdmin(user?.email)) notFound();
+
+  const supabase = await createClient();
+  const { data } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+
+  if (data?.currentLevel !== "aal2") {
+    if (data?.nextLevel === "aal2") {
+      redirect("/mfa?next=/admin");
+    }
+    redirect("/dashboard/sikkerhet?mfa=required");
+  }
+
+  return user;
 }
 
 export type AdminMetrics = {
