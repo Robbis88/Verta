@@ -58,6 +58,17 @@ export async function signUpWithPassword(
   });
   if (error) return { error: error.message, email };
 
+  // Supabase skjuler at en konto allerede finnes (enumeration-beskyttelse):
+  // ingen error, men data.user.identities er tom. Vis en myk, hjelpsom melding
+  // i stedet for en falsk "vi har sendt bekreftelseslenke".
+  if (data.user && (data.user.identities?.length ?? 0) === 0) {
+    return {
+      error:
+        "Denne e-posten er kanskje allerede registrert. Prøv å logge inn, eller bruk «Glemt passord».",
+      email,
+    };
+  }
+
   // Hvis e-postbekreftelse er av, får vi en sesjon med en gang.
   if (data.session) redirect("/onboarding");
   return { confirm: true, email };
