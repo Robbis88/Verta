@@ -104,20 +104,27 @@ export function ChatWidget({ context = "landing" }: { context?: "landing" | "por
             )}
           </div>
 
-          <form onSubmit={send} className="flex items-center gap-2 border-t p-3">
-            <input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Skriv en melding…"
-              className="h-10 flex-1 rounded-lg border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            />
-            <button
-              type="submit"
-              disabled={loading}
-              className="h-10 rounded-lg bg-gold px-4 text-sm font-semibold text-navy hover:bg-gold/90 disabled:opacity-50"
-            >
-              Send
-            </button>
+          <form onSubmit={send} className="border-t p-3">
+            <div className="flex items-center gap-2">
+              <input
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Skriv en melding…"
+                className="h-10 flex-1 rounded-lg border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
+              <button
+                type="submit"
+                disabled={loading}
+                className="h-10 rounded-lg bg-gold px-4 text-sm font-semibold text-navy hover:bg-gold/90 disabled:opacity-50"
+              >
+                Send
+              </button>
+            </div>
+            <p className="mt-2 text-[11px] leading-tight text-muted-foreground">
+              Ikke skriv inn sensitive personopplysninger. Meldingene behandles av
+              vår AI-leverandør (Anthropic, USA) for å gi svar, og lagres ikke hos
+              Verta.
+            </p>
           </form>
         </div>
       )}

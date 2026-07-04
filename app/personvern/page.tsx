@@ -80,6 +80,17 @@ export default function PersonvernPage() {
         . Overføringer utenfor EØS er sikret med EUs standardavtaler (SCC).
       </p>
 
+      <H2>Kunstig intelligens (AI)</H2>
+      <p>
+        Verta bruker AI til enkelte funksjoner — blant annet chat-assistenten
+        «Vera», forslag til svar på gjestemeldinger, prisanbefalinger og
+        markedsføringstekst. For å levere disse sendes den aktuelle teksten til vår
+        AI-leverandør <strong>Anthropic</strong> (Claude), som behandler den i USA
+        under EUs standardavtaler (SCC). Anthropic bruker ikke dataene til å trene
+        modeller. Chat-samtaler lagres ikke hos Verta. Vi oppfordrer deg til ikke å
+        skrive inn sensitive personopplysninger i chat-assistenten.
+      </p>
+
       <H2>Dine rettigheter</H2>
       <p>
         Du har rett til innsyn, retting, sletting, begrensning og dataportabilitet,
