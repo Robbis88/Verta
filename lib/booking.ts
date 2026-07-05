@@ -3,6 +3,10 @@ import { provisionBookingAccess } from "@/lib/access";
 import { stripe } from "@/lib/stripe";
 import { seamEnabled, removeAccessCode } from "@/lib/seam";
 import {
+  hoursToRemainingDeadline,
+  remainingDueDate,
+} from "@/lib/cancellation";
+import {
   sendBookingConfirmation,
   sendOwnerBookingNotification,
   sendCancellationNotices,
@@ -104,6 +108,7 @@ export async function finalizeBooking(bookingId: string): Promise<void> {
 export async function cancelAndRefund(opts: {
   bookingId: string;
   refundFraction: number;
+  nonPayment?: boolean;
 }): Promise<{ ok: boolean; refunded: number; wasPaid: boolean }> {
   const supabase = createAdminClient();
 
@@ -191,6 +196,7 @@ export async function cancelAndRefund(opts: {
     checkOut: booking.check_out,
     wasPaid,
     refundAmount,
+    nonPayment: opts.nonPayment,
   });
 
   return { ok: true, refunded: refundAmount, wasPaid };
@@ -232,53 +238,75 @@ export async function notifyRemainingPaid(bookingId: string): Promise<void> {
 }
 
 /**
- * Sender påminnelse om restbetaling for bekreftede bookinger der innsjekk er
- * innen `withinDays` og resten ikke er betalt/påminnet. Setter
- * remaining_reminded_at så påminnelsen ikke gjentas. Returnerer antall sendt.
+ * Restbetalings-motor (kjøres av cron): for bekreftede bookinger med ubetalt
+ * rest og fremtidig innsjekk sendes varsel 48t og 24t før fristen (7 dager før
+ * innsjekk). Passeres fristen uten betaling, avbestilles bookingen og
+ * depositumet beholdes (ingen refusjon). Returnerer antall varslet/avbestilt.
  */
-export async function sendRemainingReminders(withinDays = 7): Promise<number> {
+export async function processRemainingPayments(): Promise<{
+  warned: number;
+  cancelled: number;
+}> {
   const supabase = createAdminClient();
   const today = new Date().toISOString().slice(0, 10);
-  const cutoff = new Date(Date.now() + withinDays * 86_400_000)
-    .toISOString()
-    .slice(0, 10);
 
   const { data: rows } = await supabase
     .from("bookings")
     .select(
-      "id,guest_name,guest_email,remaining_amount,check_in,property_id,guest_token",
+      "id,guest_name,guest_email,remaining_amount,check_in,property_id,guest_token,remaining_warn_stage",
     )
     .eq("status", "confirmed")
     .eq("remaining_paid", false)
-    .is("remaining_reminded_at", null)
     .gt("remaining_amount", 0)
-    .gte("check_in", today)
-    .lte("check_in", cutoff);
+    .gte("check_in", today);
 
   const bookings = rows ?? [];
-  let sent = 0;
+  let warned = 0;
+  let cancelled = 0;
+
   for (const b of bookings) {
-    if (!b.guest_email) continue;
-    const { data: property } = await supabase
-      .from("properties")
-      .select("name")
-      .eq("id", b.property_id)
-      .single();
-    await sendRemainingDue({
-      to: b.guest_email,
-      guestName: b.guest_name,
-      propertyName: property?.name ?? "",
-      checkIn: b.check_in,
-      remainingAmount: Number(b.remaining_amount ?? 0),
-      payToken: b.guest_token,
-    });
-    await supabase
-      .from("bookings")
-      .update({ remaining_reminded_at: new Date().toISOString() })
-      .eq("id", b.id);
-    sent += 1;
+    const hrs = hoursToRemainingDeadline(b.check_in);
+
+    // Frist passert → avbestill og behold depositum.
+    if (hrs <= 0) {
+      const res = await cancelAndRefund({
+        bookingId: b.id,
+        refundFraction: 0,
+        nonPayment: true,
+      });
+      if (res.ok) cancelled += 1;
+      continue;
+    }
+
+    // Varsle 48t og 24t før fristen (én gang hver, via warn_stage).
+    const stage = b.remaining_warn_stage ?? 0;
+    let newStage = stage;
+    if (hrs <= 24 && stage < 2) newStage = 2;
+    else if (hrs <= 48 && stage < 1) newStage = 1;
+
+    if (newStage !== stage && b.guest_email) {
+      const { data: property } = await supabase
+        .from("properties")
+        .select("name")
+        .eq("id", b.property_id)
+        .single();
+      await sendRemainingDue({
+        to: b.guest_email,
+        guestName: b.guest_name,
+        propertyName: property?.name ?? "",
+        dueDate: remainingDueDate(b.check_in),
+        remainingAmount: Number(b.remaining_amount ?? 0),
+        payToken: b.guest_token,
+      });
+      await supabase
+        .from("bookings")
+        .update({ remaining_warn_stage: newStage })
+        .eq("id", b.id);
+      warned += 1;
+    }
   }
-  return sent;
+
+  return { warned, cancelled };
 }
 
 /**

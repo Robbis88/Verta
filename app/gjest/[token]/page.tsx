@@ -6,6 +6,8 @@ import {
   refundFractionForCheckIn,
   isBeforeCheckIn,
   isPast,
+  remainingDueDate,
+  REMAINING_POLICY_TEXT,
   CANCELLATION_POLICY_LINES,
 } from "@/lib/cancellation";
 import { formatNok } from "@/lib/utils";
@@ -223,13 +225,18 @@ export default async function GuestPage({
               <span className="font-semibold text-navy">
                 {formatNok(Number(booking.remaining_amount ?? 0))}
               </span>{" "}
-              betales før innsjekk.
+              må betales senest{" "}
+              <span className="font-semibold text-navy">
+                {formatDate(remainingDueDate(booking.check_in))}
+              </span>
+              .
             </p>
             <form action={payRemaining.bind(null, token)} className="mt-2">
               <Button type="submit">
                 Betal restbeløp {formatNok(Number(booking.remaining_amount ?? 0))}
               </Button>
             </form>
+            <p className="mt-2 text-xs text-ink/60">{REMAINING_POLICY_TEXT}</p>
           </Section>
         )}
 

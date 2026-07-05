@@ -189,17 +189,25 @@ export async function sendCancellationNotices(opts: {
   checkOut: string;
   wasPaid: boolean;
   refundAmount: number;
+  nonPayment?: boolean;
 }): Promise<void> {
-  const refundLine = opts.wasPaid
-    ? opts.refundAmount > 0
-      ? `<p style="font-size:15px;line-height:1.6;margin:16px 0 0;">
-           Refundert beløp: <strong>${formatNok(opts.refundAmount)}</strong>.
-           Pengene er på vei tilbake til betalingskortet ditt.
-         </p>`
-      : `<p style="font-size:14px;line-height:1.6;color:#4b5563;margin:16px 0 0;">
-           Ifølge avbestillingsreglene refunderes ikke dette oppholdet.
-         </p>`
-    : "";
+  const guestIntro = opts.nonPayment
+    ? `Hei ${opts.guestName}, oppholdet ditt er avbestilt fordi restbeløpet ikke ble betalt innen fristen (7 dager før innsjekk).`
+    : `Hei ${opts.guestName}, oppholdet ditt er nå avbestilt.`;
+  const refundLine = opts.nonPayment
+    ? `<p style="font-size:14px;line-height:1.6;color:#4b5563;margin:16px 0 0;">
+         Depositumet refunderes ikke, jf. betingelsene for restbetaling.
+       </p>`
+    : opts.wasPaid
+      ? opts.refundAmount > 0
+        ? `<p style="font-size:15px;line-height:1.6;margin:16px 0 0;">
+             Refundert beløp: <strong>${formatNok(opts.refundAmount)}</strong>.
+             Pengene er på vei tilbake til betalingskortet ditt.
+           </p>`
+        : `<p style="font-size:14px;line-height:1.6;color:#4b5563;margin:16px 0 0;">
+             Ifølge avbestillingsreglene refunderes ikke dette oppholdet.
+           </p>`
+      : "";
 
   const detailsTable = `
     <table style="width:100%;border-collapse:collapse;margin:0 0 8px;">
@@ -212,9 +220,7 @@ export async function sendCancellationNotices(opts: {
 
   if (opts.guestEmail) {
     const body = `
-      <p style="font-size:15px;line-height:1.6;margin:0 0 20px;">
-        Hei ${opts.guestName}, oppholdet ditt er nå avbestilt.
-      </p>
+      <p style="font-size:15px;line-height:1.6;margin:0 0 20px;">${guestIntro}</p>
       ${detailsTable}
       ${refundLine}`;
     tasks.push(
@@ -227,16 +233,21 @@ export async function sendCancellationNotices(opts: {
   }
 
   if (opts.ownerEmail) {
-    const ownerRefund = opts.wasPaid
-      ? opts.refundAmount > 0
-        ? `<p style="font-size:14px;line-height:1.6;color:#4b5563;margin:16px 0 0;">
-             Gjesten er refundert ${formatNok(opts.refundAmount)}. Utbetalingen din
-             er justert tilsvarende.
-           </p>`
-        : `<p style="font-size:14px;line-height:1.6;color:#4b5563;margin:16px 0 0;">
-             Gjesten fikk ingen refusjon (avbestilte for tett på innsjekk).
-           </p>`
-      : "";
+    const ownerRefund = opts.nonPayment
+      ? `<p style="font-size:14px;line-height:1.6;color:#4b5563;margin:16px 0 0;">
+           Gjesten betalte ikke restbeløpet innen fristen. Depositumet beholdes,
+           og datoene er frigitt.
+         </p>`
+      : opts.wasPaid
+        ? opts.refundAmount > 0
+          ? `<p style="font-size:14px;line-height:1.6;color:#4b5563;margin:16px 0 0;">
+               Gjesten er refundert ${formatNok(opts.refundAmount)}. Utbetalingen din
+               er justert tilsvarende.
+             </p>`
+          : `<p style="font-size:14px;line-height:1.6;color:#4b5563;margin:16px 0 0;">
+               Gjesten fikk ingen refusjon (avbestilte for tett på innsjekk).
+             </p>`
+        : "";
     const body = `
       <p style="font-size:15px;line-height:1.6;margin:0 0 20px;">
         En booking på <strong>${opts.propertyName}</strong> er avbestilt.
@@ -436,21 +447,25 @@ export async function sendBookingRejected(opts: {
   });
 }
 
-/** Påminnelse til gjesten om å betale restbeløpet før innsjekk. */
+/** Påminnelse til gjesten om å betale restbeløpet innen fristen. */
 export async function sendRemainingDue(opts: {
   to: string;
   guestName: string;
   propertyName: string;
-  checkIn: string;
+  dueDate: string;
   remainingAmount: number;
   payToken: string;
 }): Promise<boolean> {
   const body = `
-    <p style="font-size:15px;line-height:1.6;margin:0 0 20px;">
-      Hei ${opts.guestName}, innsjekk på <strong>${opts.propertyName}</strong>
-      nærmer seg (${formatDate(opts.checkIn)}). Restbeløpet på
-      <strong>${formatNok(opts.remainingAmount)}</strong> betales før du sjekker
-      inn.
+    <p style="font-size:15px;line-height:1.6;margin:0 0 16px;">
+      Hei ${opts.guestName}, restbeløpet på
+      <strong>${formatNok(opts.remainingAmount)}</strong> for
+      <strong>${opts.propertyName}</strong> må betales senest
+      <strong>${formatDate(opts.dueDate)}</strong>.
+    </p>
+    <p style="font-size:14px;line-height:1.6;color:#b91c1c;margin:0 0 8px;">
+      Betales det ikke innen fristen, avbestilles oppholdet automatisk og
+      depositumet beholdes.
     </p>
     <div style="text-align:center;margin:24px 0 0;">
       <a href="${SITE_URL}/gjest/${opts.payToken}"
@@ -461,8 +476,8 @@ export async function sendRemainingDue(opts: {
     </div>`;
   return send({
     to: opts.to,
-    subject: `Restbeløp forfaller: ${opts.propertyName}`,
-    html: layout("Betal restbeløpet før innsjekk", body),
+    subject: `Restbeløp forfaller ${formatDate(opts.dueDate)}: ${opts.propertyName}`,
+    html: layout("Betal restbeløpet innen fristen", body),
   });
 }
 

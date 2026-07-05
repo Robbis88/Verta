@@ -163,7 +163,8 @@ export function BookingForm({
           <span className="font-medium text-navy">
             50 % depositum ({formatNok(quote.total / 2)})
           </span>{" "}
-          innen 24 timer for å låse oppholdet. Resten betales før innsjekk.
+          innen 24 timer for å låse oppholdet. Resten må betales senest 7 dager
+          før innsjekk — ellers avbestilles oppholdet og depositumet beholdes.
         </p>
       )}
 

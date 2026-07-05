@@ -1,9 +1,9 @@
-import { sendRemainingReminders } from "@/lib/booking";
+import { processRemainingPayments } from "@/lib/booking";
 
 /**
- * Daglig cron (se vercel.json). Sender påminnelse om restbetaling for
- * bekreftede bookinger der innsjekk er innen 7 dager og resten ikke er betalt.
- * Beskyttet med CRON_SECRET.
+ * Time-cron (se vercel.json). Varsler om restbetaling 48t/24t før fristen
+ * (7 dager før innsjekk), og avbestiller bookinger der fristen er passert uten
+ * betaling (depositum beholdes). Beskyttet med CRON_SECRET.
  */
 export async function GET(request: Request) {
   const secret = process.env.CRON_SECRET;
@@ -12,6 +12,6 @@ export async function GET(request: Request) {
     return new Response("Unauthorized", { status: 401 });
   }
 
-  const sent = await sendRemainingReminders(7);
-  return Response.json({ sent });
+  const result = await processRemainingPayments();
+  return Response.json(result);
 }

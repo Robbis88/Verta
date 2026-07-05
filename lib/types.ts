@@ -84,5 +84,7 @@ export type Booking = {
   remaining_paid?: boolean;
   remaining_session_id?: string | null;
   remaining_payment_intent?: string | null;
+  remaining_reminded_at?: string | null;
+  remaining_warn_stage?: number;
   created_at: string;
 };

@@ -36,3 +36,28 @@ export const CANCELLATION_POLICY_LINES = [
   "2–14 dager før innsjekk: 50 % refusjon",
   "Mindre enn 48 timer før innsjekk: ingen refusjon",
 ];
+
+/** Restbeløpet forfaller så mange dager før innsjekk. */
+export const REMAINING_DUE_DAYS_BEFORE = 7;
+
+/** Forfallsdato (ISO yyyy-mm-dd) for restbeløpet, gitt innsjekk. */
+export function remainingDueDate(checkInISO: string): string {
+  const d = new Date(`${checkInISO}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() - REMAINING_DUE_DAYS_BEFORE);
+  return d.toISOString().slice(0, 10);
+}
+
+/** Timer til restbetalingsfristen (negativ når fristen har passert). */
+export function hoursToRemainingDeadline(
+  checkInISO: string,
+  nowMs: number = Date.now(),
+): number {
+  const deadline = new Date(
+    `${remainingDueDate(checkInISO)}T00:00:00Z`,
+  ).getTime();
+  return (deadline - nowMs) / 3_600_000;
+}
+
+/** Policy-tekst for restbetaling (vises på booking-/gjesteside + e-post). */
+export const REMAINING_POLICY_TEXT =
+  "Restbeløpet må betales senest 7 dager før innsjekk. Betales det ikke innen fristen, avbestilles oppholdet automatisk og depositumet beholdes.";
