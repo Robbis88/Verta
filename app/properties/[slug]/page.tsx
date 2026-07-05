@@ -19,6 +19,7 @@ type PublicProperty = {
   max_guests: number | null;
   base_nightly_rate: number | null;
   cleaning_fee: number | null;
+  booking_mode: "instant" | "request";
 };
 
 // Henter kun offentlig-trygge felter via admin-klienten (omgår RLS).
@@ -27,7 +28,7 @@ async function getProperty(slug: string): Promise<PublicProperty | null> {
   const { data } = await supabase
     .from("properties")
     .select(
-      "id,name,description,address,bedrooms,bathrooms,max_guests,base_nightly_rate,cleaning_fee",
+      "id,name,description,address,bedrooms,bathrooms,max_guests,base_nightly_rate,cleaning_fee,booking_mode",
     )
     .eq("slug", slug)
     .single();
@@ -135,6 +136,7 @@ export default async function PublicPropertyPage({
               action={createDirectBooking.bind(null, slug, kilde)}
               quoteAction={quoteBooking.bind(null, slug)}
               policyLines={CANCELLATION_POLICY_LINES}
+              mode={property.booking_mode}
             />
           </div>
         </div>

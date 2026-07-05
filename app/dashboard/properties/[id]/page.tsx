@@ -8,7 +8,11 @@ import {
   connectSmartLock,
   disconnectSmartLock,
 } from "../smartlock-actions";
-import { createOwnerBooking } from "../booking-actions";
+import {
+  createOwnerBooking,
+  approveBooking,
+  rejectBooking,
+} from "../booking-actions";
 import { PropertyForm } from "@/components/properties/property-form";
 import { DeletePropertyButton } from "@/components/properties/delete-property-button";
 import { BookingAddForm } from "@/components/bookings/booking-add-form";
@@ -42,10 +46,10 @@ export default async function PropertyDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ lock?: string }>;
+  searchParams: Promise<{ lock?: string; godkjenn?: string }>;
 }) {
   const { id } = await params;
-  const { lock: lockResult } = await searchParams;
+  const { lock: lockResult, godkjenn } = await searchParams;
   const supabase = await createClient();
 
   const { data: property } = await supabase
@@ -63,6 +67,8 @@ export default async function PropertyDetailPage({
     .eq("property_id", id)
     .order("check_in", { ascending: false });
   const bookings = (bookingsData ?? []) as Booking[];
+  const requests = bookings.filter((b) => b.status === "requested");
+  const activeBookings = bookings.filter((b) => b.status !== "requested");
 
   const profile = await getCurrentProfile();
   const isPremium = profile?.plan === "premium";
@@ -160,6 +166,7 @@ export default async function PropertyDetailPage({
               wifi_password: p.wifi_password,
               house_rules: p.house_rules,
               checkout_info: p.checkout_info,
+              booking_mode: p.booking_mode,
             }}
           />
         </CardContent>
@@ -174,16 +181,74 @@ export default async function PropertyDetailPage({
         </CardContent>
       </Card>
 
+      {godkjenn === "konflikt" && (
+        <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          Datoene ble opptatt av en annen booking før du rakk å godkjenne.
+          Forespørselen står fortsatt åpen.
+        </p>
+      )}
+
+      {requests.length > 0 && (
+        <Card className="border-gold">
+          <CardHeader>
+            <CardTitle>Forespørsler ({requests.length})</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            {requests.map((b) => (
+              <div
+                key={b.id}
+                className="flex flex-col gap-2 rounded-lg border border-hairline p-3 text-sm"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <span className="font-medium">{b.guest_name}</span>
+                  <span className="text-muted-foreground">
+                    {b.check_in} → {b.check_out}
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                  {b.guest_email && <span>{b.guest_email}</span>}
+                  {b.num_guests != null && <span>{b.num_guests} gjester</span>}
+                  {b.total_price != null && (
+                    <span>{formatNok(Number(b.total_price))} totalt</span>
+                  )}
+                </div>
+                {b.guest_message && (
+                  <p className="whitespace-pre-line rounded bg-muted/40 p-2 text-xs text-foreground">
+                    {b.guest_message}
+                  </p>
+                )}
+                <div className="flex gap-2">
+                  <form action={approveBooking}>
+                    <input type="hidden" name="id" value={b.id} />
+                    <input type="hidden" name="property_id" value={p.id} />
+                    <Button type="submit" size="sm">
+                      Godkjenn
+                    </Button>
+                  </form>
+                  <form action={rejectBooking}>
+                    <input type="hidden" name="id" value={b.id} />
+                    <input type="hidden" name="property_id" value={p.id} />
+                    <Button type="submit" size="sm" variant="outline">
+                      Avslå
+                    </Button>
+                  </form>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardHeader>
-          <CardTitle>Bookinger ({bookings.length})</CardTitle>
+          <CardTitle>Bookinger ({activeBookings.length})</CardTitle>
         </CardHeader>
         <CardContent>
-          {bookings.length === 0 ? (
+          {activeBookings.length === 0 ? (
             <p className="text-sm text-muted-foreground">Ingen bookinger ennå.</p>
           ) : (
             <ul className="flex flex-col divide-y">
-              {bookings.map((b) => (
+              {activeBookings.map((b) => (
                 <li
                   key={b.id}
                   className="flex items-center justify-between gap-3 py-2 text-sm"
@@ -195,6 +260,21 @@ export default async function PropertyDetailPage({
                   </span>
                   <span className="w-24 text-right">
                     {b.total_price ? formatNok(Number(b.total_price)) : "—"}
+                  </span>
+                  <span className="w-40 text-right text-xs">
+                    {b.status === "approved" ? (
+                      <span className="text-amber-600">venter depositum</span>
+                    ) : b.payment_status === "paid" ? (
+                      <span className="text-emerald-600">
+                        {b.remaining_amount != null &&
+                        Number(b.remaining_amount) > 0 &&
+                        !b.remaining_paid
+                          ? `depositum betalt · rest ${formatNok(Number(b.remaining_amount))}`
+                          : "betalt"}
+                      </span>
+                    ) : b.payment_status === "refunded" ? (
+                      <span className="text-muted-foreground">refundert</span>
+                    ) : null}
                   </span>
                   {b.status !== "cancelled" && b.guest_token && (
                     <a

@@ -1,12 +1,95 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { cancelAndRefund } from "@/lib/booking";
 import { refundFractionForCheckIn } from "@/lib/cancellation";
+import { stripe, stripeEnabled } from "@/lib/stripe";
+import { commissionRate } from "@/lib/constants";
+import type { BookingSource } from "@/lib/constants";
 
 export type GuestCancelResult = { ok: boolean; message: string };
+
+/**
+ * Gjesten betaler depositumet på en godkjent forespørsel for å låse oppholdet.
+ * Oppretter Stripe Checkout (destination charge) og redirecter. Webhooken
+ * bekrefter bookingen ved betaling. Token-en er tilgangsnøkkelen.
+ */
+export async function payDeposit(token: string): Promise<void> {
+  const supabase = createAdminClient();
+  const back = `/gjest/${token}?feil=1`;
+
+  const { data: booking } = await supabase
+    .from("bookings")
+    .select(
+      "id,status,deposit_amount,property_id,guest_email,hold_expires_at,source",
+    )
+    .eq("guest_token", token)
+    .maybeSingle();
+
+  if (!booking || booking.status !== "approved") redirect(back);
+  if (
+    booking!.hold_expires_at &&
+    new Date(booking!.hold_expires_at).getTime() < Date.now()
+  ) {
+    redirect(back);
+  }
+
+  const { data: property } = await supabase
+    .from("properties")
+    .select("name,user_id")
+    .eq("id", booking!.property_id)
+    .single();
+  const { data: owner } = property
+    ? await supabase
+        .from("users")
+        .select("stripe_connect_id,payouts_enabled")
+        .eq("id", property.user_id)
+        .single()
+    : { data: null };
+
+  const deposit = Number(booking!.deposit_amount ?? 0);
+  if (
+    !stripe ||
+    !stripeEnabled ||
+    !owner?.payouts_enabled ||
+    !owner?.stripe_connect_id ||
+    deposit <= 0
+  ) {
+    redirect(back);
+  }
+  const rate = commissionRate(booking.source as BookingSource);
+  const origin =
+    process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+
+  const session = await stripe.checkout.sessions.create({
+    mode: "payment",
+    locale: "nb",
+    line_items: [
+      {
+        price_data: {
+          currency: "nok",
+          product_data: { name: `Depositum — ${property?.name ?? "opphold"}` },
+          unit_amount: Math.round(deposit * 100),
+        },
+        quantity: 1,
+      },
+    ],
+    payment_intent_data: {
+      application_fee_amount: Math.round(deposit * rate * 100),
+      transfer_data: { destination: owner.stripe_connect_id },
+      metadata: { booking_id: booking.id, kind: "deposit" },
+    },
+    customer_email: booking.guest_email || undefined,
+    metadata: { booking_id: booking.id, kind: "deposit" },
+    success_url: `${origin}/gjest/${token}?betalt=1`,
+    cancel_url: `${origin}/gjest/${token}`,
+  });
+
+  redirect(session.url!);
+}
 
 /**
  * Gjesten avbestiller sitt eget opphold via den tokeniserte gjestesiden.

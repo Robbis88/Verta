@@ -25,6 +25,11 @@ export function isBeforeCheckIn(
   return nowMs < new Date(`${checkInISO}T00:00:00Z`).getTime();
 }
 
+/** Har et tidspunkt (ISO) passert? Brukes bl.a. for 24t-depositum-fristen. */
+export function isPast(iso: string, nowMs: number = Date.now()): boolean {
+  return new Date(iso).getTime() < nowMs;
+}
+
 /** Menneskelesbar policy for visning på booking-side, gjesteside og e-post. */
 export const CANCELLATION_POLICY_LINES = [
   "14 dager eller mer før innsjekk: full refusjon",

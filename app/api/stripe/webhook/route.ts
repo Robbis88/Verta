@@ -110,8 +110,25 @@ export async function POST(request: Request) {
       const session = event.data.object as Stripe.Checkout.Session;
       const bookingId = session.metadata?.booking_id;
       if (!bookingId) break; // abonnement-checkout, ikke en booking
+      const kind = session.metadata?.kind;
 
-      // Idempotent: bekreft kun hvis fortsatt pending (webhook kan gjenta).
+      // Restbetaling: marker som betalt (bookingen er allerede bekreftet).
+      if (kind === "remaining") {
+        await supabase
+          .from("bookings")
+          .update({
+            remaining_paid: true,
+            remaining_payment_intent: session.payment_intent
+              ? String(session.payment_intent)
+              : null,
+          })
+          .eq("id", bookingId)
+          .eq("remaining_paid", false);
+        break;
+      }
+
+      // Full betaling (instant) eller depositum (forespørsel): bekreft bookingen.
+      // Idempotent — kun hvis fortsatt pending/approved (webhook kan gjenta).
       const { data: updated } = await supabase
         .from("bookings")
         .update({
@@ -124,7 +141,7 @@ export async function POST(request: Request) {
           hold_expires_at: null,
         })
         .eq("id", bookingId)
-        .eq("status", "pending")
+        .in("status", ["pending", "approved"])
         .select("id");
 
       if (updated && updated.length > 0) {

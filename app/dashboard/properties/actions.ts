@@ -76,6 +76,7 @@ export async function createProperty(
       wifi_password: data.wifi_password || null,
       house_rules: data.house_rules || null,
       checkout_info: data.checkout_info || null,
+      booking_mode: data.booking_mode ?? "instant",
       lat: coords?.lat ?? null,
       lng: coords?.lng ?? null,
     })
@@ -129,6 +130,7 @@ export async function updateProperty(
       wifi_password: data.wifi_password || null,
       house_rules: data.house_rules || null,
       checkout_info: data.checkout_info || null,
+      booking_mode: data.booking_mode ?? "instant",
       lat: coords?.lat ?? null,
       lng: coords?.lng ?? null,
     })

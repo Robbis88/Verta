@@ -28,6 +28,7 @@ export type PropertyDefaults = {
   wifi_password?: string | null;
   house_rules?: string | null;
   checkout_info?: string | null;
+  booking_mode?: "instant" | "request" | null;
 };
 
 const initialState: PropertyFormState = {};
@@ -119,6 +120,26 @@ export function PropertyForm({
         </a>
         .
       </p>
+
+      <Field label="Bookingmodus" error={state.fieldErrors?.booking_mode}>
+        <select
+          name="booking_mode"
+          defaultValue={defaults?.booking_mode ?? "instant"}
+          className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+        >
+          <option value="instant">
+            Instant — gjesten booker og betaler med en gang
+          </option>
+          <option value="request">
+            Forespørsel — du godkjenner hver gjest før betaling
+          </option>
+        </select>
+        <p className="text-xs text-muted-foreground">
+          Ved «Forespørsel» sender gjesten en forespørsel du kan godkjenne eller
+          avslå. Godkjenner du, låses datoene og gjesten betaler 50 % depositum
+          innen 24 timer.
+        </p>
+      </Field>
 
       <Field
         label="Tilkomstinfo (nøkkelboks / innsjekk)"

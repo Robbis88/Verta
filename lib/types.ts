@@ -27,6 +27,9 @@ export type Property = {
   max_guests: number | null;
   base_nightly_rate?: number | null;
   cleaning_fee?: number | null;
+  // 'instant' = bestill+betal med en gang, 'request' = eier godkjenner først.
+  booking_mode?: "instant" | "request";
+  images?: string[];
   access_info?: string | null;
   wifi_name?: string | null;
   wifi_password?: string | null;
@@ -72,5 +75,14 @@ export type Booking = {
   amount_total?: number | null;
   application_fee?: number | null;
   hold_expires_at?: string | null;
+  // Forespørsel-booking — se sql/028.
+  num_guests?: number | null;
+  guest_message?: string | null;
+  approved_at?: string | null;
+  deposit_amount?: number | null;
+  remaining_amount?: number | null;
+  remaining_paid?: boolean;
+  remaining_session_id?: string | null;
+  remaining_payment_intent?: string | null;
   created_at: string;
 };

@@ -22,11 +22,14 @@ export function BookingForm({
   action,
   quoteAction,
   policyLines = [],
+  mode = "instant",
 }: {
   action: BookingAction;
   quoteAction?: QuoteAction;
   policyLines?: string[];
+  mode?: "instant" | "request";
 }) {
+  const isRequest = mode === "request";
   const [state, formAction, pending] = useActionState(action, initialState);
   const [checkIn, setCheckIn] = useState("");
   const [checkOut, setCheckOut] = useState("");
@@ -48,9 +51,13 @@ export function BookingForm({
   if (state.success) {
     return (
       <div className="rounded-lg border border-hairline bg-cloud p-6 text-center">
-        <p className="text-lg font-semibold text-navy">Takk for bestillingen!</p>
+        <p className="text-lg font-semibold text-navy">
+          {state.requested ? "Forespørsel sendt!" : "Takk for bestillingen!"}
+        </p>
         <p className="mt-1 text-sm text-ink">
-          Eieren har mottatt forespørselen og tar kontakt.
+          {state.requested
+            ? "Verten vurderer forespørselen og du får svar på e-post. Godkjennes den, betaler du et depositum for å låse oppholdet."
+            : "Eieren har mottatt forespørselen og tar kontakt."}
         </p>
       </div>
     );
@@ -94,6 +101,25 @@ export function BookingForm({
         </Field>
       </div>
 
+      {isRequest && (
+        <>
+          <Field label="Antall gjester" error={state.fieldErrors?.num_guests}>
+            <Input name="num_guests" type="number" min={1} />
+          </Field>
+          <Field
+            label="Melding til verten (valgfritt)"
+            error={state.fieldErrors?.guest_message}
+          >
+            <textarea
+              name="guest_message"
+              rows={3}
+              placeholder="Fortell litt om hvem dere er og formålet med oppholdet."
+              className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm"
+            />
+          </Field>
+        </>
+      )}
+
       {quote && (
         <div className="flex flex-col gap-1 rounded-lg border border-hairline bg-cloud p-3 text-sm text-navy">
           <div className="flex justify-between">
@@ -131,11 +157,27 @@ export function BookingForm({
         </div>
       )}
 
+      {isRequest && quote && (
+        <p className="text-xs text-ink/70">
+          Godkjenner verten forespørselen, betaler du{" "}
+          <span className="font-medium text-navy">
+            50 % depositum ({formatNok(quote.total / 2)})
+          </span>{" "}
+          innen 24 timer for å låse oppholdet. Resten betales før innsjekk.
+        </p>
+      )}
+
       <Button type="submit" size="lg" disabled={pending}>
-        {pending ? "Sender…" : "Send bestilling"}
+        {pending
+          ? "Sender…"
+          : isRequest
+            ? "Send forespørsel"
+            : "Send bestilling"}
       </Button>
       <p className="text-center text-xs text-ink/60">
-        Ved å bestille godtar du avbestillingsreglene over.
+        {isRequest
+          ? "Ved å sende forespørsel godtar du avbestillingsreglene over."
+          : "Ved å bestille godtar du avbestillingsreglene over."}
       </p>
     </form>
   );

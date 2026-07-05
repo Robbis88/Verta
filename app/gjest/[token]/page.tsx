@@ -5,11 +5,13 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import {
   refundFractionForCheckIn,
   isBeforeCheckIn,
+  isPast,
   CANCELLATION_POLICY_LINES,
 } from "@/lib/cancellation";
 import { formatNok } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import { GuestCancel } from "@/components/booking/guest-cancel";
-import { cancelBookingAsGuest } from "./actions";
+import { cancelBookingAsGuest, payDeposit } from "./actions";
 
 type GuestBooking = {
   guest_name: string;
@@ -20,6 +22,10 @@ type GuestBooking = {
   property_id: string;
   payment_status: string | null;
   amount_total: number | null;
+  deposit_amount: number | null;
+  remaining_amount: number | null;
+  remaining_paid: boolean | null;
+  hold_expires_at: string | null;
 };
 
 type GuestProperty = {
@@ -37,11 +43,11 @@ async function getStay(token: string) {
   const { data: booking } = await supabase
     .from("bookings")
     .select(
-      "guest_name,check_in,check_out,status,access_code,property_id,payment_status,amount_total",
+      "guest_name,check_in,check_out,status,access_code,property_id,payment_status,amount_total,deposit_amount,remaining_amount,remaining_paid,hold_expires_at",
     )
     .eq("guest_token", token)
     .maybeSingle();
-  if (!booking || (booking as GuestBooking).status === "cancelled") return null;
+  if (!booking) return null;
 
   const b = booking as GuestBooking;
   const { data: property } = await supabase
@@ -85,6 +91,97 @@ export default async function GuestPage({
   if (!stay) notFound();
 
   const { booking, property } = stay;
+
+  // Avbestilt opphold: vis en enkel bekreftelse i stedet for 404 (skjuler
+  // tilkomst/WiFi). Denne tilstanden treffes rett etter at gjesten avbestiller.
+  if (booking.status === "cancelled") {
+    return (
+      <main className="min-h-screen bg-cloud">
+        <header className="bg-navy px-6 py-10 text-center text-white">
+          <p className="text-sm text-gold-light">{property.name}</p>
+          <h1 className="mt-1 text-2xl font-bold">Oppholdet er avbestilt</h1>
+        </header>
+        <div className="mx-auto flex max-w-xl flex-col gap-4 p-6">
+          <Section title="Oppholdet ditt">
+            <Row label="Gjest" value={booking.guest_name} />
+            <Row label="Innsjekk" value={formatDate(booking.check_in)} />
+            <Row label="Utsjekk" value={formatDate(booking.check_out)} />
+          </Section>
+          <p className="text-center text-sm text-ink/70">
+            Dette oppholdet er avbestilt. Har du spørsmål, ta kontakt med verten.
+          </p>
+          <p className="mt-2 text-center text-xs text-ink/60">Levert av Verta</p>
+        </div>
+      </main>
+    );
+  }
+
+  // Forespørsel under vurdering: ingen tilkomst ennå.
+  if (booking.status === "requested") {
+    return (
+      <main className="min-h-screen bg-cloud">
+        <header className="bg-navy px-6 py-10 text-center text-white">
+          <p className="text-sm text-gold-light">{property.name}</p>
+          <h1 className="mt-1 text-2xl font-bold">Forespørsel under vurdering</h1>
+        </header>
+        <div className="mx-auto flex max-w-xl flex-col gap-4 p-6">
+          <Section title="Forespørselen din">
+            <Row label="Innsjekk" value={formatDate(booking.check_in)} />
+            <Row label="Utsjekk" value={formatDate(booking.check_out)} />
+          </Section>
+          <p className="text-center text-sm text-ink/70">
+            Verten vurderer forespørselen din. Godkjennes den, får du en e-post
+            med lenke til å betale depositum og låse oppholdet.
+          </p>
+          <p className="mt-2 text-center text-xs text-ink/60">Levert av Verta</p>
+        </div>
+      </main>
+    );
+  }
+
+  // Godkjent: gjesten må betale depositum for å låse oppholdet.
+  if (booking.status === "approved") {
+    const deposit = Number(booking.deposit_amount ?? 0);
+    const remaining = Number(booking.remaining_amount ?? 0);
+    const expired =
+      !!booking.hold_expires_at && isPast(booking.hold_expires_at);
+    return (
+      <main className="min-h-screen bg-cloud">
+        <header className="bg-navy px-6 py-10 text-center text-white">
+          <p className="text-sm text-gold-light">{property.name}</p>
+          <h1 className="mt-1 text-2xl font-bold">Forespørselen er godkjent 🎉</h1>
+        </header>
+        <div className="mx-auto flex max-w-xl flex-col gap-4 p-6">
+          <Section title="Oppholdet ditt">
+            <Row label="Innsjekk" value={formatDate(booking.check_in)} />
+            <Row label="Utsjekk" value={formatDate(booking.check_out)} />
+            <Row label="Depositum nå" value={formatNok(deposit)} />
+            <Row label="Rest før innsjekk" value={formatNok(remaining)} />
+          </Section>
+          {expired ? (
+            <p className="text-center text-sm text-destructive">
+              Fristen for å betale depositum har dessverre gått ut, og datoene er
+              frigitt. Send gjerne en ny forespørsel.
+            </p>
+          ) : (
+            <div className="flex flex-col items-center gap-2">
+              <form action={payDeposit.bind(null, token)}>
+                <Button type="submit" size="lg">
+                  Betal depositum {formatNok(deposit)}
+                </Button>
+              </form>
+              <p className="text-center text-xs text-ink/60">
+                Betal innen 24 timer for å låse oppholdet. Resten (
+                {formatNok(remaining)}) betales før innsjekk.
+              </p>
+            </div>
+          )}
+          <p className="mt-2 text-center text-xs text-ink/60">Levert av Verta</p>
+        </div>
+      </main>
+    );
+  }
+
   const accessText = booking.access_code ?? property.access_info ?? null;
 
   const canCancel = isBeforeCheckIn(booking.check_in);

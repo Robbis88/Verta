@@ -20,11 +20,17 @@ export async function finalizeBooking(bookingId: string): Promise<void> {
   const { data: booking } = await supabase
     .from("bookings")
     .select(
-      "id,property_id,guest_name,guest_email,check_in,check_out,nights,guest_token,access_code",
+      "id,property_id,guest_name,guest_email,check_in,check_out,nights,guest_token,access_code,remaining_amount,remaining_paid",
     )
     .eq("id", bookingId)
     .single();
   if (!booking) return;
+
+  // Depositum-flyt: gjenstår det en rest som ikke er betalt, endres ordlyden
+  // i e-postene (depositum betalt vs. full booking).
+  const remainingDue = booking.remaining_paid
+    ? 0
+    : Number(booking.remaining_amount ?? 0);
 
   const { data: property } = await supabase
     .from("properties")
@@ -70,6 +76,7 @@ export async function finalizeBooking(bookingId: string): Promise<void> {
           nights: booking.nights ?? 1,
           access,
           guideToken: booking.guest_token,
+          remainingAmount: remainingDue > 0 ? remainingDue : undefined,
         })
       : Promise.resolve(false),
     owner?.email
@@ -80,6 +87,7 @@ export async function finalizeBooking(bookingId: string): Promise<void> {
           guestEmail: booking.guest_email || null,
           checkIn: booking.check_in,
           checkOut: booking.check_out,
+          remainingAmount: remainingDue > 0 ? remainingDue : undefined,
         })
       : Promise.resolve(false),
   ]);
@@ -193,10 +201,12 @@ export async function cancelAndRefund(opts: {
  */
 export async function releaseExpiredHolds(): Promise<number> {
   const supabase = createAdminClient();
+  // Både pending (checkout påbegynt) og approved (venter depositum) holder
+  // datoene med en frist. Utløper den, frigis datoene.
   const { data } = await supabase
     .from("bookings")
     .update({ status: "cancelled", payment_status: "failed" })
-    .eq("status", "pending")
+    .in("status", ["pending", "approved"])
     .lt("hold_expires_at", new Date().toISOString())
     .select("id");
   return data?.length ?? 0;

@@ -11,12 +11,14 @@ import { stripe, stripeEnabled } from "@/lib/stripe";
 import { commissionRate } from "@/lib/constants";
 import type { BookingSource } from "@/lib/constants";
 import { finalizeBooking } from "@/lib/booking";
+import { sendRequestNotices } from "@/lib/email";
 import { calculateBookingTotal, quoteBookingTotal, type Quote } from "@/lib/pricing";
 import { loggHendelse } from "@/lib/kontrollrom";
 
 export type BookingFormState = {
   error?: string;
   success?: boolean;
+  requested?: boolean;
   fieldErrors?: Record<string, string>;
 };
 
@@ -74,18 +76,19 @@ export async function createDirectBooking(
 
   const { data: property } = await supabase
     .from("properties")
-    .select("id,user_id,name")
+    .select("id,user_id,name,booking_mode")
     .eq("slug", slug)
     .single();
 
   if (!property) return { error: "Fant ikke eiendommen" };
 
-  // Overlapp-sjekk: finnes en aktiv booking som krysser datointervallet?
+  // Overlapp-sjekk mot bookinger som faktisk låser datoene (forespørsler og
+  // kansellerte teller ikke — flere kan forespørre samme dato).
   const { data: clashes } = await supabase
     .from("bookings")
     .select("id")
     .eq("property_id", property.id)
-    .neq("status", "cancelled")
+    .not("status", "in", "(cancelled,requested)")
     .lt("check_in", data.check_out)
     .gt("check_out", data.check_in);
 
@@ -99,6 +102,60 @@ export async function createDirectBooking(
     data.check_in,
     data.check_out,
   );
+
+  // Forespørsel-modus: opprett en 'requested' booking (ingen datolås, ingen
+  // betaling), samle gjeste-info, og varsle eier + gjest. Eier godkjenner.
+  if (property.booking_mode === "request") {
+    const { data: booking, error: reqErr } = await supabase
+      .from("bookings")
+      .insert({
+        property_id: property.id,
+        guest_name: data.guest_name,
+        guest_email: data.guest_email || null,
+        guest_phone: data.guest_phone || null,
+        check_in: data.check_in,
+        check_out: data.check_out,
+        nights,
+        total_price: total,
+        amount_total: total,
+        num_guests: data.num_guests ?? null,
+        guest_message: data.guest_message || null,
+        source,
+        status: "requested",
+      })
+      .select("id")
+      .single();
+
+    if (reqErr) return { error: reqErr.message };
+
+    await logAudit({
+      user_id: property.user_id,
+      action: "booking.requested",
+      resource_type: "booking",
+      resource_id: booking.id,
+      changes: { source },
+    });
+
+    const { data: owner } = await supabase
+      .from("users")
+      .select("email")
+      .eq("id", property.user_id)
+      .single();
+
+    await sendRequestNotices({
+      ownerEmail: owner?.email ?? null,
+      guestEmail: data.guest_email || null,
+      guestName: data.guest_name,
+      guestPhone: data.guest_phone || null,
+      propertyName: property.name,
+      checkIn: data.check_in,
+      checkOut: data.check_out,
+      numGuests: data.num_guests ?? null,
+      message: data.guest_message || null,
+    });
+
+    return { success: true, requested: true };
+  }
 
   // Kan vi kreve betaling? Eieren må ha ferdig Connect-onboarding og en pris.
   const { data: owner } = await supabase

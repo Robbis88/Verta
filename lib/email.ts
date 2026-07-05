@@ -135,6 +135,7 @@ export async function sendBookingConfirmation(opts: {
   nights: number;
   access?: BookingAccess;
   guideToken?: string;
+  remainingAmount?: number;
 }): Promise<boolean> {
   const guideButton = opts.guideToken
     ? `<div style="text-align:center;margin:24px 0 0;">
@@ -145,16 +146,26 @@ export async function sendBookingConfirmation(opts: {
         </a>
       </div>`
     : "";
+  const intro =
+    opts.remainingAmount && opts.remainingAmount > 0
+      ? `Hei ${opts.guestName}, depositumet er mottatt og oppholdet ditt er bekreftet 🎉`
+      : `Hei ${opts.guestName}, takk for bestillingen! Oppholdet ditt er bekreftet.`;
+  const remainingLine =
+    opts.remainingAmount && opts.remainingAmount > 0
+      ? `<p style="font-size:14px;line-height:1.6;color:#4b5563;margin:16px 0 0;">
+           Restbeløpet på <strong>${formatNok(opts.remainingAmount)}</strong>
+           betales før innsjekk — du får en egen lenke i god tid.
+         </p>`
+      : "";
   const body = `
-    <p style="font-size:15px;line-height:1.6;margin:0 0 20px;">
-      Hei ${opts.guestName}, takk for bestillingen! Oppholdet ditt er bekreftet.
-    </p>
+    <p style="font-size:15px;line-height:1.6;margin:0 0 20px;">${intro}</p>
     <table style="width:100%;border-collapse:collapse;margin:0 0 8px;">
       ${detailRow("Eiendom", opts.propertyName)}
       ${detailRow("Innsjekk", formatDate(opts.checkIn))}
       ${detailRow("Utsjekk", formatDate(opts.checkOut))}
       ${detailRow("Netter", String(opts.nights))}
     </table>
+    ${remainingLine}
     ${accessSection(opts.access ?? null)}
     ${guideButton}
     ${policySection()}`;
@@ -248,7 +259,10 @@ export async function sendCancellationNotices(opts: {
   await Promise.allSettled(tasks);
 }
 
-/** Varsel til eieren om en ny direkte booking. */
+/**
+ * Varsel til eieren om en bekreftet booking. Er `remainingAmount` satt, gjelder
+ * det en godkjent forespørsel der gjesten nettopp betalte depositum.
+ */
 export async function sendOwnerBookingNotification(opts: {
   to: string;
   propertyName: string;
@@ -256,21 +270,169 @@ export async function sendOwnerBookingNotification(opts: {
   guestEmail?: string | null;
   checkIn: string;
   checkOut: string;
+  remainingAmount?: number;
 }): Promise<boolean> {
+  const isDeposit = !!opts.remainingAmount && opts.remainingAmount > 0;
+  const intro = isDeposit
+    ? `Gjesten har betalt depositum på <strong>${opts.propertyName}</strong> — bookingen er bekreftet og datoene er låst.`
+    : `Du har fått en ny direkte booking på <strong>${opts.propertyName}</strong>.`;
+  const remainingRow = isDeposit
+    ? detailRow("Rest før innsjekk", formatNok(opts.remainingAmount!))
+    : "";
   const body = `
-    <p style="font-size:15px;line-height:1.6;margin:0 0 20px;">
-      Du har fått en ny direkte booking på <strong>${opts.propertyName}</strong>.
-    </p>
+    <p style="font-size:15px;line-height:1.6;margin:0 0 20px;">${intro}</p>
     <table style="width:100%;border-collapse:collapse;">
       ${detailRow("Gjest", opts.guestName)}
       ${opts.guestEmail ? detailRow("E-post", opts.guestEmail) : ""}
       ${detailRow("Innsjekk", formatDate(opts.checkIn))}
       ${detailRow("Utsjekk", formatDate(opts.checkOut))}
+      ${remainingRow}
     </table>`;
   return send({
     to: opts.to,
-    subject: `Ny booking: ${opts.propertyName}`,
-    html: layout("Ny direkte booking 📅", body),
+    subject: isDeposit
+      ? `Depositum betalt: ${opts.propertyName}`
+      : `Ny booking: ${opts.propertyName}`,
+    html: layout(
+      isDeposit ? "Depositum betalt — bekreftet ✅" : "Ny direkte booking 📅",
+      body,
+    ),
+  });
+}
+
+/** Forespørsel mottatt: varsel til eier (med gjeste-info) + kvittering til gjest. */
+export async function sendRequestNotices(opts: {
+  ownerEmail?: string | null;
+  guestEmail?: string | null;
+  guestName: string;
+  guestPhone?: string | null;
+  propertyName: string;
+  checkIn: string;
+  checkOut: string;
+  numGuests?: number | null;
+  message?: string | null;
+}): Promise<void> {
+  const tasks: Promise<boolean>[] = [];
+
+  if (opts.ownerEmail) {
+    const body = `
+      <p style="font-size:15px;line-height:1.6;margin:0 0 20px;">
+        Du har fått en ny <strong>bookingforespørsel</strong> på
+        ${opts.propertyName}. Godkjenn eller avslå den i dashbordet.
+      </p>
+      <table style="width:100%;border-collapse:collapse;margin:0 0 8px;">
+        ${detailRow("Gjest", opts.guestName)}
+        ${opts.guestEmail ? detailRow("E-post", opts.guestEmail) : ""}
+        ${opts.guestPhone ? detailRow("Telefon", opts.guestPhone) : ""}
+        ${opts.numGuests ? detailRow("Antall gjester", String(opts.numGuests)) : ""}
+        ${detailRow("Innsjekk", formatDate(opts.checkIn))}
+        ${detailRow("Utsjekk", formatDate(opts.checkOut))}
+      </table>
+      ${
+        opts.message
+          ? `<div style="margin:16px 0 0;padding:16px;border-radius:8px;background:#f5f7fa;">
+               <p style="margin:0 0 6px;font-size:13px;color:#4b5563;">Melding fra gjesten</p>
+               <p style="margin:0;font-size:14px;line-height:1.6;color:#081b33;white-space:pre-line;">${opts.message}</p>
+             </div>`
+          : ""
+      }
+      <div style="text-align:center;margin:24px 0 0;">
+        <a href="${SITE_URL}/dashboard/properties"
+          style="display:inline-block;background:#d8a66a;color:#081b33;font-weight:600;
+          font-size:15px;text-decoration:none;padding:12px 28px;border-radius:8px;">
+          Vurder forespørselen
+        </a>
+      </div>`;
+    tasks.push(
+      send({
+        to: opts.ownerEmail,
+        subject: `Ny forespørsel: ${opts.propertyName}`,
+        html: layout("Ny bookingforespørsel 📩", body),
+      }),
+    );
+  }
+
+  if (opts.guestEmail) {
+    const body = `
+      <p style="font-size:15px;line-height:1.6;margin:0 0 20px;">
+        Hei ${opts.guestName}, vi har mottatt forespørselen din for
+        <strong>${opts.propertyName}</strong>. Verten vurderer den og du får
+        svar på e-post. Godkjennes den, betaler du et depositum for å låse
+        oppholdet.
+      </p>
+      <table style="width:100%;border-collapse:collapse;">
+        ${detailRow("Innsjekk", formatDate(opts.checkIn))}
+        ${detailRow("Utsjekk", formatDate(opts.checkOut))}
+      </table>`;
+    tasks.push(
+      send({
+        to: opts.guestEmail,
+        subject: `Forespørsel mottatt: ${opts.propertyName}`,
+        html: layout("Forespørselen din er mottatt", body),
+      }),
+    );
+  }
+
+  await Promise.allSettled(tasks);
+}
+
+/** Forespørsel godkjent: gjesten må betale depositum innen 24t. */
+export async function sendBookingApproved(opts: {
+  to: string;
+  guestName: string;
+  propertyName: string;
+  checkIn: string;
+  checkOut: string;
+  depositAmount: number;
+  payToken: string;
+}): Promise<boolean> {
+  const body = `
+    <p style="font-size:15px;line-height:1.6;margin:0 0 20px;">
+      Hei ${opts.guestName}, gode nyheter — forespørselen din for
+      <strong>${opts.propertyName}</strong> er godkjent! For å låse oppholdet
+      betaler du et depositum på <strong>${formatNok(opts.depositAmount)}</strong>
+      innen 24 timer. Betaler du ikke i tide, frigis datoene.
+    </p>
+    <table style="width:100%;border-collapse:collapse;margin:0 0 8px;">
+      ${detailRow("Innsjekk", formatDate(opts.checkIn))}
+      ${detailRow("Utsjekk", formatDate(opts.checkOut))}
+      ${detailRow("Depositum nå", formatNok(opts.depositAmount))}
+    </table>
+    <div style="text-align:center;margin:24px 0 0;">
+      <a href="${SITE_URL}/gjest/${opts.payToken}"
+        style="display:inline-block;background:#d8a66a;color:#081b33;font-weight:600;
+        font-size:15px;text-decoration:none;padding:12px 28px;border-radius:8px;">
+        Betal depositum og lås oppholdet
+      </a>
+    </div>`;
+  return send({
+    to: opts.to,
+    subject: `Godkjent: ${opts.propertyName} – betal depositum`,
+    html: layout("Forespørselen er godkjent 🎉", body),
+  });
+}
+
+/** Forespørsel avslått. */
+export async function sendBookingRejected(opts: {
+  to: string;
+  guestName: string;
+  propertyName: string;
+  checkIn: string;
+  checkOut: string;
+}): Promise<boolean> {
+  const body = `
+    <p style="font-size:15px;line-height:1.6;margin:0 0 20px;">
+      Hei ${opts.guestName}, dessverre kunne ikke verten ta imot forespørselen
+      din for <strong>${opts.propertyName}</strong> (${formatDate(opts.checkIn)}
+      – ${formatDate(opts.checkOut)}) denne gangen. Du er ikke belastet noe.
+    </p>
+    <p style="font-size:14px;line-height:1.6;color:#4b5563;margin:0;">
+      Prøv gjerne andre datoer, eller se etter en annen eiendom.
+    </p>`;
+  return send({
+    to: opts.to,
+    subject: `Forespørsel: ${opts.propertyName}`,
+    html: layout("Forespørselen ble ikke godkjent", body),
   });
 }
 

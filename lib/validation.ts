@@ -16,6 +16,7 @@ export const propertySchema = z.object({
   wifi_password: z.string().max(100).optional().or(z.literal("")),
   house_rules: z.string().max(2000).optional().or(z.literal("")),
   checkout_info: z.string().max(2000).optional().or(z.literal("")),
+  booking_mode: z.enum(["instant", "request"]).optional(),
 });
 export type PropertyInput = z.infer<typeof propertySchema>;
 
@@ -26,6 +27,8 @@ export const bookingSchema = z
     guest_phone: z.string().max(30).optional().or(z.literal("")),
     check_in: z.string().min(1, "Velg innsjekk"),
     check_out: z.string().min(1, "Velg utsjekk"),
+    num_guests: z.coerce.number().int().min(1).max(100).optional(),
+    guest_message: z.string().max(1000).optional().or(z.literal("")),
   })
   .refine((d) => d.check_out > d.check_in, {
     message: "Utsjekk må være etter innsjekk",
