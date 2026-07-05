@@ -4,7 +4,6 @@ import { notFound } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createDirectBooking, quoteBooking } from "./actions";
 import { BookingForm } from "@/components/booking/booking-form";
-import { AvailabilityCalendar } from "@/components/calendar/availability-calendar";
 import { bookedDateSet } from "@/lib/availability";
 import { CANCELLATION_POLICY_LINES } from "@/lib/cancellation";
 import { formatNok } from "@/lib/utils";
@@ -42,7 +41,7 @@ async function getBookedDates(propertyId: string): Promise<string[]> {
     .from("bookings")
     .select("check_in,check_out,status")
     .eq("property_id", propertyId)
-    .neq("status", "cancelled");
+    .not("status", "in", "(cancelled,requested)");
   return [...bookedDateSet(data ?? [])];
 }
 
@@ -161,15 +160,12 @@ export default async function PublicPropertyPage({
               quoteAction={quoteBooking.bind(null, slug)}
               policyLines={CANCELLATION_POLICY_LINES}
               mode={property.booking_mode}
+              bookedDates={bookedDates}
+              fromISO={today}
             />
           </div>
         </div>
       </div>
-
-      <section className="flex flex-col gap-4">
-        <h2 className="text-xl font-semibold text-navy">Tilgjengelighet</h2>
-        <AvailabilityCalendar bookedDates={bookedDates} fromISO={today} months={3} />
-      </section>
     </main>
   );
 }

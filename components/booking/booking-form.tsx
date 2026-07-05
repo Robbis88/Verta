@@ -7,7 +7,15 @@ import type { Quote } from "@/lib/pricing";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { DateRangePicker } from "@/components/calendar/date-range-picker";
 import { formatNok } from "@/lib/utils";
+
+function shortDate(iso: string): string {
+  return new Date(`${iso}T00:00:00Z`).toLocaleDateString("nb-NO", {
+    day: "numeric",
+    month: "short",
+  });
+}
 
 type BookingAction = (
   prev: BookingFormState,
@@ -23,11 +31,15 @@ export function BookingForm({
   quoteAction,
   policyLines = [],
   mode = "instant",
+  bookedDates = [],
+  fromISO,
 }: {
   action: BookingAction;
   quoteAction?: QuoteAction;
   policyLines?: string[];
   mode?: "instant" | "request";
+  bookedDates?: string[];
+  fromISO: string;
 }) {
   const isRequest = mode === "request";
   const [state, formAction, pending] = useActionState(action, initialState);
@@ -74,31 +86,43 @@ export function BookingForm({
       <Field label="Telefon" error={state.fieldErrors?.guest_phone}>
         <Input name="guest_phone" type="tel" />
       </Field>
-      <div className="grid grid-cols-2 gap-3">
-        <Field label="Innsjekk" error={state.fieldErrors?.check_in}>
-          <Input
-            name="check_in"
-            type="date"
-            required
-            value={checkIn}
-            onChange={(e) => {
-              setCheckIn(e.target.value);
-              refreshQuote(e.target.value, checkOut);
+      <div className="flex flex-col gap-2">
+        <Label>Velg datoer</Label>
+        <div className="flex gap-4 text-sm">
+          <span>
+            <span className="text-ink/60">Innsjekk:</span>{" "}
+            <span className="font-medium text-navy">
+              {checkIn ? shortDate(checkIn) : "—"}
+            </span>
+          </span>
+          <span>
+            <span className="text-ink/60">Utsjekk:</span>{" "}
+            <span className="font-medium text-navy">
+              {checkOut ? shortDate(checkOut) : "—"}
+            </span>
+          </span>
+        </div>
+        <div className="rounded-lg border border-hairline p-3">
+          <DateRangePicker
+            bookedDates={bookedDates}
+            fromISO={fromISO}
+            months={2}
+            checkIn={checkIn}
+            checkOut={checkOut}
+            onSelect={(ci, co) => {
+              setCheckIn(ci);
+              setCheckOut(co);
+              refreshQuote(ci, co);
             }}
           />
-        </Field>
-        <Field label="Utsjekk" error={state.fieldErrors?.check_out}>
-          <Input
-            name="check_out"
-            type="date"
-            required
-            value={checkOut}
-            onChange={(e) => {
-              setCheckOut(e.target.value);
-              refreshQuote(checkIn, e.target.value);
-            }}
-          />
-        </Field>
+        </div>
+        <input type="hidden" name="check_in" value={checkIn} />
+        <input type="hidden" name="check_out" value={checkOut} />
+        {(state.fieldErrors?.check_in || state.fieldErrors?.check_out) && (
+          <p className="text-xs text-destructive">
+            {state.fieldErrors?.check_in ?? state.fieldErrors?.check_out}
+          </p>
+        )}
       </div>
 
       {isRequest && (
@@ -168,7 +192,11 @@ export function BookingForm({
         </p>
       )}
 
-      <Button type="submit" size="lg" disabled={pending}>
+      <Button
+        type="submit"
+        size="lg"
+        disabled={pending || !checkIn || !checkOut}
+      >
         {pending
           ? "Sender…"
           : isRequest
