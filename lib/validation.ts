@@ -17,6 +17,10 @@ export const propertySchema = z.object({
   house_rules: z.string().max(2000).optional().or(z.literal("")),
   checkout_info: z.string().max(2000).optional().or(z.literal("")),
   booking_mode: z.enum(["instant", "request"]).optional(),
+  beds: z.coerce.number().int().min(0).max(100).optional(),
+  sleeping_arrangements: z.string().max(1000).optional().or(z.literal("")),
+  check_in_time: z.string().max(20).optional().or(z.literal("")),
+  check_out_time: z.string().max(20).optional().or(z.literal("")),
 });
 export type PropertyInput = z.infer<typeof propertySchema>;
 

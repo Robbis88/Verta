@@ -9,6 +9,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { propertyLimit } from "@/lib/constants";
 import { propertySchema } from "@/lib/validation";
+import { AMENITY_KEYS } from "@/lib/amenities";
 import { PROPERTY_IMAGES_BUCKET } from "@/lib/storage";
 import { slugify } from "@/lib/utils";
 import { logAudit } from "@/lib/audit";
@@ -16,6 +17,14 @@ import { geocodeNorway } from "@/lib/geocode";
 
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024; // 8 MB
 const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
+
+/** Leser og validerer valgte fasiliteter fra skjemaet (flere avkrysninger). */
+function parseAmenities(formData: FormData): string[] {
+  return formData
+    .getAll("amenities")
+    .map(String)
+    .filter((k) => AMENITY_KEYS.has(k));
+}
 
 export type PropertyFormState = {
   error?: string;
@@ -82,6 +91,11 @@ export async function createProperty(
       house_rules: data.house_rules || null,
       checkout_info: data.checkout_info || null,
       booking_mode: data.booking_mode ?? "instant",
+      amenities: parseAmenities(formData),
+      beds: data.beds ?? null,
+      sleeping_arrangements: data.sleeping_arrangements || null,
+      check_in_time: data.check_in_time || null,
+      check_out_time: data.check_out_time || null,
       lat: coords?.lat ?? null,
       lng: coords?.lng ?? null,
     })
@@ -136,6 +150,11 @@ export async function updateProperty(
       house_rules: data.house_rules || null,
       checkout_info: data.checkout_info || null,
       booking_mode: data.booking_mode ?? "instant",
+      amenities: parseAmenities(formData),
+      beds: data.beds ?? null,
+      sleeping_arrangements: data.sleeping_arrangements || null,
+      check_in_time: data.check_in_time || null,
+      check_out_time: data.check_out_time || null,
       lat: coords?.lat ?? null,
       lng: coords?.lng ?? null,
     })

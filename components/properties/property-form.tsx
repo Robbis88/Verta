@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { AMENITIES } from "@/lib/amenities";
 
 type PropertyAction = (
   prev: PropertyFormState,
@@ -29,6 +30,11 @@ export type PropertyDefaults = {
   house_rules?: string | null;
   checkout_info?: string | null;
   booking_mode?: "instant" | "request" | null;
+  amenities?: string[] | null;
+  beds?: number | null;
+  sleeping_arrangements?: string | null;
+  check_in_time?: string | null;
+  check_out_time?: string | null;
 };
 
 const initialState: PropertyFormState = {};
@@ -43,6 +49,7 @@ export function PropertyForm({
   submitLabel: string;
 }) {
   const [state, formAction, pending] = useActionState(action, initialState);
+  const selectedAmenities = new Set(defaults?.amenities ?? []);
 
   return (
     <form action={formAction} className="flex max-w-lg flex-col gap-4">
@@ -63,13 +70,21 @@ export function PropertyForm({
         />
       </Field>
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Field label="Soverom" error={state.fieldErrors?.bedrooms}>
           <Input
             name="bedrooms"
             type="number"
             min={0}
             defaultValue={defaults?.bedrooms ?? ""}
+          />
+        </Field>
+        <Field label="Senger" error={state.fieldErrors?.beds}>
+          <Input
+            name="beds"
+            type="number"
+            min={0}
+            defaultValue={defaults?.beds ?? ""}
           />
         </Field>
         <Field label="Bad" error={state.fieldErrors?.bathrooms}>
@@ -86,6 +101,50 @@ export function PropertyForm({
             type="number"
             min={1}
             defaultValue={defaults?.max_guests ?? ""}
+          />
+        </Field>
+      </div>
+
+      <Field label="Soveromsoppsett" error={state.fieldErrors?.sleeping_arrangements}>
+        <Textarea
+          name="sleeping_arrangements"
+          rows={2}
+          placeholder="F.eks: Soverom 1: dobbeltseng. Soverom 2: to enkeltsenger. Stue: sovesofa."
+          defaultValue={defaults?.sleeping_arrangements ?? ""}
+        />
+      </Field>
+
+      <div className="flex flex-col gap-1.5">
+        <Label>Fasiliteter</Label>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          {AMENITIES.map((a) => (
+            <label key={a.key} className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                name="amenities"
+                value={a.key}
+                defaultChecked={selectedAmenities.has(a.key)}
+                className="h-4 w-4"
+              />
+              {a.label}
+            </label>
+          ))}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Innsjekk fra" error={state.fieldErrors?.check_in_time}>
+          <Input
+            name="check_in_time"
+            type="time"
+            defaultValue={defaults?.check_in_time ?? ""}
+          />
+        </Field>
+        <Field label="Utsjekk innen" error={state.fieldErrors?.check_out_time}>
+          <Input
+            name="check_out_time"
+            type="time"
+            defaultValue={defaults?.check_out_time ?? ""}
           />
         </Field>
       </div>

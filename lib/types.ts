@@ -36,6 +36,14 @@ export type Property = {
   house_rules?: string | null;
   checkout_info?: string | null;
   ical_urls?: IcalUrl[];
+  // Airbnb-lignende detaljer — se sql/032.
+  amenities?: string[];
+  beds?: number | null;
+  sleeping_arrangements?: string | null;
+  check_in_time?: string | null;
+  check_out_time?: string | null;
+  lat?: number | null;
+  lng?: number | null;
   created_at: string;
   updated_at: string;
 };

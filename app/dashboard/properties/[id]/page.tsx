@@ -187,6 +187,11 @@ export default async function PropertyDetailPage({
               house_rules: p.house_rules,
               checkout_info: p.checkout_info,
               booking_mode: p.booking_mode,
+              amenities: p.amenities,
+              beds: p.beds,
+              sleeping_arrangements: p.sleeping_arrangements,
+              check_in_time: p.check_in_time,
+              check_out_time: p.check_out_time,
             }}
           />
         </CardContent>

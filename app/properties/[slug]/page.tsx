@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createDirectBooking, quoteBooking } from "./actions";
 import { BookingForm } from "@/components/booking/booking-form";
+import { AmenityList } from "@/components/properties/amenity-list";
+import { PropertyMap } from "@/components/properties/property-map";
 import { bookedDateSet } from "@/lib/availability";
 import { CANCELLATION_POLICY_LINES } from "@/lib/cancellation";
 import { formatNok } from "@/lib/utils";
@@ -20,6 +22,13 @@ type PublicProperty = {
   cleaning_fee: number | null;
   booking_mode: "instant" | "request";
   images: string[] | null;
+  beds: number | null;
+  sleeping_arrangements: string | null;
+  check_in_time: string | null;
+  check_out_time: string | null;
+  amenities: string[] | null;
+  lat: number | null;
+  lng: number | null;
 };
 
 // Henter kun offentlig-trygge felter via admin-klienten (omgår RLS).
@@ -28,7 +37,7 @@ async function getProperty(slug: string): Promise<PublicProperty | null> {
   const { data } = await supabase
     .from("properties")
     .select(
-      "id,name,description,address,bedrooms,bathrooms,max_guests,base_nightly_rate,cleaning_fee,booking_mode,images",
+      "id,name,description,address,bedrooms,bathrooms,max_guests,base_nightly_rate,cleaning_fee,booking_mode,images,beds,sleeping_arrangements,check_in_time,check_out_time,amenities,lat,lng",
     )
     .eq("slug", slug)
     .single();
@@ -87,6 +96,7 @@ export default async function PublicPropertyPage({
 
   const specs = [
     property.bedrooms != null ? `${property.bedrooms} soverom` : null,
+    property.beds != null ? `${property.beds} senger` : null,
     property.bathrooms != null ? `${property.bathrooms} bad` : null,
     property.max_guests != null ? `${property.max_guests} gjester` : null,
   ].filter(Boolean);
@@ -126,6 +136,41 @@ export default async function PublicPropertyPage({
           )}
           {property.description && (
             <p className="leading-relaxed text-ink">{property.description}</p>
+          )}
+
+          {(property.check_in_time || property.check_out_time) && (
+            <p className="text-sm text-ink">
+              {property.check_in_time && (
+                <>Innsjekk fra {property.check_in_time}</>
+              )}
+              {property.check_in_time && property.check_out_time && " · "}
+              {property.check_out_time && (
+                <>utsjekk innen {property.check_out_time}</>
+              )}
+            </p>
+          )}
+
+          {property.sleeping_arrangements && (
+            <div>
+              <h2 className="mb-1 text-lg font-semibold text-navy">Soveplasser</h2>
+              <p className="whitespace-pre-line text-sm leading-relaxed text-ink">
+                {property.sleeping_arrangements}
+              </p>
+            </div>
+          )}
+
+          {property.amenities && property.amenities.length > 0 && (
+            <div>
+              <h2 className="mb-2 text-lg font-semibold text-navy">Fasiliteter</h2>
+              <AmenityList amenities={property.amenities} />
+            </div>
+          )}
+
+          {property.lat != null && property.lng != null && (
+            <div>
+              <h2 className="mb-2 text-lg font-semibold text-navy">Beliggenhet</h2>
+              <PropertyMap lat={property.lat} lng={property.lng} />
+            </div>
           )}
         </div>
 
