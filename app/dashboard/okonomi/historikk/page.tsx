@@ -1,12 +1,16 @@
-import { getEconomyContext } from "@/lib/okonomi";
+import { getEconomyContext, getTimeline } from "@/lib/okonomi";
 import { formatNok } from "@/lib/utils";
 import { EmptyOkonomi } from "@/components/okonomi/ui";
+import { addEvent, deleteEvent } from "../actions";
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 const KIND_LABEL: Record<string, string> = {
   kjop: "Kjøp",
@@ -33,9 +37,7 @@ export default async function HistorikkPage({
   const { selected, economy } = await getEconomyContext(eiendom);
   if (!selected || !economy) return <EmptyOkonomi />;
 
-  const events = [...economy.timeline].sort((a, b) =>
-    b.date.localeCompare(a.date),
-  );
+  const events = await getTimeline(selected.id);
 
   return (
     <div className="flex flex-col gap-6">
@@ -90,34 +92,88 @@ export default async function HistorikkPage({
         <CardHeader>
           <CardTitle>Tidslinje</CardTitle>
         </CardHeader>
-        <CardContent>
-          <ol className="flex flex-col gap-4">
-            {events.map((e, i) => (
-              <li key={i} className="flex gap-4">
-                <div className="flex w-12 shrink-0 flex-col items-center">
-                  <span className="text-sm font-semibold text-navy">
-                    {e.year}
-                  </span>
-                  <span className="mt-1 h-full w-px bg-hairline" />
-                </div>
-                <div className="flex flex-1 flex-col gap-1 pb-2">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-medium text-navy">{e.title}</span>
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-[11px] ${KIND_TONE[e.kind] ?? "bg-muted"}`}
-                    >
-                      {KIND_LABEL[e.kind] ?? e.kind}
+        <CardContent className="flex flex-col gap-4">
+          {events.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Ingen hendelser ennå. Legg til den første under.
+            </p>
+          ) : (
+            <ol className="flex flex-col gap-4">
+              {events.map((e) => (
+                <li key={e.id} className="flex gap-4">
+                  <div className="flex w-12 shrink-0 flex-col items-center">
+                    <span className="text-sm font-semibold text-navy">
+                      {e.year}
                     </span>
+                    <span className="mt-1 h-full w-px bg-hairline" />
                   </div>
-                  {e.amount != null && (
-                    <span className="text-sm text-muted-foreground tabular-nums">
-                      {formatNok(e.amount)}
-                    </span>
-                  )}
-                </div>
-              </li>
-            ))}
-          </ol>
+                  <div className="flex flex-1 items-start justify-between gap-2 pb-2">
+                    <div className="flex flex-col gap-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-medium text-navy">{e.title}</span>
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[11px] ${KIND_TONE[e.kind] ?? "bg-muted"}`}
+                        >
+                          {KIND_LABEL[e.kind] ?? e.kind}
+                        </span>
+                      </div>
+                      {e.amount != null && (
+                        <span className="text-sm text-muted-foreground tabular-nums">
+                          {formatNok(e.amount)}
+                        </span>
+                      )}
+                    </div>
+                    <form action={deleteEvent}>
+                      <input type="hidden" name="id" value={e.id} />
+                      <button
+                        type="submit"
+                        className="text-xs text-muted-foreground hover:text-destructive"
+                        aria-label="Slett hendelse"
+                      >
+                        ✕
+                      </button>
+                    </form>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          )}
+
+          <form
+            action={addEvent}
+            className="flex flex-wrap items-end gap-3 border-t border-hairline pt-4"
+          >
+            <input type="hidden" name="property_id" value={selected.id} />
+            <div className="flex flex-col gap-1">
+              <Label>Hendelse</Label>
+              <Input name="title" required className="w-44" placeholder="Nytt tak" />
+            </div>
+            <div className="flex flex-col gap-1">
+              <Label>Type</Label>
+              <select
+                name="kind"
+                defaultValue="vedlikehold"
+                className="h-9 rounded-md border border-input bg-transparent px-3 text-sm shadow-sm"
+              >
+                <option value="kjop">Kjøp</option>
+                <option value="oppussing">Oppussing</option>
+                <option value="vedlikehold">Vedlikehold</option>
+                <option value="finans">Finans</option>
+                <option value="verdi">Verdivurdering</option>
+              </select>
+            </div>
+            <div className="flex flex-col gap-1">
+              <Label>Dato</Label>
+              <Input name="event_date" type="date" required />
+            </div>
+            <div className="flex flex-col gap-1">
+              <Label>Beløp (kr)</Label>
+              <Input name="amount" type="number" min={0} className="w-32" />
+            </div>
+            <Button type="submit" size="sm" variant="outline">
+              Legg til
+            </Button>
+          </form>
         </CardContent>
       </Card>
     </div>

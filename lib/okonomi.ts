@@ -232,6 +232,40 @@ export async function getOwnership(
   return { owners: full, total };
 }
 
+export type TimelineFull = {
+  id: string;
+  year: number;
+  date: string;
+  title: string;
+  kind: string;
+  amount?: number;
+};
+
+/** Ekte hendelseslogg (tidslinje) for en eiendom. */
+export async function getTimeline(propertyId: string): Promise<TimelineFull[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("property_events")
+    .select("id,event_date,title,kind,amount")
+    .eq("property_id", propertyId)
+    .order("event_date", { ascending: false });
+  const rows = (data ?? []) as {
+    id: string;
+    event_date: string;
+    title: string;
+    kind: string;
+    amount: number | null;
+  }[];
+  return rows.map((e) => ({
+    id: e.id,
+    year: Number(String(e.event_date).slice(0, 4)),
+    date: e.event_date,
+    title: e.title,
+    kind: e.kind,
+    amount: e.amount != null ? Number(e.amount) : undefined,
+  }));
+}
+
 type PropertyFinance = {
   id: string;
   name: string;

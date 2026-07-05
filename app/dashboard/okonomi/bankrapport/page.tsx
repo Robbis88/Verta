@@ -1,4 +1,4 @@
-import { getEconomyContext } from "@/lib/okonomi";
+import { getEconomyContext, getTimeline } from "@/lib/okonomi";
 import { formatNok } from "@/lib/utils";
 import { MoneyRow, EmptyOkonomi } from "@/components/okonomi/ui";
 import { DemoAction } from "@/components/okonomi/demo-action";
@@ -23,7 +23,8 @@ export default async function BankrapportPage({
   const interestCover =
     annualInterest > 0 ? (last.income / annualInterest).toFixed(1) : "–";
 
-  const maintenance = economy.timeline.filter(
+  const timeline = await getTimeline(selected.id);
+  const maintenance = (timeline.length ? timeline : economy.timeline).filter(
     (e) => e.kind === "oppussing" || e.kind === "vedlikehold",
   );
 
