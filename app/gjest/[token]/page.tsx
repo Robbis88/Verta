@@ -11,7 +11,7 @@ import {
 import { formatNok } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { GuestCancel } from "@/components/booking/guest-cancel";
-import { cancelBookingAsGuest, payDeposit } from "./actions";
+import { cancelBookingAsGuest, payDeposit, payRemaining } from "./actions";
 
 type GuestBooking = {
   guest_name: string;
@@ -183,6 +183,8 @@ export default async function GuestPage({
   }
 
   const accessText = booking.access_code ?? property.access_info ?? null;
+  const remainingDue =
+    !booking.remaining_paid && Number(booking.remaining_amount ?? 0) > 0;
 
   const canCancel = isBeforeCheckIn(booking.check_in);
   const fraction = refundFractionForCheckIn(booking.check_in);
@@ -213,6 +215,23 @@ export default async function GuestPage({
           <Row label="Innsjekk" value={formatDate(booking.check_in)} />
           <Row label="Utsjekk" value={formatDate(booking.check_out)} />
         </Section>
+
+        {remainingDue && (
+          <Section title="Restbeløp">
+            <p className="text-sm text-ink">
+              Du har betalt depositum. Restbeløpet på{" "}
+              <span className="font-semibold text-navy">
+                {formatNok(Number(booking.remaining_amount ?? 0))}
+              </span>{" "}
+              betales før innsjekk.
+            </p>
+            <form action={payRemaining.bind(null, token)} className="mt-2">
+              <Button type="submit">
+                Betal restbeløp {formatNok(Number(booking.remaining_amount ?? 0))}
+              </Button>
+            </form>
+          </Section>
+        )}
 
         {accessText && (
           <Section title="Slik kommer du inn">

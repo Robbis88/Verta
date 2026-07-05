@@ -6,6 +6,8 @@ import {
   sendBookingConfirmation,
   sendOwnerBookingNotification,
   sendCancellationNotices,
+  sendRemainingReceipt,
+  sendRemainingDue,
 } from "@/lib/email";
 
 /**
@@ -192,6 +194,91 @@ export async function cancelAndRefund(opts: {
   });
 
   return { ok: true, refunded: refundAmount, wasPaid };
+}
+
+/**
+ * Sender kvittering til gjest + eier når restbeløpet er betalt. Kalles fra
+ * webhooken etter at remaining_paid er satt.
+ */
+export async function notifyRemainingPaid(bookingId: string): Promise<void> {
+  const supabase = createAdminClient();
+  const { data: booking } = await supabase
+    .from("bookings")
+    .select("id,guest_name,guest_email,remaining_amount,property_id")
+    .eq("id", bookingId)
+    .single();
+  if (!booking) return;
+
+  const { data: property } = await supabase
+    .from("properties")
+    .select("name,user_id")
+    .eq("id", booking.property_id)
+    .single();
+  const { data: owner } = property
+    ? await supabase
+        .from("users")
+        .select("email")
+        .eq("id", property.user_id)
+        .single()
+    : { data: null };
+
+  await sendRemainingReceipt({
+    guestEmail: booking.guest_email,
+    ownerEmail: owner?.email ?? null,
+    guestName: booking.guest_name,
+    propertyName: property?.name ?? "",
+    amount: Number(booking.remaining_amount ?? 0),
+  });
+}
+
+/**
+ * Sender påminnelse om restbetaling for bekreftede bookinger der innsjekk er
+ * innen `withinDays` og resten ikke er betalt/påminnet. Setter
+ * remaining_reminded_at så påminnelsen ikke gjentas. Returnerer antall sendt.
+ */
+export async function sendRemainingReminders(withinDays = 7): Promise<number> {
+  const supabase = createAdminClient();
+  const today = new Date().toISOString().slice(0, 10);
+  const cutoff = new Date(Date.now() + withinDays * 86_400_000)
+    .toISOString()
+    .slice(0, 10);
+
+  const { data: rows } = await supabase
+    .from("bookings")
+    .select(
+      "id,guest_name,guest_email,remaining_amount,check_in,property_id,guest_token",
+    )
+    .eq("status", "confirmed")
+    .eq("remaining_paid", false)
+    .is("remaining_reminded_at", null)
+    .gt("remaining_amount", 0)
+    .gte("check_in", today)
+    .lte("check_in", cutoff);
+
+  const bookings = rows ?? [];
+  let sent = 0;
+  for (const b of bookings) {
+    if (!b.guest_email) continue;
+    const { data: property } = await supabase
+      .from("properties")
+      .select("name")
+      .eq("id", b.property_id)
+      .single();
+    await sendRemainingDue({
+      to: b.guest_email,
+      guestName: b.guest_name,
+      propertyName: property?.name ?? "",
+      checkIn: b.check_in,
+      remainingAmount: Number(b.remaining_amount ?? 0),
+      payToken: b.guest_token,
+    });
+    await supabase
+      .from("bookings")
+      .update({ remaining_reminded_at: new Date().toISOString() })
+      .eq("id", b.id);
+    sent += 1;
+  }
+  return sent;
 }
 
 /**

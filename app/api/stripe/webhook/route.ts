@@ -2,7 +2,7 @@ import type Stripe from "stripe";
 
 import { stripe, planFromPriceId, EXTRA_PROPERTY_PRICE_ID } from "@/lib/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { finalizeBooking } from "@/lib/booking";
+import { finalizeBooking, notifyRemainingPaid } from "@/lib/booking";
 import { loggHendelse } from "@/lib/kontrollrom";
 
 /**
@@ -114,7 +114,7 @@ export async function POST(request: Request) {
 
       // Restbetaling: marker som betalt (bookingen er allerede bekreftet).
       if (kind === "remaining") {
-        await supabase
+        const { data: rp } = await supabase
           .from("bookings")
           .update({
             remaining_paid: true,
@@ -123,7 +123,11 @@ export async function POST(request: Request) {
               : null,
           })
           .eq("id", bookingId)
-          .eq("remaining_paid", false);
+          .eq("remaining_paid", false)
+          .select("id");
+        if (rp && rp.length > 0) {
+          await notifyRemainingPaid(bookingId);
+        }
         break;
       }
 

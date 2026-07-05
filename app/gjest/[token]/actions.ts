@@ -92,6 +92,80 @@ export async function payDeposit(token: string): Promise<void> {
 }
 
 /**
+ * Gjesten betaler restbeløpet (siste 50 %) på en bekreftet booking.
+ * Oppretter Stripe Checkout (kind: remaining); webhooken markerer remaining_paid.
+ */
+export async function payRemaining(token: string): Promise<void> {
+  const supabase = createAdminClient();
+  const back = `/gjest/${token}?feil=1`;
+
+  const { data: booking } = await supabase
+    .from("bookings")
+    .select(
+      "id,status,remaining_amount,remaining_paid,property_id,guest_email,source",
+    )
+    .eq("guest_token", token)
+    .maybeSingle();
+
+  if (!booking || booking.status !== "confirmed" || booking.remaining_paid) {
+    redirect(back);
+  }
+  const remaining = Number(booking!.remaining_amount ?? 0);
+  if (remaining <= 0) redirect(back);
+
+  const { data: property } = await supabase
+    .from("properties")
+    .select("name,user_id")
+    .eq("id", booking!.property_id)
+    .single();
+  const { data: owner } = property
+    ? await supabase
+        .from("users")
+        .select("stripe_connect_id,payouts_enabled")
+        .eq("id", property.user_id)
+        .single()
+    : { data: null };
+
+  if (
+    !stripe ||
+    !stripeEnabled ||
+    !owner?.payouts_enabled ||
+    !owner?.stripe_connect_id
+  ) {
+    redirect(back);
+  }
+
+  const rate = commissionRate(booking!.source as BookingSource);
+  const origin = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+
+  const session = await stripe.checkout.sessions.create({
+    mode: "payment",
+    locale: "nb",
+    line_items: [
+      {
+        price_data: {
+          currency: "nok",
+          product_data: { name: `Restbeløp — ${property?.name ?? "opphold"}` },
+          unit_amount: Math.round(remaining * 100),
+        },
+        quantity: 1,
+      },
+    ],
+    payment_intent_data: {
+      application_fee_amount: Math.round(remaining * rate * 100),
+      transfer_data: { destination: owner.stripe_connect_id },
+      metadata: { booking_id: booking!.id, kind: "remaining" },
+    },
+    customer_email: booking!.guest_email || undefined,
+    metadata: { booking_id: booking!.id, kind: "remaining" },
+    success_url: `${origin}/gjest/${token}?betalt=1`,
+    cancel_url: `${origin}/gjest/${token}`,
+  });
+
+  redirect(session.url!);
+}
+
+/**
  * Gjesten avbestiller sitt eget opphold via den tokeniserte gjestesiden.
  * Token-en (guest_token) er tilgangsnøkkelen — ingen innlogging. Refusjon
  * beregnes fra kanselleringspolicyen ut fra hvor lenge før innsjekk det er.

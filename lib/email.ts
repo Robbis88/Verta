@@ -436,6 +436,80 @@ export async function sendBookingRejected(opts: {
   });
 }
 
+/** Påminnelse til gjesten om å betale restbeløpet før innsjekk. */
+export async function sendRemainingDue(opts: {
+  to: string;
+  guestName: string;
+  propertyName: string;
+  checkIn: string;
+  remainingAmount: number;
+  payToken: string;
+}): Promise<boolean> {
+  const body = `
+    <p style="font-size:15px;line-height:1.6;margin:0 0 20px;">
+      Hei ${opts.guestName}, innsjekk på <strong>${opts.propertyName}</strong>
+      nærmer seg (${formatDate(opts.checkIn)}). Restbeløpet på
+      <strong>${formatNok(opts.remainingAmount)}</strong> betales før du sjekker
+      inn.
+    </p>
+    <div style="text-align:center;margin:24px 0 0;">
+      <a href="${SITE_URL}/gjest/${opts.payToken}"
+        style="display:inline-block;background:#d8a66a;color:#081b33;font-weight:600;
+        font-size:15px;text-decoration:none;padding:12px 28px;border-radius:8px;">
+        Betal restbeløp ${formatNok(opts.remainingAmount)}
+      </a>
+    </div>`;
+  return send({
+    to: opts.to,
+    subject: `Restbeløp forfaller: ${opts.propertyName}`,
+    html: layout("Betal restbeløpet før innsjekk", body),
+  });
+}
+
+/** Kvittering når restbeløpet er betalt: til gjest + eier. */
+export async function sendRemainingReceipt(opts: {
+  guestEmail?: string | null;
+  ownerEmail?: string | null;
+  guestName: string;
+  propertyName: string;
+  amount: number;
+}): Promise<void> {
+  const tasks: Promise<boolean>[] = [];
+  if (opts.guestEmail) {
+    tasks.push(
+      send({
+        to: opts.guestEmail,
+        subject: `Betalt i sin helhet: ${opts.propertyName}`,
+        html: layout(
+          "Alt er gjort opp ✅",
+          `<p style="font-size:15px;line-height:1.6;margin:0;">
+             Hei ${opts.guestName}, restbeløpet på
+             <strong>${formatNok(opts.amount)}</strong> er mottatt. Oppholdet er
+             fullt betalt — gleder oss til å se deg!
+           </p>`,
+        ),
+      }),
+    );
+  }
+  if (opts.ownerEmail) {
+    tasks.push(
+      send({
+        to: opts.ownerEmail,
+        subject: `Restbeløp betalt: ${opts.propertyName}`,
+        html: layout(
+          "Restbeløp betalt ✅",
+          `<p style="font-size:15px;line-height:1.6;margin:0;">
+             Gjesten har betalt restbeløpet på
+             <strong>${formatNok(opts.amount)}</strong> for
+             ${opts.propertyName}. Oppholdet er nå fullt betalt.
+           </p>`,
+        ),
+      }),
+    );
+  }
+  await Promise.allSettled(tasks);
+}
+
 /** Velkomst-e-post til nye brukere (sendes én gang ved første innlogging). */
 export async function sendWelcomeEmail(opts: {
   to: string;
