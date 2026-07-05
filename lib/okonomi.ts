@@ -120,9 +120,70 @@ async function computeIncome(
   };
 }
 
+const EXPENSE_LABELS: Record<string, string> = {
+  utilities: "Strøm, internett, avgifter",
+  insurance: "Forsikring",
+  cleaning: "Rengjøring / vask",
+  maintenance: "Vedlikehold",
+  supplies: "Forbruksvarer",
+  fee: "Gebyrer",
+  other: "Andre kostnader",
+};
+const EXPENSE_ORDER = [
+  "utilities",
+  "insurance",
+  "cleaning",
+  "maintenance",
+  "supplies",
+  "fee",
+  "other",
+];
+
+type ExpenseRow = { category: string; amount: number | null };
+
+/**
+ * Regner ekte månedlige kostnader fra utgiftene (snitt av siste 12 måneder per
+ * kategori). Beholder lån-linjene (renter/avdrag) fra mock til vi har lånedata.
+ * Returnerer null hvis det ikke finnes utgifter (da beholdes mock).
+ */
+async function computeCosts(
+  supabase: Supa,
+  propertyId: string,
+  economy: Economy,
+): Promise<Economy["costs"] | null> {
+  const from = new Date();
+  from.setUTCMonth(from.getUTCMonth() - 12);
+
+  const { data } = await supabase
+    .from("expenses")
+    .select("category,amount")
+    .eq("property_id", propertyId)
+    .gte("expense_date", from.toISOString().slice(0, 10));
+
+  const rows = (data ?? []) as ExpenseRow[];
+  if (rows.length === 0) return null;
+
+  const byCat: Record<string, number> = {};
+  for (const e of rows) {
+    byCat[e.category] = (byCat[e.category] ?? 0) + (Number(e.amount) || 0);
+  }
+
+  const loanLines = economy.costs.filter(
+    (c) => c.key === "renter" || c.key === "avdrag",
+  );
+  const expenseLines = EXPENSE_ORDER.filter((c) => byCat[c]).map((c) => ({
+    key: c,
+    label: EXPENSE_LABELS[c],
+    monthly: Math.round(byCat[c] / 12),
+  }));
+
+  return [...loanLines, ...expenseLines];
+}
+
 /**
  * Kontekst for Eiendomsøkonomi: brukerens ekte eiendommer (via RLS) + valgt
- * eiendom. Inntektene er ekte (fra bookinger); resten er foreløpig mock.
+ * eiendom. Inntekter (bookinger) og kostnader (utgifter) er ekte; lån, verdi,
+ * eiere og historikk er foreløpig mock.
  */
 export async function getEconomyContext(eiendomId?: string): Promise<{
   properties: PropertyRef[];
@@ -146,6 +207,10 @@ export async function getEconomyContext(eiendomId?: string): Promise<{
   // Ekte inntekt overstyrer mock hvis eiendommen har bookinger.
   const realIncome = await computeIncome(supabase, selected.id);
   if (realIncome) economy.income = realIncome;
+
+  // Ekte kostnader overstyrer mock hvis eiendommen har utgifter.
+  const realCosts = await computeCosts(supabase, selected.id, economy);
+  if (realCosts) economy.costs = realCosts;
 
   return { properties, selected, economy };
 }
