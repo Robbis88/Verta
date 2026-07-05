@@ -180,10 +180,39 @@ async function computeCosts(
   return [...loanLines, ...expenseLines];
 }
 
+type PropertyFinance = {
+  id: string;
+  name: string;
+  market_value: number | null;
+  loan_amount: number | null;
+  interest_rate: number | null;
+  monthly_principal: number | null;
+};
+
+/** Overstyrer mock-verdi/lån/rente med eiendommens ekte finansfelter. */
+function applyFinancials(economy: Economy, row: PropertyFinance): void {
+  if (row.market_value != null) economy.value = Number(row.market_value);
+  if (row.loan_amount != null) economy.loan = Number(row.loan_amount);
+  if (row.interest_rate != null) {
+    economy.interestRatePct = Number(row.interest_rate);
+  }
+  // Renter utledes av lån + rente.
+  const renter = economy.costs.find((c) => c.key === "renter");
+  if (renter) {
+    renter.monthly = Math.round(
+      (economy.loan * (economy.interestRatePct / 100)) / 12,
+    );
+  }
+  if (row.monthly_principal != null) {
+    const avdrag = economy.costs.find((c) => c.key === "avdrag");
+    if (avdrag) avdrag.monthly = Number(row.monthly_principal);
+  }
+}
+
 /**
  * Kontekst for Eiendomsøkonomi: brukerens ekte eiendommer (via RLS) + valgt
- * eiendom. Inntekter (bookinger) og kostnader (utgifter) er ekte; lån, verdi,
- * eiere og historikk er foreløpig mock.
+ * eiendom. Inntekter (bookinger), kostnader (utgifter) og verdi/lån/rente
+ * (eiendomsfelter) er ekte; eiere og historikk er foreløpig mock.
  */
 export async function getEconomyContext(eiendomId?: string): Promise<{
   properties: PropertyRef[];
@@ -193,16 +222,19 @@ export async function getEconomyContext(eiendomId?: string): Promise<{
   const supabase = await createClient();
   const { data } = await supabase
     .from("properties")
-    .select("id,name")
+    .select("id,name,market_value,loan_amount,interest_rate,monthly_principal")
     .order("created_at", { ascending: true });
 
-  const properties = (data ?? []) as PropertyRef[];
-  if (properties.length === 0) {
+  const rows = (data ?? []) as PropertyFinance[];
+  const properties: PropertyRef[] = rows.map((r) => ({ id: r.id, name: r.name }));
+  if (rows.length === 0) {
     return { properties, selected: null, economy: null };
   }
 
-  const selected = properties.find((p) => p.id === eiendomId) ?? properties[0];
+  const selectedRow = rows.find((r) => r.id === eiendomId) ?? rows[0];
+  const selected: PropertyRef = { id: selectedRow.id, name: selectedRow.name };
   const economy = getMockEconomy(selected.id, selected.name);
+  applyFinancials(economy, selectedRow);
 
   // Ekte inntekt overstyrer mock hvis eiendommen har bookinger.
   const realIncome = await computeIncome(supabase, selected.id);

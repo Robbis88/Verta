@@ -192,6 +192,10 @@ export default async function PropertyDetailPage({
               sleeping_arrangements: p.sleeping_arrangements,
               check_in_time: p.check_in_time,
               check_out_time: p.check_out_time,
+              market_value: p.market_value,
+              loan_amount: p.loan_amount,
+              interest_rate: p.interest_rate,
+              monthly_principal: p.monthly_principal,
             }}
           />
         </CardContent>

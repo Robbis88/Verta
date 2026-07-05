@@ -44,6 +44,11 @@ export type Property = {
   check_out_time?: string | null;
   lat?: number | null;
   lng?: number | null;
+  // Eiendomsfinans — se sql/033.
+  market_value?: number | null;
+  loan_amount?: number | null;
+  interest_rate?: number | null;
+  monthly_principal?: number | null;
   created_at: string;
   updated_at: string;
 };

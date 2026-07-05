@@ -21,6 +21,10 @@ export const propertySchema = z.object({
   sleeping_arrangements: z.string().max(1000).optional().or(z.literal("")),
   check_in_time: z.string().max(20).optional().or(z.literal("")),
   check_out_time: z.string().max(20).optional().or(z.literal("")),
+  market_value: z.coerce.number().min(0).max(1_000_000_000).optional(),
+  loan_amount: z.coerce.number().min(0).max(1_000_000_000).optional(),
+  interest_rate: z.coerce.number().min(0).max(30).optional(),
+  monthly_principal: z.coerce.number().min(0).max(1_000_000).optional(),
 });
 export type PropertyInput = z.infer<typeof propertySchema>;
 

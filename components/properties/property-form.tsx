@@ -35,6 +35,10 @@ export type PropertyDefaults = {
   sleeping_arrangements?: string | null;
   check_in_time?: string | null;
   check_out_time?: string | null;
+  market_value?: number | null;
+  loan_amount?: number | null;
+  interest_rate?: number | null;
+  monthly_principal?: number | null;
 };
 
 const initialState: PropertyFormState = {};
@@ -186,6 +190,52 @@ export function PropertyForm({
         </a>
         .
       </p>
+
+      <div className="flex flex-col gap-1.5">
+        <Label>Økonomi (for Eiendomsøkonomi)</Label>
+        <p className="text-xs text-muted-foreground">
+          Brukes til balanse, egenkapital, belåningsgrad og renter. Valgfritt.
+        </p>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Antatt verdi (kr)" error={state.fieldErrors?.market_value}>
+            <Input
+              name="market_value"
+              type="number"
+              min={0}
+              placeholder="F.eks. 3500000"
+              defaultValue={defaults?.market_value ?? ""}
+            />
+          </Field>
+          <Field label="Lån (kr)" error={state.fieldErrors?.loan_amount}>
+            <Input
+              name="loan_amount"
+              type="number"
+              min={0}
+              placeholder="F.eks. 2100000"
+              defaultValue={defaults?.loan_amount ?? ""}
+            />
+          </Field>
+          <Field label="Rente (%)" error={state.fieldErrors?.interest_rate}>
+            <Input
+              name="interest_rate"
+              type="number"
+              min={0}
+              step={0.01}
+              placeholder="F.eks. 5.4"
+              defaultValue={defaults?.interest_rate ?? ""}
+            />
+          </Field>
+          <Field label="Avdrag per måned (kr)" error={state.fieldErrors?.monthly_principal}>
+            <Input
+              name="monthly_principal"
+              type="number"
+              min={0}
+              placeholder="F.eks. 4000"
+              defaultValue={defaults?.monthly_principal ?? ""}
+            />
+          </Field>
+        </div>
+      </div>
 
       <Field label="Bookingmodus" error={state.fieldErrors?.booking_mode}>
         <select
