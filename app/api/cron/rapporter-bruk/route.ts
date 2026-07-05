@@ -7,15 +7,14 @@ import { rapporterBruk } from "@/lib/kontrollrom";
  * Krever CRON_SECRET kun hvis satt.
  */
 export async function GET(request: Request) {
-  if (process.env.CRON_SECRET) {
-    const auth = request.headers.get("authorization");
-    const nokkel = request.headers.get("x-api-key");
-    const ok =
-      auth === `Bearer ${process.env.CRON_SECRET}` ||
-      (!!process.env.KONTROLLROM_KEY && nokkel === process.env.KONTROLLROM_KEY);
-    if (!ok) {
-      return new Response("Unauthorized", { status: 401 });
-    }
+  const auth = request.headers.get("authorization");
+  const nokkel = request.headers.get("x-api-key");
+  const okCron =
+    !!process.env.CRON_SECRET && auth === `Bearer ${process.env.CRON_SECRET}`;
+  const okKey =
+    !!process.env.KONTROLLROM_KEY && nokkel === process.env.KONTROLLROM_KEY;
+  if (!okCron && !okKey) {
+    return new Response("Unauthorized", { status: 401 });
   }
 
   try {
