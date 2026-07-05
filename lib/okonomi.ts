@@ -180,6 +180,58 @@ async function computeCosts(
   return [...loanLines, ...expenseLines];
 }
 
+export type OwnerFull = {
+  id: string;
+  name: string;
+  sharePct: number;
+  paid: number;
+  shouldPay: number;
+};
+
+/** Ekte medeiere + innbetalinger for en eiendom (delt eierskap-siden). */
+export async function getOwnership(
+  propertyId: string,
+): Promise<{ owners: OwnerFull[]; total: number }> {
+  const supabase = await createClient();
+  const { data: ownersData } = await supabase
+    .from("property_owners")
+    .select("id,name,share_pct")
+    .eq("property_id", propertyId)
+    .order("created_at", { ascending: true });
+  const owners = (ownersData ?? []) as {
+    id: string;
+    name: string;
+    share_pct: number;
+  }[];
+
+  const { data: contribData } = await supabase
+    .from("owner_contributions")
+    .select("owner_id,amount")
+    .eq("property_id", propertyId);
+  const contribs = (contribData ?? []) as {
+    owner_id: string;
+    amount: number | null;
+  }[];
+
+  const paidByOwner: Record<string, number> = {};
+  let total = 0;
+  for (const c of contribs) {
+    const a = Number(c.amount) || 0;
+    paidByOwner[c.owner_id] = (paidByOwner[c.owner_id] ?? 0) + a;
+    total += a;
+  }
+
+  const full: OwnerFull[] = owners.map((o) => ({
+    id: o.id,
+    name: o.name,
+    sharePct: Number(o.share_pct),
+    paid: Math.round(paidByOwner[o.id] ?? 0),
+    shouldPay: Math.round(total * (Number(o.share_pct) / 100)),
+  }));
+
+  return { owners: full, total };
+}
+
 type PropertyFinance = {
   id: string;
   name: string;
