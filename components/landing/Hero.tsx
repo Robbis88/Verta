@@ -8,14 +8,15 @@ export function Hero() {
       <div className="mx-auto grid max-w-6xl items-center gap-12 px-6 py-16 md:grid-cols-2 md:py-24">
         <div>
           <span className="inline-block rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-medium text-gold-light">
-            Plattform for ferieboliger
+            For hytteeiere og ferieboliger
           </span>
           <h1 className="mt-5 text-4xl font-bold leading-[1.1] tracking-tight text-white sm:text-5xl">
-            Administrer ferieboliger fra én plattform
+            Booking, drift og økonomi for hytta – samlet
           </h1>
           <p className="mt-5 max-w-lg text-lg leading-relaxed text-white/70">
-            Samle bookinger, økonomi, dokumenter og gjestekommunikasjon på ett
-            sted.
+            Ta imot bookinger og betaling direkte, styr vask og vedlikehold, og
+            få full oversikt over hva hytta koster, tjener og er verdt — også når
+            dere er flere eiere.
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <a
@@ -32,7 +33,8 @@ export function Hero() {
             </a>
           </div>
           <p className="mt-6 text-sm text-white/50">
-            Norsk skatterapport · Smartlås · Direkte bookinger uten gebyr
+            Direkte bookinger med betaling · Eiendomsøkonomi · Delt eierskap ·
+            Smartlås · Norsk skatterapport
           </p>
         </div>
 

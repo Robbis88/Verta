@@ -1,9 +1,9 @@
 import {
   CalendarCheck,
   CalendarDays,
-  Wallet,
-  FolderArchive,
-  MessageSquare,
+  TrendingUp,
+  Users,
+  KeyRound,
   Wrench,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -11,33 +11,33 @@ import type { LucideIcon } from "lucide-react";
 const features: { icon: LucideIcon; title: string; text: string }[] = [
   {
     icon: CalendarCheck,
-    title: "Bookinger",
-    text: "Samle bookinger fra alle kanaler, ta imot direkte uten gebyr, og unngå dobbeltbooking.",
+    title: "Booking og betaling",
+    text: "Egen bookingside med bilder, kart og fasiliteter. Ta imot bookinger og betaling direkte — eller godkjenn hver gjest med depositum.",
   },
   {
     icon: CalendarDays,
     title: "Kalender",
-    text: "Én delt kalender med toveis synk mot Airbnb og Booking. Alltid oppdatert tilgjengelighet.",
+    text: "Én delt kalender med toveis synk mot Airbnb og Booking. Alltid oppdatert tilgjengelighet, uten dobbeltbooking.",
   },
   {
-    icon: Wallet,
-    title: "Økonomi",
-    text: "Inntekter, utgifter og utbetalinger samlet — og norsk skatterapport ferdig utfylt.",
+    icon: TrendingUp,
+    title: "Eiendomsøkonomi",
+    text: "Se hva hytta koster og tjener per måned, kvartal og år — resultat før og etter skatt, kontantstrøm og ferdig bankrapport.",
   },
   {
-    icon: FolderArchive,
-    title: "Dokumenter",
-    text: "Kontrakter, forsikring, manualer og kvitteringer trygt lagret per eiendom.",
+    icon: Users,
+    title: "Delt eierskap",
+    text: "Eierandeler, hvem som har betalt hva, og automatisk forslag til oppgjør når dere er flere som eier sammen.",
   },
   {
-    icon: MessageSquare,
+    icon: KeyRound,
     title: "Gjester",
-    text: "Digital gjesteguide, adgangskoder og forslag til svar — proff opplevelse for gjesten.",
+    text: "Digital gjesteguide, adgangskoder og smartlås — en proff opplevelse fra booking til utsjekk.",
   },
   {
     icon: Wrench,
-    title: "Vedlikehold",
-    text: "Saker, rengjøring og oppgaver med varsler, så ingenting faller mellom to stoler.",
+    title: "Drift og vedlikehold",
+    text: "Rengjøring, vaskehjelp, vedlikeholdssaker og lager med varsler, så ingenting faller mellom to stoler.",
   },
 ];
 

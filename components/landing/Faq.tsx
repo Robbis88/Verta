@@ -1,11 +1,11 @@
 const faqs = [
   {
     q: "Hvordan kommer bookingene inn i Verta?",
-    a: "Du kobler kalenderne fra Airbnb og Booking.com med toveis iCal-synk, og kan i tillegg ta imot direkte bookinger via din egen bookingside — uten gebyr. Alt samles i én kalender uten dobbeltbooking.",
+    a: "Du kobler kalenderne fra Airbnb og Booking.com med toveis iCal-synk, og tar i tillegg imot direkte bookinger via din egen bookingside med bilder, kart og fasiliteter. Du velger selv: la gjesten betale direkte, eller godkjenn hver forespørsel med depositum. Alt samles i én kalender uten dobbeltbooking.",
   },
   {
     q: "Hvordan fungerer utbetalinger og økonomi?",
-    a: "Verta samler inntekter, utgifter og utbetalinger per eiendom, og fyller ut grunnlaget til den norske skatterapporten automatisk. Du får full oversikt uten regneark.",
+    a: "Gjesten betaler via Verta, pengene går rett til deg, og Verta tar en liten provisjon. Under Eiendomsøkonomi ser du hva hytta koster og tjener per måned, kvartal og år — resultat før og etter skatt, kontantstrøm, delt eierskap og en ferdig bankrapport. Grunnlaget til skatterapporten fylles ut automatisk.",
   },
   {
     q: "Hvilke integrasjoner støttes?",
