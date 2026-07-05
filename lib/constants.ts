@@ -40,5 +40,17 @@ export type BoostStatus = (typeof BOOST_STATUSES)[number];
 /** Verta tar 10 % provisjon av bookinger fra egne sosiale kanaler. */
 export const COMMISSION_RATE = 0.1;
 
+/** Lavere sats på direktebookinger betalt via Verta (dekker gebyr + margin). */
+export const DIRECT_COMMISSION_RATE = 0.03;
+
+/** Provisjonssats Verta trekker per bookingkilde ved betaling via Verta. */
+export function commissionRate(source: BookingSource): number {
+  if (source === "verta_instagram" || source === "verta_facebook") {
+    return COMMISSION_RATE;
+  }
+  if (source === "verta_direct") return DIRECT_COMMISSION_RATE;
+  return 0; // airbnb/booking importeres — betales ikke via Verta
+}
+
 /** Verta sitt formidlingsgebyr på vaske-oppdrag i markedsplassen. */
 export const MARKET_FEE_RATE = 0.12;

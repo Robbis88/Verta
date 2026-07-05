@@ -1,15 +1,16 @@
 "use server";
 
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { bookingSchema } from "@/lib/validation";
 import { logAudit } from "@/lib/audit";
-import {
-  sendBookingConfirmation,
-  sendOwnerBookingNotification,
-} from "@/lib/email";
-import { provisionBookingAccess } from "@/lib/access";
+import { stripe, stripeEnabled } from "@/lib/stripe";
+import { commissionRate } from "@/lib/constants";
+import type { BookingSource } from "@/lib/constants";
+import { finalizeBooking } from "@/lib/booking";
 import { calculateBookingTotal, quoteBookingTotal, type Quote } from "@/lib/pricing";
 import { loggHendelse } from "@/lib/kontrollrom";
 
@@ -33,12 +34,32 @@ function nightsBetween(checkIn: string, checkOut: string): number {
   return Math.max(1, Math.round(ms / 86_400_000));
 }
 
+/** Kildekode fra en delt lenke (?kilde=) → booking-source for attribusjon. */
+function mapSource(raw: string | undefined): BookingSource {
+  if (raw === "instagram") return "verta_instagram";
+  if (raw === "facebook") return "verta_facebook";
+  return "verta_direct";
+}
+
+async function siteOrigin(): Promise<string> {
+  return (
+    (await headers()).get("origin") ??
+    process.env.NEXT_PUBLIC_SITE_URL ??
+    "http://localhost:3000"
+  );
+}
+
 /**
  * Oppretter en direkte booking fra den offentlige booking-siden.
+ * Har eieren aktivert utbetaling (Stripe Connect) og eiendommen en pris, holdes
+ * datoene som `pending` og gjesten sendes til Stripe Checkout — bookingen
+ * bekreftes først når betalingen er gjennomført (via webhook). Ellers opprettes
+ * en gratis forespørsel som før (eier tar kontakt).
  * Gjesten er ikke innlogget, så vi bruker admin-klienten (omgår RLS).
  */
 export async function createDirectBooking(
   slug: string,
+  sourceRaw: string | undefined,
   _prev: BookingFormState,
   formData: FormData,
 ): Promise<BookingFormState> {
@@ -47,12 +68,13 @@ export async function createDirectBooking(
     return { error: "Sjekk feltene under", fieldErrors: toFieldErrors(parsed.error) };
   }
   const data = parsed.data;
+  const source = mapSource(sourceRaw);
 
   const supabase = createAdminClient();
 
   const { data: property } = await supabase
     .from("properties")
-    .select("id,user_id,name,access_info")
+    .select("id,user_id,name")
     .eq("slug", slug)
     .single();
 
@@ -71,6 +93,30 @@ export async function createDirectBooking(
     return { error: "Disse datoene er dessverre opptatt. Velg andre datoer." };
   }
 
+  const nights = nightsBetween(data.check_in, data.check_out);
+  const total = await calculateBookingTotal(
+    property.id,
+    data.check_in,
+    data.check_out,
+  );
+
+  // Kan vi kreve betaling? Eieren må ha ferdig Connect-onboarding og en pris.
+  const { data: owner } = await supabase
+    .from("users")
+    .select("stripe_connect_id,payouts_enabled")
+    .eq("id", property.user_id)
+    .single();
+
+  const canCharge = Boolean(
+    stripe &&
+      stripeEnabled &&
+      owner?.payouts_enabled &&
+      owner?.stripe_connect_id &&
+      total &&
+      total > 0,
+  );
+
+  const rate = commissionRate(source);
   const { data: booking, error } = await supabase
     .from("bookings")
     .insert({
@@ -80,92 +126,89 @@ export async function createDirectBooking(
       guest_phone: data.guest_phone || null,
       check_in: data.check_in,
       check_out: data.check_out,
-      nights: nightsBetween(data.check_in, data.check_out),
-      total_price: await calculateBookingTotal(
-        property.id,
-        data.check_in,
-        data.check_out,
-      ),
-      source: "verta_direct",
-      status: "confirmed",
+      nights,
+      total_price: total,
+      source,
+      status: canCharge ? "pending" : "confirmed",
+      ...(canCharge
+        ? {
+            payment_status: "pending",
+            amount_total: total,
+            application_fee: Math.round((total as number) * rate * 100) / 100,
+            hold_expires_at: new Date(Date.now() + 30 * 60_000).toISOString(),
+          }
+        : {}),
     })
     .select("id,guest_token")
     .single();
 
-  if (error) return { error: error.message };
+  if (error) {
+    // 23P01 = exclusion_violation (bookings_no_overlap) — tapt kappløp om datoene.
+    if (error.code === "23P01") {
+      return { error: "Disse datoene ble nettopp opptatt. Velg andre datoer." };
+    }
+    return { error: error.message };
+  }
 
   await logAudit({
     user_id: property.user_id,
     action: "booking.created",
     resource_type: "booking",
     resource_id: booking.id,
-    changes: { source: "verta_direct" },
+    changes: { source, paid: canCharge },
   });
 
-  await loggHendelse({
-    type: "system",
-    alvorlighet: "info",
-    tittel: `Ny booking · ${property.name}`,
-    detaljer: {
-      gjest: data.guest_name,
-      innsjekk: data.check_in,
-      utsjekk: data.check_out,
-      kilde: "verta_direct",
-    },
-    bruker_ref: data.guest_name,
-  });
-
-  // Skaff tilkomst: smartlås-kode (auto) eller eierens nøkkelboks-info.
-  const access = await provisionBookingAccess({
-    propertyId: property.id,
-    checkIn: data.check_in,
-    checkOut: data.check_out,
-    label: `Verta · ${data.guest_name}`,
-    accessInfo: property.access_info,
-  });
-
-  // Lagre en evt. smartlås-kode på bookingen (for visning + tilbaketrekking).
-  if (access?.type === "smartlock") {
-    await supabase
-      .from("bookings")
-      .update({ access_code: access.code, access_code_id: access.accessCodeId })
-      .eq("id", booking.id);
+  // Gratis-flyt: bekreft med en gang (tilkomst + e-post) og vis kvittering.
+  if (!canCharge) {
+    await loggHendelse({
+      type: "system",
+      alvorlighet: "info",
+      tittel: `Ny booking · ${property.name}`,
+      detaljer: {
+        gjest: data.guest_name,
+        innsjekk: data.check_in,
+        utsjekk: data.check_out,
+        kilde: source,
+      },
+      bruker_ref: data.guest_name,
+    });
+    await finalizeBooking(booking.id);
+    return { success: true };
   }
 
-  // Send bekreftelse (gjest) + varsel (eier). Feiler aldri bookingen.
-  const nights = nightsBetween(data.check_in, data.check_out);
-  const { data: owner } = await supabase
-    .from("users")
-    .select("email")
-    .eq("id", property.user_id)
-    .single();
+  // Betalings-flyt: Stripe Checkout med destination charge til eieren.
+  // application_fee er Vertas provisjon; resten overføres til eierens konto.
+  // Betalingsmetoder (kort, Klarna) styres av det som er aktivert i Stripe.
+  const origin = await siteOrigin();
+  const session = await stripe!.checkout.sessions.create({
+    mode: "payment",
+    locale: "nb",
+    line_items: [
+      {
+        price_data: {
+          currency: "nok",
+          product_data: {
+            name: `${property.name} — ${nights} ${nights === 1 ? "natt" : "netter"}`,
+          },
+          unit_amount: Math.round((total as number) * 100),
+        },
+        quantity: 1,
+      },
+    ],
+    payment_intent_data: {
+      application_fee_amount: Math.round((total as number) * rate * 100),
+      transfer_data: { destination: owner!.stripe_connect_id! },
+      metadata: { booking_id: booking.id },
+    },
+    customer_email: data.guest_email || undefined,
+    metadata: { booking_id: booking.id },
+    success_url: `${origin}/properties/${slug}?betalt=1`,
+    cancel_url: `${origin}/properties/${slug}?avbrutt=1`,
+    // Reservasjonen holdes i 30 min; utløper checkouten frigis datoene.
+    expires_at: Math.floor(Date.now() / 1000) + 1800,
+  });
 
-  await Promise.allSettled([
-    data.guest_email
-      ? sendBookingConfirmation({
-          to: data.guest_email,
-          guestName: data.guest_name,
-          propertyName: property.name,
-          checkIn: data.check_in,
-          checkOut: data.check_out,
-          nights,
-          access,
-          guideToken: booking.guest_token,
-        })
-      : Promise.resolve(false),
-    owner?.email
-      ? sendOwnerBookingNotification({
-          to: owner.email,
-          propertyName: property.name,
-          guestName: data.guest_name,
-          guestEmail: data.guest_email || null,
-          checkIn: data.check_in,
-          checkOut: data.check_out,
-        })
-      : Promise.resolve(false),
-  ]);
-
-  return { success: true };
+  redirect(session.url!);
 }
 
 /**

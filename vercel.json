@@ -27,6 +27,10 @@
     {
       "path": "/api/cron/opprydding",
       "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/cron/release-holds",
+      "schedule": "*/15 * * * *"
     }
   ]
 }

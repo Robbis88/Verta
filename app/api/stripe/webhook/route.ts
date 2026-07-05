@@ -2,6 +2,7 @@ import type Stripe from "stripe";
 
 import { stripe, planFromPriceId, EXTRA_PROPERTY_PRICE_ID } from "@/lib/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { finalizeBooking } from "@/lib/booking";
 import { loggHendelse } from "@/lib/kontrollrom";
 
 /**
@@ -101,6 +102,58 @@ export async function POST(request: Request) {
         },
         bruker_ref: bruker?.email ?? undefined,
       });
+      break;
+    }
+
+    // Gjeste-booking betalt → bekreft bookingen og skaff tilkomst/e-post.
+    case "checkout.session.completed": {
+      const session = event.data.object as Stripe.Checkout.Session;
+      const bookingId = session.metadata?.booking_id;
+      if (!bookingId) break; // abonnement-checkout, ikke en booking
+
+      // Idempotent: bekreft kun hvis fortsatt pending (webhook kan gjenta).
+      const { data: updated } = await supabase
+        .from("bookings")
+        .update({
+          status: "confirmed",
+          payment_status: "paid",
+          stripe_session_id: session.id,
+          stripe_payment_intent: session.payment_intent
+            ? String(session.payment_intent)
+            : null,
+          hold_expires_at: null,
+        })
+        .eq("id", bookingId)
+        .eq("status", "pending")
+        .select("id");
+
+      if (updated && updated.length > 0) {
+        await finalizeBooking(bookingId);
+      }
+      break;
+    }
+
+    // Checkout utløp uten betaling → frigi reservasjonen så datoene åpnes igjen.
+    case "checkout.session.expired": {
+      const session = event.data.object as Stripe.Checkout.Session;
+      const bookingId = session.metadata?.booking_id;
+      if (!bookingId) break;
+      await supabase
+        .from("bookings")
+        .update({ status: "cancelled", payment_status: "failed" })
+        .eq("id", bookingId)
+        .eq("status", "pending");
+      break;
+    }
+
+    // Connect: eierens onboarding-status endret seg. Speil payouts_enabled.
+    // Krever at webhook-endepunktet også lytter på Connect-hendelser.
+    case "account.updated": {
+      const account = event.data.object as Stripe.Account;
+      await supabase
+        .from("users")
+        .update({ payouts_enabled: account.payouts_enabled === true })
+        .eq("stripe_connect_id", account.id);
       break;
     }
 

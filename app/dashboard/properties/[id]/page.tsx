@@ -13,6 +13,7 @@ import { PropertyForm } from "@/components/properties/property-form";
 import { DeletePropertyButton } from "@/components/properties/delete-property-button";
 import { BookingAddForm } from "@/components/bookings/booking-add-form";
 import { CancelBookingButton } from "@/components/bookings/cancel-booking-button";
+import { CopyButton } from "@/components/shared/copy-button";
 import { SmartLockCode } from "@/components/smartlock/smartlock-code";
 import { AvailabilityCalendar } from "@/components/calendar/availability-calendar";
 import { addIcalUrl, removeIcalUrl, syncIcal } from "../ical-actions";
@@ -65,6 +66,9 @@ export default async function PropertyDetailPage({
 
   const profile = await getCurrentProfile();
   const isPremium = profile?.plan === "premium";
+
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "";
+  const bookingUrl = `${siteUrl}/properties/${p.slug}`;
   const { data: lockData } = await supabase
     .from("smart_locks")
     .select("id,status,device_id,provider")
@@ -75,12 +79,7 @@ export default async function PropertyDetailPage({
   return (
     <div className="flex flex-col gap-8">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">{p.name}</h1>
-          <p className="text-sm text-muted-foreground">
-            Offentlig lenke: /properties/{p.slug}
-          </p>
-        </div>
+        <h1 className="text-2xl font-semibold">{p.name}</h1>
         <Link
           href="/dashboard/properties"
           className="text-sm text-muted-foreground hover:text-foreground"
@@ -88,6 +87,55 @@ export default async function PropertyDetailPage({
           ← Tilbake
         </Link>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Del bookingsiden</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4 text-sm">
+          <p className="text-muted-foreground">
+            Dette er den offentlige siden gjestene bruker for å booke og betale.
+            Del lenken på e-post, SMS eller sosiale medier.
+          </p>
+
+          <div className="flex flex-col gap-2 rounded-lg border border-hairline p-3">
+            <span className="text-xs font-medium text-muted-foreground">
+              Bookinglenke
+            </span>
+            <div className="flex items-center justify-between gap-2">
+              <a
+                href={bookingUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="truncate font-medium text-navy underline"
+              >
+                {bookingUrl}
+              </a>
+              <CopyButton text={bookingUrl} />
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Button asChild size="sm">
+              <a href={bookingUrl} target="_blank" rel="noopener noreferrer">
+                Forhåndsvis siden
+              </a>
+            </Button>
+            <CopyButton
+              text={`${bookingUrl}?kilde=instagram`}
+              label="Kopier Instagram-lenke"
+            />
+            <CopyButton
+              text={`${bookingUrl}?kilde=facebook`}
+              label="Kopier Facebook-lenke"
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Bruk Instagram-/Facebook-lenkene når du deler på de kanalene, så ser
+            du hvor bookingene kommer fra (og riktig provisjon beregnes).
+          </p>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

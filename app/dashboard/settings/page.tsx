@@ -3,7 +3,12 @@ import Link from "next/link";
 import { getCurrentProfile } from "@/lib/auth";
 import { PLANS, type Plan } from "@/lib/constants";
 import { stripeEnabled } from "@/lib/stripe";
-import { openBillingPortal, purchaseExtraProperty } from "./actions";
+import {
+  openBillingPortal,
+  purchaseExtraProperty,
+  startConnectOnboarding,
+  openConnectDashboard,
+} from "./actions";
 import { DeleteAccountButton } from "@/components/settings/delete-account-button";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,9 +18,17 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-export default async function SettingsPage() {
+export default async function SettingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ utbetaling?: string }>;
+}) {
   const profile = await getCurrentProfile();
   const plan: Plan = profile?.plan ?? "gratis";
+  const { utbetaling } = await searchParams;
+
+  const hasConnect = Boolean(profile?.stripe_connect_id);
+  const payoutsReady = profile?.payouts_enabled === true;
 
   return (
     <div className="flex flex-col gap-6">
@@ -55,6 +68,57 @@ export default async function SettingsPage() {
               <form action={purchaseExtraProperty}>
                 <Button type="submit">Kjøp ekstra eiendom (+99 kr/mnd)</Button>
               </form>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {stripeEnabled && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Utbetaling for utleie</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col items-start gap-3 text-sm">
+            {utbetaling === "klar" && (
+              <p className="text-emerald-600">
+                Utbetaling er nå aktivert. Gjester kan betale bookinger direkte
+                til deg.
+              </p>
+            )}
+            {utbetaling === "ufullstendig" && (
+              <p className="text-amber-600">
+                Oppsettet er ikke ferdig ennå. Fullfør registreringen hos Stripe
+                for å kunne motta betaling.
+              </p>
+            )}
+
+            {payoutsReady ? (
+              <>
+                <p className="text-muted-foreground">
+                  Status:{" "}
+                  <span className="font-medium text-emerald-600">Aktiv</span> —
+                  du kan motta betaling for gjeste-bookinger (Verta trekker 10 %
+                  i provisjon).
+                </p>
+                <form action={openConnectDashboard}>
+                  <Button type="submit" variant="outline">
+                    Åpne utbetalings-dashbord
+                  </Button>
+                </form>
+              </>
+            ) : (
+              <>
+                <p className="text-muted-foreground">
+                  Koble til en konto for å ta imot betaling når gjester booker
+                  via Verta. Stripe håndterer bankkonto og identitetssjekk. Verta
+                  trekker 10 % provisjon per booking.
+                </p>
+                <form action={startConnectOnboarding}>
+                  <Button type="submit">
+                    {hasConnect ? "Fullfør oppsett" : "Koble utbetaling"}
+                  </Button>
+                </form>
+              </>
             )}
           </CardContent>
         </Card>

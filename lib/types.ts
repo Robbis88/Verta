@@ -8,6 +8,9 @@ export type UserProfile = {
   plan: Plan;
   extra_properties_count: number;
   stripe_customer_id: string | null;
+  // Stripe Connect (utbetaling til eier ved gjeste-betaling) — se sql/027.
+  stripe_connect_id?: string | null;
+  payouts_enabled?: boolean;
 };
 
 export type IcalUrl = { url: string; source: string };
@@ -62,5 +65,12 @@ export type Booking = {
   access_code?: string | null;
   access_code_id?: string | null;
   guest_token?: string;
+  // Gjeste-betaling (Stripe Connect) — se sql/027.
+  payment_status?: "pending" | "paid" | "refunded" | "failed" | null;
+  stripe_session_id?: string | null;
+  stripe_payment_intent?: string | null;
+  amount_total?: number | null;
+  application_fee?: number | null;
+  hold_expires_at?: string | null;
   created_at: string;
 };

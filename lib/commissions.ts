@@ -27,6 +27,7 @@ type BookingRow = {
   id: string;
   property_id: string;
   total_price: number | null;
+  payment_status: string | null;
 };
 
 export type CommissionResult = {
@@ -51,12 +52,16 @@ export async function computeCommissions(
 
   const { data: bookingsData } = await supabase
     .from("bookings")
-    .select("id,property_id,total_price")
+    .select("id,property_id,total_price,payment_status")
     .in("source", CHANNEL_SOURCES)
     .neq("status", "cancelled")
     .gte("check_in", start)
     .lt("check_in", end);
-  const bookings = (bookingsData ?? []) as BookingRow[];
+  // Bookinger betalt via Verta har alt fått provisjon trukket ved betaling
+  // (application_fee) — de utelates her så vi ikke dobbelttelller.
+  const bookings = ((bookingsData ?? []) as BookingRow[]).filter(
+    (b) => b.payment_status !== "paid",
+  );
 
   if (bookings.length === 0) {
     return { period, users: 0, totalCommission: 0 };

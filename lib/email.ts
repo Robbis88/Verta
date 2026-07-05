@@ -1,6 +1,8 @@
 import { Resend } from "resend";
 
 import type { BookingAccess } from "@/lib/access";
+import { CANCELLATION_POLICY_LINES } from "@/lib/cancellation";
+import { formatNok } from "@/lib/utils";
 
 /**
  * Transaksjons-e-post via Resend. Av uten RESEND_API_KEY (da blir hver
@@ -106,6 +108,23 @@ function accessSection(access: BookingAccess): string {
     </p>`;
 }
 
+/** Liten «avbestillingsregler»-boks for e-post. */
+function policySection(): string {
+  const items = CANCELLATION_POLICY_LINES.map(
+    (line) => `<li style="margin:0 0 4px;">${line}</li>`,
+  ).join("");
+  return `
+    <div style="margin:20px 0 0;padding:16px;border-radius:8px;background:#f5f7fa;">
+      <p style="margin:0 0 6px;font-size:13px;color:#4b5563;">Avbestillingsregler</p>
+      <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.6;color:#081b33;">
+        ${items}
+      </ul>
+      <p style="margin:8px 0 0;font-size:13px;color:#4b5563;">
+        Du kan avbestille fra oppholds-siden din (lenken over).
+      </p>
+    </div>`;
+}
+
 /** Bookingbekreftelse til gjesten etter en direkte booking. */
 export async function sendBookingConfirmation(opts: {
   to: string;
@@ -137,12 +156,96 @@ export async function sendBookingConfirmation(opts: {
       ${detailRow("Netter", String(opts.nights))}
     </table>
     ${accessSection(opts.access ?? null)}
-    ${guideButton}`;
+    ${guideButton}
+    ${policySection()}`;
   return send({
     to: opts.to,
     subject: `Bekreftet: ${opts.propertyName} – ${formatDate(opts.checkIn)}`,
     html: layout("Bookingen din er bekreftet 🎉", body),
   });
+}
+
+/**
+ * Kanselleringsvarsel til både gjest og eier. Feiler aldri (stille no-op uten
+ * Resend-nøkkel). `wasPaid` styrer om refusjonslinjen vises.
+ */
+export async function sendCancellationNotices(opts: {
+  guestEmail?: string | null;
+  ownerEmail?: string | null;
+  guestName: string;
+  propertyName: string;
+  checkIn: string;
+  checkOut: string;
+  wasPaid: boolean;
+  refundAmount: number;
+}): Promise<void> {
+  const refundLine = opts.wasPaid
+    ? opts.refundAmount > 0
+      ? `<p style="font-size:15px;line-height:1.6;margin:16px 0 0;">
+           Refundert beløp: <strong>${formatNok(opts.refundAmount)}</strong>.
+           Pengene er på vei tilbake til betalingskortet ditt.
+         </p>`
+      : `<p style="font-size:14px;line-height:1.6;color:#4b5563;margin:16px 0 0;">
+           Ifølge avbestillingsreglene refunderes ikke dette oppholdet.
+         </p>`
+    : "";
+
+  const detailsTable = `
+    <table style="width:100%;border-collapse:collapse;margin:0 0 8px;">
+      ${detailRow("Eiendom", opts.propertyName)}
+      ${detailRow("Innsjekk", formatDate(opts.checkIn))}
+      ${detailRow("Utsjekk", formatDate(opts.checkOut))}
+    </table>`;
+
+  const tasks: Promise<boolean>[] = [];
+
+  if (opts.guestEmail) {
+    const body = `
+      <p style="font-size:15px;line-height:1.6;margin:0 0 20px;">
+        Hei ${opts.guestName}, oppholdet ditt er nå avbestilt.
+      </p>
+      ${detailsTable}
+      ${refundLine}`;
+    tasks.push(
+      send({
+        to: opts.guestEmail,
+        subject: `Avbestilt: ${opts.propertyName} – ${formatDate(opts.checkIn)}`,
+        html: layout("Oppholdet er avbestilt", body),
+      }),
+    );
+  }
+
+  if (opts.ownerEmail) {
+    const ownerRefund = opts.wasPaid
+      ? opts.refundAmount > 0
+        ? `<p style="font-size:14px;line-height:1.6;color:#4b5563;margin:16px 0 0;">
+             Gjesten er refundert ${formatNok(opts.refundAmount)}. Utbetalingen din
+             er justert tilsvarende.
+           </p>`
+        : `<p style="font-size:14px;line-height:1.6;color:#4b5563;margin:16px 0 0;">
+             Gjesten fikk ingen refusjon (avbestilte for tett på innsjekk).
+           </p>`
+      : "";
+    const body = `
+      <p style="font-size:15px;line-height:1.6;margin:0 0 20px;">
+        En booking på <strong>${opts.propertyName}</strong> er avbestilt.
+      </p>
+      <table style="width:100%;border-collapse:collapse;">
+        ${detailRow("Gjest", opts.guestName)}
+        ${detailRow("Innsjekk", formatDate(opts.checkIn))}
+        ${detailRow("Utsjekk", formatDate(opts.checkOut))}
+      </table>
+      ${ownerRefund}`;
+    tasks.push(
+      send({
+        to: opts.ownerEmail,
+        subject: `Avbestilt: ${opts.propertyName}`,
+        html: layout("En booking ble avbestilt", body),
+      }),
+    );
+  }
+
+  await Promise.allSettled(tasks);
 }
 
 /** Varsel til eieren om en ny direkte booking. */

@@ -2,6 +2,14 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import {
+  refundFractionForCheckIn,
+  isBeforeCheckIn,
+  CANCELLATION_POLICY_LINES,
+} from "@/lib/cancellation";
+import { formatNok } from "@/lib/utils";
+import { GuestCancel } from "@/components/booking/guest-cancel";
+import { cancelBookingAsGuest } from "./actions";
 
 type GuestBooking = {
   guest_name: string;
@@ -10,6 +18,8 @@ type GuestBooking = {
   status: string;
   access_code: string | null;
   property_id: string;
+  payment_status: string | null;
+  amount_total: number | null;
 };
 
 type GuestProperty = {
@@ -26,7 +36,9 @@ async function getStay(token: string) {
   const supabase = createAdminClient();
   const { data: booking } = await supabase
     .from("bookings")
-    .select("guest_name,check_in,check_out,status,access_code,property_id")
+    .select(
+      "guest_name,check_in,check_out,status,access_code,property_id,payment_status,amount_total",
+    )
     .eq("guest_token", token)
     .maybeSingle();
   if (!booking || (booking as GuestBooking).status === "cancelled") return null;
@@ -74,6 +86,19 @@ export default async function GuestPage({
 
   const { booking, property } = stay;
   const accessText = booking.access_code ?? property.access_info ?? null;
+
+  const canCancel = isBeforeCheckIn(booking.check_in);
+  const fraction = refundFractionForCheckIn(booking.check_in);
+  const wasPaid = booking.payment_status === "paid";
+  const refundNote = !wasPaid
+    ? "Du kan avbestille oppholdet her."
+    : fraction === 1
+      ? "Avbestiller du nå, får du full refusjon."
+      : fraction === 0.5
+        ? `Avbestiller du nå, refunderes 50 % (${formatNok(
+            (Number(booking.amount_total ?? 0) * 0.5),
+          )}).`
+        : "Avbestiller du nå, refunderes ikke beløpet — det er under 48 timer til innsjekk.";
 
   return (
     <main className="min-h-screen bg-cloud">
@@ -135,6 +160,16 @@ export default async function GuestPage({
             <p className="whitespace-pre-line text-sm leading-relaxed text-ink">
               {property.checkout_info}
             </p>
+          </Section>
+        )}
+
+        {canCancel && (
+          <Section title="Avbestilling">
+            <GuestCancel
+              cancelAction={cancelBookingAsGuest.bind(null, token)}
+              refundNote={refundNote}
+              policyLines={CANCELLATION_POLICY_LINES}
+            />
           </Section>
         )}
 

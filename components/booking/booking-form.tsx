@@ -21,9 +21,11 @@ const initialState: BookingFormState = {};
 export function BookingForm({
   action,
   quoteAction,
+  policyLines = [],
 }: {
   action: BookingAction;
   quoteAction?: QuoteAction;
+  policyLines?: string[];
 }) {
   const [state, formAction, pending] = useActionState(action, initialState);
   const [checkIn, setCheckIn] = useState("");
@@ -116,9 +118,25 @@ export function BookingForm({
 
       {state.error && <p className="text-sm text-destructive">{state.error}</p>}
 
+      {policyLines.length > 0 && (
+        <div className="rounded-lg bg-cloud p-3">
+          <p className="text-xs font-medium text-navy">
+            Avbestillingsregler for denne bestillingen
+          </p>
+          <ul className="mt-1 list-disc pl-5 text-xs leading-relaxed text-ink/70">
+            {policyLines.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <Button type="submit" size="lg" disabled={pending}>
         {pending ? "Sender…" : "Send bestilling"}
       </Button>
+      <p className="text-center text-xs text-ink/60">
+        Ved å bestille godtar du avbestillingsreglene over.
+      </p>
     </form>
   );
 }

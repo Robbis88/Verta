@@ -104,6 +104,8 @@ export async function choosePlan(formData: FormData): Promise<void> {
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       mode: "subscription",
+      // Tving norsk Checkout uansett nettleserspråk (ellers faller Stripe til auto).
+      locale: "nb",
       line_items: [{ price: PRICE_IDS[tier as (typeof TIERS)[number]]!, quantity: 1 }],
       // 14 dager gratis prøve: kort kreves, men trekkes først etter prøveperioden.
       subscription_data: { trial_period_days: 14 },

@@ -6,6 +6,7 @@ import { createDirectBooking, quoteBooking } from "./actions";
 import { BookingForm } from "@/components/booking/booking-form";
 import { AvailabilityCalendar } from "@/components/calendar/availability-calendar";
 import { bookedDateSet } from "@/lib/availability";
+import { CANCELLATION_POLICY_LINES } from "@/lib/cancellation";
 import { formatNok } from "@/lib/utils";
 
 type PublicProperty = {
@@ -69,10 +70,13 @@ export async function generateMetadata({
 
 export default async function PublicPropertyPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ kilde?: string; betalt?: string; avbrutt?: string }>;
 }) {
   const { slug } = await params;
+  const { kilde, betalt, avbrutt } = await searchParams;
   const property = await getProperty(slug);
   if (!property) notFound();
 
@@ -103,6 +107,18 @@ export default async function PublicPropertyPage({
 
         <div className="rounded-xl border border-hairline p-6 shadow-sm">
           <h2 className="text-xl font-semibold text-navy">Book direkte</h2>
+          {betalt && (
+            <p className="mb-4 mt-3 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
+              Takk! Betalingen er mottatt og bookingen er bekreftet. Du får en
+              e-post med detaljene.
+            </p>
+          )}
+          {avbrutt && (
+            <p className="mb-4 mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+              Betalingen ble avbrutt. Datoene er fortsatt ledige — prøv igjen
+              når du er klar.
+            </p>
+          )}
           {property.base_nightly_rate != null && (
             <p className="mb-4 mt-1 text-sm text-ink">
               <span className="font-semibold text-navy">
@@ -116,8 +132,9 @@ export default async function PublicPropertyPage({
           )}
           <div className="mt-4">
             <BookingForm
-              action={createDirectBooking.bind(null, slug)}
+              action={createDirectBooking.bind(null, slug, kilde)}
               quoteAction={quoteBooking.bind(null, slug)}
+              policyLines={CANCELLATION_POLICY_LINES}
             />
           </div>
         </div>

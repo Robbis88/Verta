@@ -7,7 +7,7 @@ import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { ownerBookingSchema } from "@/lib/validation";
 import { logAudit } from "@/lib/audit";
-import { seamEnabled, removeAccessCode } from "@/lib/seam";
+import { cancelAndRefund } from "@/lib/booking";
 import { calculateBookingTotal } from "@/lib/pricing";
 
 export type OwnerBookingState = {
@@ -90,26 +90,17 @@ export async function cancelBooking(formData: FormData): Promise<void> {
 
   const supabase = await createClient();
 
-  // Hent en evt. smartlås-kode før vi avbestiller, så vi kan trekke den tilbake.
-  const { data: booking } = await supabase
+  // Tilgangskontroll via RLS: select returnerer kun raden hvis brukeren eier den.
+  const { data: owned } = await supabase
     .from("bookings")
-    .select("access_code_id")
+    .select("id")
     .eq("id", id)
     .maybeSingle();
+  if (!owned) return;
 
-  const { error } = await supabase
-    .from("bookings")
-    .update({ status: "cancelled", access_code: null, access_code_id: null })
-    .eq("id", id);
-  if (error) return;
-
-  if (seamEnabled && booking?.access_code_id) {
-    try {
-      await removeAccessCode(booking.access_code_id);
-    } catch (err) {
-      console.error("Klarte ikke trekke tilbake smartlås-kode:", err);
-    }
-  }
+  // Eier-kansellering → alltid full refusjon til gjesten (ikke gjestens skyld).
+  // Håndterer smartlås-kode, Stripe-refusjon og varsler til gjest + eier.
+  await cancelAndRefund({ bookingId: id, refundFraction: 1 });
 
   await logAudit({
     user_id: user.id,
