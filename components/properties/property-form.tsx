@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { AMENITIES } from "@/lib/amenities";
+import { AMENITY_CATEGORIES } from "@/lib/amenities";
 
 type PropertyAction = (
   prev: PropertyFormState,
@@ -114,22 +114,29 @@ export function PropertyForm({
         />
       </Field>
 
-      <div className="flex flex-col gap-1.5">
+      <div className="flex flex-col gap-3">
         <Label>Fasiliteter</Label>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          {AMENITIES.map((a) => (
-            <label key={a.key} className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                name="amenities"
-                value={a.key}
-                defaultChecked={selectedAmenities.has(a.key)}
-                className="h-4 w-4"
-              />
-              {a.label}
-            </label>
-          ))}
-        </div>
+        {AMENITY_CATEGORIES.map((cat) => (
+          <div key={cat.id} className="flex flex-col gap-1.5">
+            <p className="text-xs font-medium text-muted-foreground">
+              {cat.label}
+            </p>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {cat.items.map((a) => (
+                <label key={a.key} className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    name="amenities"
+                    value={a.key}
+                    defaultChecked={selectedAmenities.has(a.key)}
+                    className="h-4 w-4"
+                  />
+                  {a.label}
+                </label>
+              ))}
+            </div>
+          </div>
+        ))}
       </div>
 
       <div className="grid grid-cols-2 gap-3">
