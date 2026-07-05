@@ -2,6 +2,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 export const CLEANING_PHOTOS_BUCKET = "cleaning-photos";
 
+/** Offentlig bucket for eiendomsbilder (vises på den offentlige booking-siden). */
+export const PROPERTY_IMAGES_BUCKET = "property-images";
+
 const SIGNED_URL_TTL = 60 * 60; // 1 time
 
 /**

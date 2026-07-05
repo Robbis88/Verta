@@ -3,7 +3,13 @@ import { notFound } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/auth";
-import { deleteProperty, updateProperty } from "../actions";
+import {
+  deleteProperty,
+  updateProperty,
+  uploadPropertyImage,
+  deletePropertyImage,
+} from "../actions";
+import { ImageManager } from "@/components/properties/image-manager";
 import {
   connectSmartLock,
   disconnectSmartLock,
@@ -140,6 +146,20 @@ export default async function PropertyDetailPage({
             Bruk Instagram-/Facebook-lenkene når du deler på de kanalene, så ser
             du hvor bookingene kommer fra (og riktig provisjon beregnes).
           </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Bilder</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ImageManager
+            propertyId={p.id}
+            images={p.images ?? []}
+            uploadAction={uploadPropertyImage}
+            deleteAction={deletePropertyImage}
+          />
         </CardContent>
       </Card>
 

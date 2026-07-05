@@ -6,11 +6,16 @@ import { z } from "zod";
 
 import { requireUser, getCurrentProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { propertyLimit } from "@/lib/constants";
 import { propertySchema } from "@/lib/validation";
+import { PROPERTY_IMAGES_BUCKET } from "@/lib/storage";
 import { slugify } from "@/lib/utils";
 import { logAudit } from "@/lib/audit";
 import { geocodeNorway } from "@/lib/geocode";
+
+const MAX_IMAGE_BYTES = 8 * 1024 * 1024; // 8 MB
+const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 export type PropertyFormState = {
   error?: string;
@@ -148,6 +153,91 @@ export async function updateProperty(
   revalidatePath("/dashboard/properties");
   revalidatePath(`/dashboard/properties/${id}`);
   redirect(`/dashboard/properties/${id}`);
+}
+
+/** Laster opp ett eiendomsbilde til den offentlige bucketen og lagrer URL-en. */
+export async function uploadPropertyImage(formData: FormData): Promise<void> {
+  const user = await requireUser();
+  const propertyId = String(formData.get("property_id") ?? "");
+  const file = formData.get("image");
+  if (!propertyId) return;
+  if (!(file instanceof File) || file.size === 0) return;
+  if (file.size > MAX_IMAGE_BYTES) return;
+  if (!ALLOWED_IMAGE_TYPES.includes(file.type)) return;
+
+  const supabase = await createClient();
+  // Eierskap + gjeldende bilder via RLS.
+  const { data: property } = await supabase
+    .from("properties")
+    .select("id,images")
+    .eq("id", propertyId)
+    .maybeSingle();
+  if (!property) return;
+
+  const ext =
+    file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
+  const path = `${propertyId}/${crypto.randomUUID()}.${ext}`;
+
+  const admin = createAdminClient();
+  const { error: upErr } = await admin.storage
+    .from(PROPERTY_IMAGES_BUCKET)
+    .upload(path, file, { contentType: file.type, upsert: false });
+  if (upErr) return;
+
+  const { data: pub } = admin.storage
+    .from(PROPERTY_IMAGES_BUCKET)
+    .getPublicUrl(path);
+  const images = [
+    ...(((property.images as string[] | null) ?? [])),
+    pub.publicUrl,
+  ];
+
+  await supabase.from("properties").update({ images }).eq("id", propertyId);
+  await logAudit({
+    user_id: user.id,
+    action: "property.image.added",
+    resource_type: "property",
+    resource_id: propertyId,
+  });
+  revalidatePath(`/dashboard/properties/${propertyId}`);
+}
+
+/** Fjerner ett eiendomsbilde (fra listen og fra Storage). */
+export async function deletePropertyImage(formData: FormData): Promise<void> {
+  const user = await requireUser();
+  const propertyId = String(formData.get("property_id") ?? "");
+  const url = String(formData.get("url") ?? "");
+  if (!propertyId || !url) return;
+
+  const supabase = await createClient();
+  const { data: property } = await supabase
+    .from("properties")
+    .select("id,images")
+    .eq("id", propertyId)
+    .maybeSingle();
+  if (!property) return;
+
+  const images = (((property.images as string[] | null) ?? [])).filter(
+    (u) => u !== url,
+  );
+  await supabase.from("properties").update({ images }).eq("id", propertyId);
+
+  // Slett objektet fra Storage (path = alt etter «/property-images/»).
+  const marker = `/${PROPERTY_IMAGES_BUCKET}/`;
+  const idx = url.indexOf(marker);
+  if (idx !== -1) {
+    const path = url.slice(idx + marker.length);
+    const admin = createAdminClient();
+    await admin.storage.from(PROPERTY_IMAGES_BUCKET).remove([path]);
+  }
+
+  await logAudit({
+    user_id: user.id,
+    action: "property.image.removed",
+    resource_type: "property",
+    resource_id: propertyId,
+  });
+  revalidatePath(`/dashboard/properties/${propertyId}`);
 }
 
 export async function deleteProperty(formData: FormData): Promise<void> {

@@ -20,6 +20,7 @@ type PublicProperty = {
   base_nightly_rate: number | null;
   cleaning_fee: number | null;
   booking_mode: "instant" | "request";
+  images: string[] | null;
 };
 
 // Henter kun offentlig-trygge felter via admin-klienten (omgår RLS).
@@ -28,7 +29,7 @@ async function getProperty(slug: string): Promise<PublicProperty | null> {
   const { data } = await supabase
     .from("properties")
     .select(
-      "id,name,description,address,bedrooms,bathrooms,max_guests,base_nightly_rate,cleaning_fee,booking_mode",
+      "id,name,description,address,bedrooms,bathrooms,max_guests,base_nightly_rate,cleaning_fee,booking_mode,images",
     )
     .eq("slug", slug)
     .single();
@@ -65,6 +66,7 @@ export async function generateMetadata({
       title: `${property.name} — Verta`,
       description,
       type: "website",
+      images: property.images?.[0] ? [property.images[0]] : undefined,
     },
   };
 }
@@ -90,8 +92,30 @@ export default async function PublicPropertyPage({
     property.max_guests != null ? `${property.max_guests} gjester` : null,
   ].filter(Boolean);
 
+  const images = property.images ?? [];
+
   return (
     <main className="mx-auto flex max-w-5xl flex-col gap-12 p-6 py-12">
+      {images.length > 0 && (
+        <div className="grid gap-2 sm:grid-cols-4 sm:grid-rows-2">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={images[0]}
+            alt={property.name}
+            className="aspect-[4/3] w-full rounded-xl object-cover sm:col-span-2 sm:row-span-2 sm:aspect-auto sm:h-full"
+          />
+          {images.slice(1, 5).map((url) => (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              key={url}
+              src={url}
+              alt={property.name}
+              className="hidden aspect-[4/3] w-full rounded-lg object-cover sm:block"
+            />
+          ))}
+        </div>
+      )}
+
       <div className="grid gap-12 md:grid-cols-2">
         <div className="flex flex-col gap-4">
           <h1 className="text-3xl font-bold tracking-tight text-navy">
