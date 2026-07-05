@@ -83,6 +83,9 @@ export function DashboardNav({
         <Link href="/dashboard/properties" className={linkClass}>
           Eiendommer
         </Link>
+        <Link href="/dashboard/okonomi" className={linkClass}>
+          Eiendomsøkonomi
+        </Link>
 
         {groups.map((g) => (
           <div key={g.label} className="relative">
