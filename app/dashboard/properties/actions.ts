@@ -41,6 +41,20 @@ function toFieldErrors(error: z.ZodError): Record<string, string> {
   return out;
 }
 
+/**
+ * Finner koordinatene for lagring: bruker de eksakte lat/lng fra
+ * adresse-autofullføringen om de finnes, ellers geokoder adressen serverside.
+ */
+async function resolveCoords(
+  formData: FormData,
+  address: string | null,
+): Promise<{ lat: number; lng: number } | null> {
+  const lat = parseFloat(String(formData.get("lat") ?? ""));
+  const lng = parseFloat(String(formData.get("lng") ?? ""));
+  if (Number.isFinite(lat) && Number.isFinite(lng)) return { lat, lng };
+  return address ? geocodeNorway(address) : null;
+}
+
 export async function createProperty(
   _prev: PropertyFormState,
   formData: FormData,
@@ -71,7 +85,7 @@ export async function createProperty(
 
   const data = parsed.data;
   const slug = `${slugify(data.name)}-${crypto.randomUUID().slice(0, 6)}`;
-  const coords = data.address ? await geocodeNorway(data.address) : null;
+  const coords = await resolveCoords(formData, data.address || null);
 
   const { data: created, error } = await supabase
     .from("properties")
@@ -136,7 +150,7 @@ export async function updateProperty(
 
   const supabase = await createClient();
   const data = parsed.data;
-  const coords = data.address ? await geocodeNorway(data.address) : null;
+  const coords = await resolveCoords(formData, data.address || null);
 
   // RLS sikrer at bare eieren kan oppdatere.
   const { error } = await supabase

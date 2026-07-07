@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { AddressAutocomplete } from "@/components/properties/address-autocomplete";
 import { AMENITY_CATEGORIES } from "@/lib/amenities";
 
 type PropertyAction = (
@@ -68,15 +69,10 @@ export function PropertyForm({
         label="Adresse (gate, husnummer, postnummer og poststed)"
         error={state.fieldErrors?.address}
       >
-        <Input
-          name="address"
-          placeholder="F.eks. Kvernhusveien 39, 5164 Laksevåg"
-          defaultValue={defaults?.address ?? ""}
-        />
+        <AddressAutocomplete defaultValue={defaults?.address ?? ""} />
         <p className="text-xs text-muted-foreground">
-          Skriv <strong>fullstendig adresse</strong> med postnummer og poststed,
-          ellers finner ikke Kartverket eiendommen og kartet vises ikke på den
-          offentlige siden.
+          Begynn å skrive, så foreslår Kartverket adresser — velg riktig, så
+          plasseres eiendommen automatisk på kartet.
         </p>
       </Field>
 
