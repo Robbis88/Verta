@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Users, BedDouble, Bath, Star } from "lucide-react";
+import { Users, BedDouble, Bath, Star, Mountain } from "lucide-react";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createDirectBooking, quoteBooking } from "@/app/properties/[slug]/actions";
@@ -131,6 +131,7 @@ export default async function PublicStayPage({
   const amenities = property.amenities ?? [];
   const videoUrl = property.video_url;
   const isVideo = !!videoUrl && /\.(mp4|webm)(\?|$)/i.test(videoUrl);
+  const hasMedia = isVideo || !!heroImage;
 
   const specs = [
     property.max_guests != null
@@ -160,7 +161,13 @@ export default async function PublicStayPage({
   return (
     <div className="scroll-smooth bg-white">
       {/* Hero */}
-      <section className="relative flex h-[70vh] min-h-[460px] w-full flex-col">
+      <section
+        className={`relative flex w-full flex-col ${
+          hasMedia
+            ? "h-[56vh] min-h-[380px] sm:max-h-[620px]"
+            : "h-[36vh] min-h-[260px]"
+        }`}
+      >
         {isVideo ? (
           <video
             src={videoUrl!}
@@ -179,7 +186,9 @@ export default async function PublicStayPage({
             className="absolute inset-0 h-full w-full object-cover"
           />
         ) : (
-          <div className="absolute inset-0 bg-gradient-to-br from-navy to-navy-dark" />
+          <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-navy to-navy-dark">
+            <Mountain className="h-20 w-20 text-white/10" strokeWidth={1.25} />
+          </div>
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/15 to-black/35" />
 
@@ -198,7 +207,7 @@ export default async function PublicStayPage({
 
         {/* Hero-innhold */}
         <div className="relative z-10 mt-auto px-6 pb-10">
-          <div className="mx-auto max-w-5xl">
+          <div className="mx-auto max-w-6xl">
             <h1 className="text-4xl font-bold tracking-tight text-white drop-shadow-sm md:text-5xl">
               {property.name}
             </h1>
@@ -222,13 +231,14 @@ export default async function PublicStayPage({
         </div>
       </section>
 
-      <main className="mx-auto max-w-5xl px-6 pb-28 lg:pb-16">
+      <main className="mx-auto max-w-6xl px-6 pb-28 lg:pb-16">
         <div className="grid gap-12 lg:grid-cols-3 lg:gap-10">
           {/* Innhold */}
           <div className="flex flex-col gap-12 lg:col-span-2">
             {/* Galleri */}
-            {images.length > 1 && (
+            {images.length > 0 && (
               <section className="pt-8">
+                <h2 className="mb-3 text-2xl font-bold text-navy">Bilder</h2>
                 <Gallery images={images} name={property.name} />
               </section>
             )}

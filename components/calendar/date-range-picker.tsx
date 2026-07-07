@@ -74,7 +74,11 @@ export function DateRangePicker({
   }
 
   return (
-    <div className="grid gap-6 sm:grid-cols-2">
+    // Container-query: to måneder side ved side kun når SELVE boksen er bred
+    // nok (ikke basert på skjermbredden) — ellers stables de. Viktig i den
+    // smale booking-kolonnen på desktop.
+    <div className="@container">
+    <div className="grid gap-6 @md:grid-cols-2">
       {Array.from({ length: months }, (_, i) => {
         const year = startYear + Math.floor((startMonth + i) / 12);
         const month = (startMonth + i) % 12;
@@ -132,6 +136,7 @@ export function DateRangePicker({
           </div>
         );
       })}
+    </div>
     </div>
   );
 }

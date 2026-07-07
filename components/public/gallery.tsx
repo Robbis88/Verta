@@ -39,15 +39,13 @@ export function Gallery({ images, name }: { images: string[]; name: string }) {
 
   return (
     <>
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+      <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
         {images.map((url, i) => (
           <button
             key={url}
             type="button"
             onClick={() => setOpen(i)}
-            className={`group relative overflow-hidden rounded-xl ${
-              i === 0 ? "col-span-2 row-span-2 aspect-[4/3]" : "aspect-square"
-            }`}
+            className="group relative aspect-square overflow-hidden rounded-lg"
             aria-label={`Åpne bilde ${i + 1}`}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -55,7 +53,7 @@ export function Gallery({ images, name }: { images: string[]; name: string }) {
               src={url}
               alt={`${name} – bilde ${i + 1}`}
               className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-              loading={i < 4 ? "eager" : "lazy"}
+              loading={i < 5 ? "eager" : "lazy"}
             />
           </button>
         ))}
