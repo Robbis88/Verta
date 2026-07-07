@@ -12,6 +12,13 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "images.unsplash.com", pathname: "/**" },
     ],
   },
+  experimental: {
+    // Standardgrensen for Server Actions er 1 MB, som avviser vanlige
+    // telefonbilder. Hev til 10 MB (uploadPropertyImage kapper selv på 8 MB).
+    serverActions: {
+      bodySizeLimit: "10mb",
+    },
+  },
 };
 
 export default nextConfig;

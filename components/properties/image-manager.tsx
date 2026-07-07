@@ -24,6 +24,7 @@ export function ImageManager({
 }) {
   const [pending, startTransition] = useTransition();
   const formRef = useRef<HTMLFormElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   return (
     <div className="flex flex-col gap-4">
@@ -60,18 +61,28 @@ export function ImageManager({
 
       <form ref={formRef} action={uploadAction} className="flex flex-col gap-2">
         <input type="hidden" name="property_id" value={propertyId} />
+        {/* Skjult filfelt — knappen under åpner filvelgeren, og opplasting
+            starter først når en fil faktisk er valgt (umulig å sende tomt). */}
         <input
+          ref={inputRef}
           type="file"
           name="image"
           accept="image/jpeg,image/png,image/webp"
-          className="text-sm"
-          onChange={() =>
-            startTransition(() => formRef.current?.requestSubmit())
-          }
+          className="hidden"
+          onChange={(e) => {
+            if (e.target.files && e.target.files.length > 0) {
+              startTransition(() => formRef.current?.requestSubmit());
+            }
+          }}
         />
         <div>
-          <Button type="submit" size="sm" variant="outline" disabled={pending}>
-            {pending ? "Laster opp…" : "Last opp bilde"}
+          <Button
+            type="button"
+            size="sm"
+            disabled={pending}
+            onClick={() => inputRef.current?.click()}
+          >
+            {pending ? "Laster opp…" : "Velg bilde og last opp"}
           </Button>
         </div>
         <p className="text-xs text-muted-foreground">
