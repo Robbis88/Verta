@@ -12,6 +12,7 @@ import {
   regeneratePublicListing,
 } from "../actions";
 import { PublicListingEditor } from "@/components/properties/public-listing-editor";
+import { PropertyMap } from "@/components/properties/property-map";
 import { ImageManager } from "@/components/properties/image-manager";
 import {
   connectSmartLock,
@@ -163,6 +164,35 @@ export default async function PropertyDetailPage({
             uploadAction={uploadPropertyImage}
             deleteAction={deletePropertyImage}
           />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Kart / beliggenhet</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3 text-sm">
+          {p.lat != null && p.lng != null ? (
+            <>
+              <p className="font-medium text-emerald-600">
+                ✓ Plassert på kartet — vises på den offentlige siden.
+              </p>
+              <PropertyMap lat={p.lat} lng={p.lng} />
+            </>
+          ) : (
+            <p className="text-amber-600">
+              ⚠ Vi fant ikke{" "}
+              {p.address ? (
+                <>«{p.address}»</>
+              ) : (
+                "noen adresse"
+              )}{" "}
+              på kartet. Skriv en <strong>fullstendig norsk adresse</strong>{" "}
+              (gate, husnummer og poststed — f.eks. «Storgata 12, 5003 Bergen»)
+              i «Rediger» under og lagre. Da plasseres den automatisk via
+              Kartverket, og kartet dukker opp på den offentlige siden.
+            </p>
+          )}
         </CardContent>
       </Card>
 
