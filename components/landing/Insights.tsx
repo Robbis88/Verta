@@ -54,13 +54,21 @@ export function Insights() {
             </div>
             <div className="flex h-28 items-end gap-1.5">
               {bars.map((h, i) => (
-                <div key={i} className="flex flex-1 flex-col items-center gap-1">
-                  <div
-                    className="w-full rounded-t bg-gradient-to-t from-navy/70 to-navy"
-                    style={{ height: `${h}%` }}
-                  />
-                  <span className="text-[9px] text-ink/40">{months[i]}</span>
-                </div>
+                <div
+                  key={i}
+                  className="flex-1 rounded-t bg-gradient-to-t from-navy/70 to-navy"
+                  style={{ height: `${h}%` }}
+                />
+              ))}
+            </div>
+            <div className="mt-1 flex gap-1.5">
+              {months.map((mo, i) => (
+                <span
+                  key={i}
+                  className="flex-1 text-center text-[9px] text-ink/40"
+                >
+                  {mo}
+                </span>
               ))}
             </div>
           </div>

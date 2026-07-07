@@ -59,29 +59,32 @@ export function MonthChart({
 }) {
   const max = Math.max(1, ...values);
   return (
-    <div className="flex h-40 items-end gap-1.5">
-      {values.map((v, i) => {
-        const pct = Math.max(4, Math.round((v / max) * 100));
-        return (
-          <div
-            key={i}
-            className="group relative flex flex-1 flex-col items-center gap-1.5"
-          >
-            <div className="flex w-full flex-1 items-end">
-              <div
-                className="w-full rounded-t bg-gradient-to-t from-gold/40 to-gold transition-opacity group-hover:opacity-80"
-                style={{ height: `${pct}%` }}
-              />
-            </div>
-            <span className="text-[10px] text-ink/50">{labels[i]}</span>
-            {v > 0 && (
-              <span className="pointer-events-none absolute -top-6 hidden whitespace-nowrap rounded bg-navy px-2 py-1 text-[10px] font-medium text-white group-hover:block">
-                {format(v)}
-              </span>
-            )}
-          </div>
-        );
-      })}
+    <div>
+      {/* Stolpene er direkte barn av en boks med fast høyde, slik at
+          prosent-høyden faktisk har noe å regne mot (jf. DashboardPreview). */}
+      <div className="flex h-40 items-end gap-1.5">
+        {values.map((v, i) => {
+          const pct = v > 0 ? Math.max(6, Math.round((v / max) * 100)) : 2;
+          return (
+            <div
+              key={i}
+              title={v > 0 ? format(v) : undefined}
+              className={cn(
+                "flex-1 rounded-t transition-opacity hover:opacity-80",
+                v > 0 ? "bg-gradient-to-t from-gold/40 to-gold" : "bg-cloud",
+              )}
+              style={{ height: `${pct}%` }}
+            />
+          );
+        })}
+      </div>
+      <div className="mt-1.5 flex gap-1.5">
+        {labels.map((l, i) => (
+          <span key={i} className="flex-1 text-center text-[10px] text-ink/50">
+            {l}
+          </span>
+        ))}
+      </div>
     </div>
   );
 }
