@@ -6,6 +6,8 @@ import { Users, BedDouble, Bath, Star } from "lucide-react";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createDirectBooking, quoteBooking } from "@/app/properties/[slug]/actions";
 import { getPublicCopy } from "@/lib/listing";
+import { getNearbyPois, type Poi } from "@/lib/pois";
+import { NearbyPois } from "@/components/public/nearby-pois";
 import { bookedDateSet } from "@/lib/availability";
 import { CANCELLATION_POLICY_LINES } from "@/lib/cancellation";
 import { formatNok } from "@/lib/utils";
@@ -39,10 +41,12 @@ type PublicProperty = {
   lng: number | null;
   public_listing: string | null;
   area_description: string | null;
+  video_url: string | null;
+  nearby_pois: Poi[] | null;
 };
 
 const SELECT =
-  "id,name,description,address,bedrooms,bathrooms,max_guests,base_nightly_rate,cleaning_fee,booking_mode,images,beds,sleeping_arrangements,check_in_time,check_out_time,house_rules,amenities,lat,lng,public_listing,area_description";
+  "id,name,description,address,bedrooms,bathrooms,max_guests,base_nightly_rate,cleaning_fee,booking_mode,images,beds,sleeping_arrangements,check_in_time,check_out_time,house_rules,amenities,lat,lng,public_listing,area_description,video_url,nearby_pois";
 
 async function getProperty(slug: string): Promise<PublicProperty | null> {
   const supabase = createAdminClient();
@@ -115,15 +119,18 @@ export default async function PublicStayPage({
   const property = await getProperty(slug);
   if (!property) notFound();
 
-  const [bookedDates, copy] = await Promise.all([
+  const [bookedDates, copy, pois] = await Promise.all([
     getBookedDates(property.id),
     getPublicCopy(property),
+    getNearbyPois(property),
   ]);
   const today = new Date().toISOString().slice(0, 10);
 
   const images = property.images ?? [];
   const heroImage = images[0];
   const amenities = property.amenities ?? [];
+  const videoUrl = property.video_url;
+  const isVideo = !!videoUrl && /\.(mp4|webm)(\?|$)/i.test(videoUrl);
 
   const specs = [
     property.max_guests != null
@@ -154,7 +161,17 @@ export default async function PublicStayPage({
     <div className="scroll-smooth bg-white">
       {/* Hero */}
       <section className="relative flex h-[70vh] min-h-[460px] w-full flex-col">
-        {heroImage ? (
+        {isVideo ? (
+          <video
+            src={videoUrl!}
+            autoPlay
+            muted
+            loop
+            playsInline
+            poster={heroImage}
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+        ) : heroImage ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={heroImage}
@@ -260,6 +277,14 @@ export default async function PublicStayPage({
                 )}
                 {property.lat != null && property.lng != null && (
                   <PropertyMap lat={property.lat} lng={property.lng} />
+                )}
+                {pois.length > 0 && (
+                  <div className="mt-5">
+                    <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-ink/60">
+                      I nærheten
+                    </h3>
+                    <NearbyPois pois={pois} />
+                  </div>
                 )}
               </section>
             )}

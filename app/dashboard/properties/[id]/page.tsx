@@ -8,7 +8,10 @@ import {
   updateProperty,
   uploadPropertyImage,
   deletePropertyImage,
+  savePublicListing,
+  regeneratePublicListing,
 } from "../actions";
+import { PublicListingEditor } from "@/components/properties/public-listing-editor";
 import { ImageManager } from "@/components/properties/image-manager";
 import {
   connectSmartLock,
@@ -165,6 +168,21 @@ export default async function PropertyDetailPage({
 
       <Card>
         <CardHeader>
+          <CardTitle>Offentlig annonsetekst</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <PublicListingEditor
+            propertyId={p.id}
+            listing={p.public_listing ?? ""}
+            saveAction={savePublicListing}
+            regenerateAction={regeneratePublicListing}
+            publicUrl={`${siteUrl}/bo/${p.slug}`}
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle>Rediger</CardTitle>
         </CardHeader>
         <CardContent>
@@ -192,6 +210,7 @@ export default async function PropertyDetailPage({
               sleeping_arrangements: p.sleeping_arrangements,
               check_in_time: p.check_in_time,
               check_out_time: p.check_out_time,
+              video_url: p.video_url,
               market_value: p.market_value,
               loan_amount: p.loan_amount,
               interest_rate: p.interest_rate,

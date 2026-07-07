@@ -7,6 +7,7 @@ const columns = [
   {
     heading: "Verta",
     links: [
+      { label: "Finn hytter", href: "/hytter" },
       { label: "Om oss", href: "#" },
       { label: "Kontakt", href: "#" },
       { label: "Blogg", href: "#" },

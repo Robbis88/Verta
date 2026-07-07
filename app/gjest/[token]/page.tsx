@@ -11,6 +11,7 @@ import {
   CANCELLATION_POLICY_LINES,
 } from "@/lib/cancellation";
 import { formatNok } from "@/lib/utils";
+import { getTravelGuide } from "@/lib/listing";
 import { Button } from "@/components/ui/button";
 import { GuestCancel } from "@/components/booking/guest-cancel";
 import { cancelBookingAsGuest, payDeposit, payRemaining } from "./actions";
@@ -31,6 +32,7 @@ type GuestBooking = {
 };
 
 type GuestProperty = {
+  id: string;
   name: string;
   address: string | null;
   access_info: string | null;
@@ -38,6 +40,7 @@ type GuestProperty = {
   wifi_password: string | null;
   house_rules: string | null;
   checkout_info: string | null;
+  travel_guide: string | null;
 };
 
 async function getStay(token: string) {
@@ -55,7 +58,7 @@ async function getStay(token: string) {
   const { data: property } = await supabase
     .from("properties")
     .select(
-      "name,address,access_info,wifi_name,wifi_password,house_rules,checkout_info",
+      "id,name,address,access_info,wifi_name,wifi_password,house_rules,checkout_info,travel_guide",
     )
     .eq("id", b.property_id)
     .single();
@@ -188,6 +191,14 @@ export default async function GuestPage({
   const remainingDue =
     !booking.remaining_paid && Number(booking.remaining_amount ?? 0) > 0;
 
+  // AI-reiseguide (genereres én gang per eiendom og caches).
+  const travelGuide = await getTravelGuide({
+    id: property.id,
+    name: property.name,
+    address: property.address,
+    travel_guide: property.travel_guide,
+  });
+
   const canCancel = isBeforeCheckIn(booking.check_in);
   const fraction = refundFractionForCheckIn(booking.check_in);
   const wasPaid = booking.payment_status === "paid";
@@ -282,6 +293,18 @@ export default async function GuestPage({
           <Section title="Ved utsjekk">
             <p className="whitespace-pre-line text-sm leading-relaxed text-ink">
               {property.checkout_info}
+            </p>
+          </Section>
+        )}
+
+        {travelGuide && (
+          <Section title="AI-reiseguide">
+            <p className="whitespace-pre-line text-sm leading-relaxed text-ink">
+              {travelGuide}
+            </p>
+            <p className="mt-2 text-xs text-ink/50">
+              Generert av AI som inspirasjon — dobbeltsjekk gjerne åpningstider
+              og detaljer.
             </p>
           </Section>
         )}

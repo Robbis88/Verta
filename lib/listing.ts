@@ -1,5 +1,9 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { generatePropertyListing, generateAreaDescription } from "@/lib/ai";
+import {
+  generatePropertyListing,
+  generateAreaDescription,
+  generateTravelGuide,
+} from "@/lib/ai";
 import { AMENITY_LABELS } from "@/lib/amenities";
 
 type CopyInput = {
@@ -68,4 +72,36 @@ export async function getPublicCopy(p: CopyInput): Promise<PublicCopy> {
     listing: listing || p.description || null,
     area: area || null,
   };
+}
+
+/**
+ * Henter (og genererer ved behov) AI-reiseguiden for en eiendom. Genereres kun
+ * én gang og caches i properties.travel_guide. Feiler AI, returneres null.
+ */
+export async function getTravelGuide(p: {
+  id: string;
+  name: string;
+  address: string | null;
+  travel_guide: string | null;
+}): Promise<string | null> {
+  if (p.travel_guide) return p.travel_guide;
+  if (!process.env.ANTHROPIC_API_KEY) return null;
+
+  try {
+    const guide = await generateTravelGuide({
+      name: p.name,
+      address: p.address,
+    });
+    if (guide) {
+      const admin = createAdminClient();
+      await admin
+        .from("properties")
+        .update({ travel_guide: guide })
+        .eq("id", p.id);
+    }
+    return guide || null;
+  } catch (err) {
+    console.error("getTravelGuide: AI-generering feilet", err);
+    return null;
+  }
 }

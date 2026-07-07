@@ -9,7 +9,8 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { propertyLimit } from "@/lib/constants";
 import { propertySchema } from "@/lib/validation";
-import { AMENITY_KEYS } from "@/lib/amenities";
+import { AMENITY_KEYS, AMENITY_LABELS } from "@/lib/amenities";
+import { generatePropertyListing } from "@/lib/ai";
 import { PROPERTY_IMAGES_BUCKET } from "@/lib/storage";
 import { slugify } from "@/lib/utils";
 import { logAudit } from "@/lib/audit";
@@ -100,6 +101,7 @@ export async function createProperty(
       loan_amount: data.loan_amount ?? null,
       interest_rate: data.interest_rate ?? null,
       monthly_principal: data.monthly_principal ?? null,
+      video_url: (formData.get("video_url") as string)?.trim() || null,
       lat: coords?.lat ?? null,
       lng: coords?.lng ?? null,
     })
@@ -163,6 +165,7 @@ export async function updateProperty(
       loan_amount: data.loan_amount ?? null,
       interest_rate: data.interest_rate ?? null,
       monthly_principal: data.monthly_principal ?? null,
+      video_url: (formData.get("video_url") as string)?.trim() || null,
       lat: coords?.lat ?? null,
       lng: coords?.lng ?? null,
     })
@@ -265,6 +268,80 @@ export async function deletePropertyImage(formData: FormData): Promise<void> {
     resource_id: propertyId,
   });
   revalidatePath(`/dashboard/properties/${propertyId}`);
+}
+
+/** Lagrer eierens redigerte offentlige annonsetekst. */
+export async function savePublicListing(formData: FormData): Promise<void> {
+  const user = await requireUser();
+  const id = String(formData.get("id") ?? "");
+  const text = String(formData.get("public_listing") ?? "").trim();
+  if (!id) return;
+
+  const supabase = await createClient();
+  // RLS sikrer at bare eieren kan oppdatere.
+  await supabase
+    .from("properties")
+    .update({ public_listing: text || null })
+    .eq("id", id);
+
+  await logAudit({
+    user_id: user.id,
+    action: "property.listing.saved",
+    resource_type: "property",
+    resource_id: id,
+  });
+  revalidatePath(`/dashboard/properties/${id}`);
+}
+
+/** Regenererer den offentlige annonseteksten med AI i valgt tone. */
+export async function regeneratePublicListing(formData: FormData): Promise<void> {
+  const user = await requireUser();
+  const id = String(formData.get("id") ?? "");
+  const tone = String(formData.get("tone") ?? "vennlig og inspirerende");
+  if (!id) return;
+
+  const supabase = await createClient();
+  const { data: p } = await supabase
+    .from("properties")
+    .select(
+      "id,name,address,description,bedrooms,bathrooms,beds,max_guests,amenities",
+    )
+    .eq("id", id)
+    .single();
+  if (!p) return;
+
+  try {
+    const amenityLabels = ((p.amenities as string[] | null) ?? [])
+      .map((k) => AMENITY_LABELS[k])
+      .filter(Boolean);
+    const listing = await generatePropertyListing({
+      name: p.name,
+      address: p.address,
+      bedrooms: p.bedrooms,
+      bathrooms: p.bathrooms,
+      beds: p.beds,
+      maxGuests: p.max_guests,
+      amenities: amenityLabels,
+      description: p.description,
+      tone,
+    });
+    if (listing) {
+      await supabase
+        .from("properties")
+        .update({ public_listing: listing })
+        .eq("id", id);
+      await logAudit({
+        user_id: user.id,
+        action: "property.listing.regenerated",
+        resource_type: "property",
+        resource_id: id,
+        changes: { tone },
+      });
+    }
+  } catch (err) {
+    console.error("regeneratePublicListing:", err);
+  }
+  revalidatePath(`/dashboard/properties/${id}`);
 }
 
 export async function deleteProperty(formData: FormData): Promise<void> {

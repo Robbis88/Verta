@@ -120,6 +120,38 @@ export async function generateAreaDescription(input: {
 }
 
 /**
+ * Genererer en kort AI-reiseguide for gjester som har booket et opphold.
+ * Gir forslag etter tema (servering, aktiviteter, turer, bad, barn, regnvær).
+ * Holder seg til generell, regional kunnskap og oppfordrer til å dobbeltsjekke.
+ */
+export async function generateTravelGuide(input: {
+  name: string;
+  address?: string | null;
+}): Promise<string> {
+  const message = await anthropic.messages.create({
+    model: DEFAULT_MODEL,
+    max_tokens: 700,
+    messages: [
+      {
+        role: "user",
+        content:
+          `Du er en lokalkjent vert. En gjest har booket oppholdet "${input.name}"` +
+          `${input.address ? ` i ${input.address}` : ""}. Skriv en kort, ` +
+          `hjelpsom reiseguide på norsk med forslag til hva de kan gjøre under ` +
+          `oppholdet. Bruk generell, regional kunnskap; er du usikker på ` +
+          `eksakte navn eller åpningstider, beskriv heller TYPEN sted og hvor ` +
+          `man finner det — ikke finn på detaljer. Svar med disse seksjonene, ` +
+          `hver med overskrift og 1–3 korte punkter:\n\n` +
+          `SPISE OG DRIKKE\nAKTIVITETER\nTURER\nBADESTEDER\nFOR BARN\nREGNVÆRSDAGER\nLOKALE TIPS`,
+      },
+    ],
+  });
+
+  const block = message.content.find((b) => b.type === "text");
+  return block && block.type === "text" ? block.text.trim() : "";
+}
+
+/**
  * Foreslår et svar på en gjestemelding, på samme språk som gjesten skrev.
  * Bruker kun fakta om eiendommen — finner ikke på noe.
  */

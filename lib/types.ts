@@ -44,6 +44,10 @@ export type Property = {
   check_out_time?: string | null;
   lat?: number | null;
   lng?: number | null;
+  // Offentlig boligvisning (/bo) — se sql/036 og sql/037.
+  public_listing?: string | null;
+  area_description?: string | null;
+  video_url?: string | null;
   // Eiendomsfinans — se sql/033.
   market_value?: number | null;
   loan_amount?: number | null;
