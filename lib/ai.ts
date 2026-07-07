@@ -44,6 +44,82 @@ export async function generateBoostCopy(input: {
 }
 
 /**
+ * Genererer en innbydende, Airbnb-lignende annonsetekst for den offentlige
+ * boligvisningen. Bruker kun oppgitte fakta — finner ikke på fasiliteter.
+ */
+export async function generatePropertyListing(input: {
+  name: string;
+  address?: string | null;
+  bedrooms?: number | null;
+  bathrooms?: number | null;
+  beds?: number | null;
+  maxGuests?: number | null;
+  amenities?: string[]; // ferdig oversatte labels
+  description?: string | null;
+  tone?: string;
+}): Promise<string> {
+  const facts =
+    `Navn: ${input.name}\n` +
+    `Sted: ${input.address ?? "Norge"}\n` +
+    `Soverom: ${input.bedrooms ?? "ukjent"} · Senger: ${input.beds ?? "ukjent"} · ` +
+    `Bad: ${input.bathrooms ?? "ukjent"} · Maks gjester: ${input.maxGuests ?? "ukjent"}\n` +
+    `Fasiliteter: ${input.amenities?.length ? input.amenities.join(", ") : "ingen oppgitt"}\n` +
+    `Eierens notat: ${input.description ?? "ingen"}`;
+
+  const message = await anthropic.messages.create({
+    model: DEFAULT_MODEL,
+    max_tokens: 700,
+    messages: [
+      {
+        role: "user",
+        content:
+          `Du skriver annonsetekst for norske utleieboliger på nivå med de beste ` +
+          `Airbnb-annonsene. Skriv en innbydende, konkret og varm beskrivelse på ` +
+          `norsk av boligen under, i ${input.tone ?? "vennlig og inspirerende"} tone. ` +
+          `Selg OPPLEVELSEN av å bo der, ikke bare fakta. 2–4 korte avsnitt. ` +
+          `Bruk KUN fakta som er oppgitt — ikke finn på fasiliteter, avstander ` +
+          `eller stedsnavn. Ingen overskrift, ingen emojis, ingen hashtags. ` +
+          `Svar med kun brødteksten.\n\n${facts}`,
+      },
+    ],
+  });
+
+  const block = message.content.find((b) => b.type === "text");
+  return block && block.type === "text" ? block.text.trim() : "";
+}
+
+/**
+ * Genererer en kort, ærlig beskrivelse av området rundt en eiendom.
+ * Har ikke live kartdata, så den holder seg til generelle, trygge trekk ved
+ * regionen og finner ikke på spesifikke virksomheter, avstander eller navn.
+ */
+export async function generateAreaDescription(input: {
+  name: string;
+  address?: string | null;
+}): Promise<string> {
+  const message = await anthropic.messages.create({
+    model: DEFAULT_MODEL,
+    max_tokens: 400,
+    messages: [
+      {
+        role: "user",
+        content:
+          `Skriv en kort, innbydende beskrivelse på norsk (2–3 setninger) av ` +
+          `området og typiske aktiviteter i regionen rundt en utleiebolig som ` +
+          `ligger her: ${input.address ?? "Norge"}. Vær stemningsfull, men ` +
+          `ÆRLIG: ikke finn på spesifikke virksomheter, stedsnavn, avstander ` +
+          `eller fasiliteter du ikke kan være sikker på. Beskriv heller ` +
+          `landskapet og hva slags opplevelser området egner seg for. ` +
+          `Svar med kun teksten.`,
+      },
+    ],
+  });
+
+  const block = message.content.find((b) => b.type === "text");
+  return block && block.type === "text" ? block.text.trim() : "";
+}
+
+/**
  * Foreslår et svar på en gjestemelding, på samme språk som gjesten skrev.
  * Bruker kun fakta om eiendommen — finner ikke på noe.
  */

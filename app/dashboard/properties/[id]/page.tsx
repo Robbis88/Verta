@@ -80,7 +80,7 @@ export default async function PropertyDetailPage({
   const isPremium = profile?.plan === "premium";
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "";
-  const bookingUrl = `${siteUrl}/properties/${p.slug}`;
+  const bookingUrl = `${siteUrl}/bo/${p.slug}`;
   const { data: lockData } = await supabase
     .from("smart_locks")
     .select("id,status,device_id,provider")

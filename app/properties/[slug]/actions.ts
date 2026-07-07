@@ -259,8 +259,8 @@ export async function createDirectBooking(
     },
     customer_email: data.guest_email || undefined,
     metadata: { booking_id: booking.id },
-    success_url: `${origin}/properties/${slug}?betalt=1`,
-    cancel_url: `${origin}/properties/${slug}?avbrutt=1`,
+    success_url: `${origin}/bo/${slug}?betalt=1`,
+    cancel_url: `${origin}/bo/${slug}?avbrutt=1`,
     // Reservasjonen holdes i 30 min; utløper checkouten frigis datoene.
     expires_at: Math.floor(Date.now() / 1000) + 1800,
   });
