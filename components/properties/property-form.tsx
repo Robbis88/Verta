@@ -64,8 +64,20 @@ export function PropertyForm({
         <Input name="name" defaultValue={defaults?.name ?? ""} required />
       </Field>
 
-      <Field label="Adresse" error={state.fieldErrors?.address}>
-        <Input name="address" defaultValue={defaults?.address ?? ""} />
+      <Field
+        label="Adresse (gate, husnummer, postnummer og poststed)"
+        error={state.fieldErrors?.address}
+      >
+        <Input
+          name="address"
+          placeholder="F.eks. Kvernhusveien 39, 5164 Laksevåg"
+          defaultValue={defaults?.address ?? ""}
+        />
+        <p className="text-xs text-muted-foreground">
+          Skriv <strong>fullstendig adresse</strong> med postnummer og poststed,
+          ellers finner ikke Kartverket eiendommen og kartet vises ikke på den
+          offentlige siden.
+        </p>
       </Field>
 
       <Field label="Beskrivelse" error={state.fieldErrors?.description}>
