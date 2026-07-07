@@ -1,9 +1,11 @@
 import Link from "next/link";
+import { TrendingUp, Landmark } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
 import { generateTaxReport } from "./actions";
 import { PrintButton } from "@/components/tax/print-button";
 import { formatNok } from "@/lib/utils";
+import { KpiCard } from "@/components/dashboard/overview-ui";
 import { Button } from "@/components/ui/button";
 import type { TaxReport } from "@/lib/tax";
 
@@ -37,7 +39,9 @@ export default async function TaxPage({
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between print:hidden">
-        <h1 className="text-2xl font-semibold">Skatterapport</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-navy">
+          Skatterapport
+        </h1>
         <div className="flex gap-2">
           {years.map((y) => (
             <Button
@@ -64,8 +68,25 @@ export default async function TaxPage({
         </div>
       ) : (
         <div className="flex flex-col gap-6">
-          <div className="rounded-xl border p-6">
-            <h2 className="mb-1 text-xl font-semibold">
+          <div className="grid gap-4 sm:grid-cols-2 print:hidden">
+            <KpiCard
+              label="Sum inntekt"
+              value={formatNok(report.total_income)}
+              icon={TrendingUp}
+              trend={`utleie ${report.year}`}
+              trendTone="muted"
+            />
+            <KpiCard
+              label="Skattepliktig inntekt"
+              value={formatNok(report.taxable_income)}
+              icon={Landmark}
+              trend="grunnlag for skatt"
+              trendTone="muted"
+            />
+          </div>
+
+          <div className="rounded-2xl border border-hairline p-6 shadow-[0_8px_30px_rgba(8,27,51,0.06)] print:border-0 print:shadow-none">
+            <h2 className="mb-1 text-xl font-bold text-navy">
               Skatterapport {report.year}
             </h2>
             <p className="mb-6 text-sm text-muted-foreground">
@@ -73,16 +94,18 @@ export default async function TaxPage({
             </p>
 
             <table className="w-full text-sm">
-              <tbody className="divide-y">
+              <tbody className="divide-y divide-hairline">
                 {rows.map((r) => (
                   <tr key={r.label}>
                     <td className="py-2 text-muted-foreground">{r.label}</td>
-                    <td className="py-2 text-right">{formatNok(r.value)}</td>
+                    <td className="py-2 text-right tabular-nums">
+                      {formatNok(r.value)}
+                    </td>
                   </tr>
                 ))}
-                <tr className="font-medium">
+                <tr className="font-semibold text-navy">
                   <td className="py-2">Sum inntekt</td>
-                  <td className="py-2 text-right">
+                  <td className="py-2 text-right tabular-nums">
                     {formatNok(report.total_income)}
                   </td>
                 </tr>
@@ -102,8 +125,8 @@ export default async function TaxPage({
                     −{formatNok(report.total_expenses ?? 0)}
                   </td>
                 </tr>
-                <tr className="border-t text-base font-semibold">
-                  <td className="py-3">
+                <tr className="border-t border-hairline text-base font-semibold">
+                  <td className="py-3 text-navy">
                     Netto utleieresultat
                     <span className="block text-xs font-normal text-muted-foreground">
                       hytte / sekundærbolig (regnskapsligning)
@@ -119,14 +142,14 @@ export default async function TaxPage({
                   </td>
                   <td className="py-2 text-right">−{formatNok(15000)}</td>
                 </tr>
-                <tr className="border-t text-base font-semibold">
-                  <td className="py-3">
+                <tr className="border-t border-hairline text-base font-semibold">
+                  <td className="py-3 text-navy">
                     Skattepliktig inntekt (85 %)
                     <span className="block text-xs font-normal text-muted-foreground">
                       korttidsutleie av egen bolig
                     </span>
                   </td>
-                  <td className="py-3 text-right">
+                  <td className="py-3 text-right tabular-nums text-gold">
                     {formatNok(report.taxable_income)}
                   </td>
                 </tr>

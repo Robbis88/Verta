@@ -1,17 +1,14 @@
 import Link from "next/link";
+import { Receipt } from "lucide-react";
 
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { deleteExpense } from "./actions";
 import { ExpenseForm } from "@/components/expenses/expense-form";
 import { formatNok } from "@/lib/utils";
+import { KpiCard, PanelCard } from "@/components/dashboard/overview-ui";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 
 type Expense = {
   id: string;
@@ -62,9 +59,9 @@ export default async function UtgifterPage({
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Utgifter</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-navy">Utgifter</h1>
           <p className="text-sm text-muted-foreground">
             Registrer fradragsberettigede utgifter — de trekkes automatisk inn i
             skatterapporten.
@@ -90,59 +87,57 @@ export default async function UtgifterPage({
         </Card>
       ) : (
         <>
-          <Card>
-            <CardHeader>
-              <CardTitle>Ny utgift</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ExpenseForm properties={properties} />
-            </CardContent>
-          </Card>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <KpiCard
+              label={`Sum utgifter ${year}`}
+              value={formatNok(total)}
+              icon={Receipt}
+              trend={`${expenses.length} ${expenses.length === 1 ? "post" : "poster"}`}
+              trendTone="muted"
+            />
+          </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>
-                Utgifter {year} · {formatNok(total)}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {expenses.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  Ingen utgifter registrert for {year}.
-                </p>
-              ) : (
-                <ul className="flex flex-col divide-y">
-                  {expenses.map((e) => (
-                    <li
-                      key={e.id}
-                      className="flex items-center justify-between gap-3 py-2 text-sm"
-                    >
-                      <span className="w-24 text-muted-foreground">
-                        {e.expense_date}
+          <PanelCard title="Ny utgift">
+            <ExpenseForm properties={properties} />
+          </PanelCard>
+
+          <PanelCard title={`Utgifter ${year}`}>
+            {expenses.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                Ingen utgifter registrert for {year}.
+              </p>
+            ) : (
+              <ul className="flex flex-col divide-y divide-hairline">
+                {expenses.map((e) => (
+                  <li
+                    key={e.id}
+                    className="flex items-center justify-between gap-3 py-2.5 text-sm first:pt-0 last:pb-0"
+                  >
+                    <span className="w-24 shrink-0 text-ink/50">
+                      {e.expense_date}
+                    </span>
+                    <span className="flex-1 text-ink">
+                      {CATEGORY_LABEL[e.category] ?? e.category}
+                      {e.description ? ` · ${e.description}` : ""}
+                      <span className="text-ink/50">
+                        {" "}
+                        ({nameById.get(e.property_id) ?? "—"})
                       </span>
-                      <span className="flex-1">
-                        {CATEGORY_LABEL[e.category] ?? e.category}
-                        {e.description ? ` · ${e.description}` : ""}
-                        <span className="text-muted-foreground">
-                          {" "}
-                          ({nameById.get(e.property_id) ?? "—"})
-                        </span>
-                      </span>
-                      <span className="w-24 text-right font-medium">
-                        {formatNok(Number(e.amount))}
-                      </span>
-                      <form action={deleteExpense}>
-                        <input type="hidden" name="id" value={e.id} />
-                        <Button type="submit" variant="ghost" size="sm">
-                          Slett
-                        </Button>
-                      </form>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </CardContent>
-          </Card>
+                    </span>
+                    <span className="w-24 shrink-0 text-right font-semibold tabular-nums text-navy">
+                      {formatNok(Number(e.amount))}
+                    </span>
+                    <form action={deleteExpense}>
+                      <input type="hidden" name="id" value={e.id} />
+                      <Button type="submit" variant="ghost" size="sm">
+                        Slett
+                      </Button>
+                    </form>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </PanelCard>
         </>
       )}
     </div>
