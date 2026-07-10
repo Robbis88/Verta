@@ -10,7 +10,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { propertyLimit } from "@/lib/constants";
 import { propertySchema } from "@/lib/validation";
 import { AMENITY_KEYS, AMENITY_LABELS } from "@/lib/amenities";
-import { generatePropertyListing } from "@/lib/ai";
+import { generatePropertyListing, suggestReviewReply } from "@/lib/ai";
 import { PROPERTY_IMAGES_BUCKET } from "@/lib/storage";
 import { slugify } from "@/lib/utils";
 import { logAudit } from "@/lib/audit";
@@ -356,6 +356,67 @@ export async function regeneratePublicListing(formData: FormData): Promise<void>
     console.error("regeneratePublicListing:", err);
   }
   revalidatePath(`/dashboard/properties/${id}`);
+}
+
+/** Lagrer eierens svar på en anmeldelse (RLS: kun egne eiendommer). */
+export async function replyToReview(formData: FormData): Promise<void> {
+  await requireUser();
+  const id = String(formData.get("review_id") ?? "");
+  const propertyId = String(formData.get("property_id") ?? "");
+  const reply = String(formData.get("owner_reply") ?? "").trim();
+  if (!id) return;
+
+  const supabase = await createClient();
+  await supabase
+    .from("property_reviews")
+    .update({ owner_reply: reply || null })
+    .eq("id", id);
+  if (propertyId) revalidatePath(`/dashboard/properties/${propertyId}`);
+}
+
+/** Genererer et AI-forslag til svar på en anmeldelse og lagrer det (redigerbart). */
+export async function suggestReviewReplyAction(
+  formData: FormData,
+): Promise<void> {
+  await requireUser();
+  const id = String(formData.get("review_id") ?? "");
+  const propertyId = String(formData.get("property_id") ?? "");
+  if (!id) return;
+
+  const supabase = await createClient();
+  const { data: review } = await supabase
+    .from("property_reviews")
+    .select("id,rating,comment")
+    .eq("id", id)
+    .single();
+  if (!review) return;
+
+  let name: string | null = null;
+  if (propertyId) {
+    const { data: p } = await supabase
+      .from("properties")
+      .select("name")
+      .eq("id", propertyId)
+      .single();
+    name = p?.name ?? null;
+  }
+
+  try {
+    const reply = await suggestReviewReply({
+      propertyName: name,
+      rating: review.rating,
+      review: review.comment ?? "",
+    });
+    if (reply) {
+      await supabase
+        .from("property_reviews")
+        .update({ owner_reply: reply })
+        .eq("id", id);
+    }
+  } catch (err) {
+    console.error("suggestReviewReplyAction:", err);
+  }
+  if (propertyId) revalidatePath(`/dashboard/properties/${propertyId}`);
 }
 
 export async function deleteProperty(formData: FormData): Promise<void> {

@@ -14,9 +14,15 @@ import { formatNok } from "@/lib/utils";
 import { getTravelGuide } from "@/lib/listing";
 import { Button } from "@/components/ui/button";
 import { GuestCancel } from "@/components/booking/guest-cancel";
-import { cancelBookingAsGuest, payDeposit, payRemaining } from "./actions";
+import {
+  cancelBookingAsGuest,
+  payDeposit,
+  payRemaining,
+  submitReview,
+} from "./actions";
 
 type GuestBooking = {
+  id: string;
   guest_name: string;
   check_in: string;
   check_out: string;
@@ -48,7 +54,7 @@ async function getStay(token: string) {
   const { data: booking } = await supabase
     .from("bookings")
     .select(
-      "guest_name,check_in,check_out,status,access_code,property_id,payment_status,amount_total,deposit_amount,remaining_amount,remaining_paid,hold_expires_at",
+      "id,guest_name,check_in,check_out,status,access_code,property_id,payment_status,amount_total,deposit_amount,remaining_amount,remaining_paid,hold_expires_at",
     )
     .eq("guest_token", token)
     .maybeSingle();
@@ -64,7 +70,17 @@ async function getStay(token: string) {
     .single();
   if (!property) return null;
 
-  return { booking: b, property: property as GuestProperty };
+  const { data: review } = await supabase
+    .from("property_reviews")
+    .select("id")
+    .eq("booking_id", b.id)
+    .maybeSingle();
+
+  return {
+    booking: b,
+    property: property as GuestProperty,
+    reviewed: Boolean(review),
+  };
 }
 
 function formatDate(iso: string): string {
@@ -95,7 +111,8 @@ export default async function GuestPage({
   const stay = await getStay(token);
   if (!stay) notFound();
 
-  const { booking, property } = stay;
+  const { booking, property, reviewed } = stay;
+  const stayOver = booking.check_out <= new Date().toISOString().slice(0, 10);
 
   // Avbestilt opphold: vis en enkel bekreftelse i stedet for 404 (skjuler
   // tilkomst/WiFi). Denne tilstanden treffes rett etter at gjesten avbestiller.
@@ -308,6 +325,45 @@ export default async function GuestPage({
             </p>
           </Section>
         )}
+
+        {stayOver &&
+          (reviewed ? (
+            <Section title="Takk for anmeldelsen!">
+              <p className="text-sm text-ink">
+                Anmeldelsen din er registrert. Takk for at du hjelper andre
+                gjester. 🌟
+              </p>
+            </Section>
+          ) : (
+            <Section title="Legg igjen en anmeldelse">
+              <form
+                action={submitReview.bind(null, token)}
+                className="flex flex-col gap-3"
+              >
+                <div className="flex flex-col gap-1.5">
+                  <span className="text-sm text-ink/60">Din vurdering</span>
+                  <select
+                    name="rating"
+                    defaultValue="5"
+                    className="h-10 rounded-lg border border-hairline bg-white px-3 text-sm shadow-sm"
+                  >
+                    <option value="5">★★★★★ – Utmerket</option>
+                    <option value="4">★★★★ – Veldig bra</option>
+                    <option value="3">★★★ – Grei</option>
+                    <option value="2">★★ – Under forventning</option>
+                    <option value="1">★ – Dårlig</option>
+                  </select>
+                </div>
+                <textarea
+                  name="comment"
+                  rows={3}
+                  placeholder="Hvordan var oppholdet?"
+                  className="rounded-lg border border-hairline bg-white px-3 py-2 text-sm shadow-sm"
+                />
+                <Button type="submit">Send anmeldelse</Button>
+              </form>
+            </Section>
+          ))}
 
         {canCancel && (
           <Section title="Avbestilling">

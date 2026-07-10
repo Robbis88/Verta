@@ -10,6 +10,8 @@ import {
   deletePropertyImage,
   savePublicListing,
   regeneratePublicListing,
+  replyToReview,
+  suggestReviewReplyAction,
 } from "../actions";
 import { PublicListingEditor } from "@/components/properties/public-listing-editor";
 import { PropertyMap } from "@/components/properties/property-map";
@@ -79,6 +81,20 @@ export default async function PropertyDetailPage({
   const bookings = (bookingsData ?? []) as Booking[];
   const requests = bookings.filter((b) => b.status === "requested");
   const activeBookings = bookings.filter((b) => b.status !== "requested");
+
+  const { data: reviewsData } = await supabase
+    .from("property_reviews")
+    .select("id,guest_name,rating,comment,owner_reply,created_at")
+    .eq("property_id", id)
+    .order("created_at", { ascending: false });
+  const reviews = (reviewsData ?? []) as {
+    id: string;
+    guest_name: string;
+    rating: number;
+    comment: string | null;
+    owner_reply: string | null;
+    created_at: string;
+  }[];
 
   const profile = await getCurrentProfile();
   const isPremium = profile?.plan === "premium";
@@ -374,6 +390,65 @@ export default async function PropertyDetailPage({
                 </li>
               ))}
             </ul>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Anmeldelser ({reviews.length})</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          {reviews.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Ingen anmeldelser ennå. Gjester kan legge igjen anmeldelse fra
+              gjestesiden etter oppholdet.
+            </p>
+          ) : (
+            reviews.map((r) => (
+              <div
+                key={r.id}
+                className="flex flex-col gap-2 rounded-lg border border-hairline p-3 text-sm"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-medium">{r.guest_name}</span>
+                  <span className="text-gold">
+                    {"★".repeat(r.rating)}
+                    <span className="text-ink/25">
+                      {"★".repeat(5 - r.rating)}
+                    </span>
+                  </span>
+                </div>
+                {r.comment && <p className="text-ink">{r.comment}</p>}
+                <form
+                  action={replyToReview}
+                  className="flex flex-col gap-2 border-t border-hairline pt-2"
+                >
+                  <input type="hidden" name="review_id" value={r.id} />
+                  <input type="hidden" name="property_id" value={p.id} />
+                  <textarea
+                    name="owner_reply"
+                    rows={2}
+                    defaultValue={r.owner_reply ?? ""}
+                    key={r.owner_reply ?? ""}
+                    placeholder="Skriv et svar til gjesten…"
+                    className="rounded-lg border border-input bg-background px-3 py-2 text-sm"
+                  />
+                  <div className="flex flex-wrap gap-2">
+                    <Button type="submit" size="sm" variant="outline">
+                      Lagre svar
+                    </Button>
+                  </div>
+                </form>
+                <form action={suggestReviewReplyAction}>
+                  <input type="hidden" name="review_id" value={r.id} />
+                  <input type="hidden" name="property_id" value={p.id} />
+                  <Button type="submit" size="sm" variant="ghost">
+                    Foreslå svar med AI
+                  </Button>
+                </form>
+              </div>
+            ))
           )}
         </CardContent>
       </Card>

@@ -13,6 +13,43 @@ import type { BookingSource } from "@/lib/constants";
 export type GuestCancelResult = { ok: boolean; message: string };
 
 /**
+ * Gjesten legger igjen en anmeldelse etter oppholdet. Token-en er tilgangs-
+ * nøkkelen. Kun tillatt når oppholdet er bekreftet og utsjekk har passert;
+ * unik indeks på booking_id hindrer dobbelt-anmeldelse.
+ */
+export async function submitReview(
+  token: string,
+  formData: FormData,
+): Promise<void> {
+  const supabase = createAdminClient();
+
+  const { data: booking } = await supabase
+    .from("bookings")
+    .select("id,property_id,guest_name,status,check_out")
+    .eq("guest_token", token)
+    .maybeSingle();
+  if (!booking) return;
+
+  const today = new Date().toISOString().slice(0, 10);
+  const stayOver = booking.check_out <= today;
+  if (booking.status !== "confirmed" || !stayOver) return;
+
+  const rating = Math.min(5, Math.max(1, Number(formData.get("rating")) || 0));
+  if (rating < 1) return;
+  const comment = String(formData.get("comment") ?? "").trim() || null;
+
+  await supabase.from("property_reviews").insert({
+    property_id: booking.property_id,
+    booking_id: booking.id,
+    guest_name: booking.guest_name,
+    rating,
+    comment,
+  });
+
+  revalidatePath(`/gjest/${token}`);
+}
+
+/**
  * Gjesten betaler depositumet på en godkjent forespørsel for å låse oppholdet.
  * Oppretter Stripe Checkout (destination charge) og redirecter. Webhooken
  * bekrefter bookingen ved betaling. Token-en er tilgangsnøkkelen.

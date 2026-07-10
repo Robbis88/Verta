@@ -7,6 +7,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createDirectBooking, quoteBooking } from "@/app/properties/[slug]/actions";
 import { getPublicCopy } from "@/lib/listing";
 import { getNearbyPois, type Poi } from "@/lib/pois";
+import { getPropertyReviews } from "@/lib/reviews";
 import { NearbyPois } from "@/components/public/nearby-pois";
 import { bookedDateSet } from "@/lib/availability";
 import { CANCELLATION_POLICY_LINES } from "@/lib/cancellation";
@@ -119,10 +120,11 @@ export default async function PublicStayPage({
   const property = await getProperty(slug);
   if (!property) notFound();
 
-  const [bookedDates, copy, pois] = await Promise.all([
+  const [bookedDates, copy, pois, reviewData] = await Promise.all([
     getBookedDates(property.id),
     getPublicCopy(property),
     getNearbyPois(property),
+    getPropertyReviews(property.id),
   ]);
   const today = new Date().toISOString().slice(0, 10);
 
@@ -221,6 +223,13 @@ export default async function PublicStayPage({
                   {s.label}
                 </span>
               ))}
+              {reviewData.average != null && (
+                <span className="flex items-center gap-1.5">
+                  <Star className="h-4 w-4 fill-gold text-gold" />
+                  {reviewData.average} · {reviewData.count}{" "}
+                  {reviewData.count === 1 ? "anmeldelse" : "anmeldelser"}
+                </span>
+              )}
               {priceLabel && (
                 <span className="rounded-full bg-gold px-3 py-1 font-semibold text-navy">
                   {priceLabel}
@@ -330,15 +339,55 @@ export default async function PublicStayPage({
               </section>
             )}
 
-            {/* Anmeldelser (klargjort for fremtiden) */}
+            {/* Anmeldelser */}
             <section>
-              <h2 className="mb-3 flex items-center gap-2 text-2xl font-bold text-navy">
-                <Star className="h-5 w-5 text-gold" />
+              <h2 className="mb-4 flex items-center gap-2 text-2xl font-bold text-navy">
+                <Star className="h-5 w-5 fill-gold text-gold" />
                 Anmeldelser
+                {reviewData.average != null && (
+                  <span className="text-lg font-semibold text-ink">
+                    {reviewData.average} · {reviewData.count}
+                  </span>
+                )}
               </h2>
-              <div className="rounded-2xl border border-dashed border-hairline p-6 text-center text-sm text-muted-foreground">
-                Anmeldelser fra gjester kommer snart.
-              </div>
+              {reviewData.count === 0 ? (
+                <div className="rounded-2xl border border-dashed border-hairline p-6 text-center text-sm text-muted-foreground">
+                  Ingen anmeldelser ennå — bli den første til å bo her.
+                </div>
+              ) : (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {reviewData.reviews.map((r) => (
+                    <div
+                      key={r.id}
+                      className="rounded-2xl border border-hairline bg-white p-5 shadow-sm"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold text-navy">
+                          {r.guest_name}
+                        </span>
+                        <span className="flex items-center gap-0.5 text-gold">
+                          {Array.from({ length: r.rating }).map((_, i) => (
+                            <Star key={i} className="h-3.5 w-3.5 fill-gold" />
+                          ))}
+                        </span>
+                      </div>
+                      {r.comment && (
+                        <p className="mt-2 text-sm leading-relaxed text-ink">
+                          {r.comment}
+                        </p>
+                      )}
+                      {r.owner_reply && (
+                        <div className="mt-3 rounded-lg bg-cloud p-3 text-sm">
+                          <p className="text-xs font-semibold text-navy">
+                            Svar fra verten
+                          </p>
+                          <p className="mt-1 text-ink">{r.owner_reply}</p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </section>
           </div>
 
