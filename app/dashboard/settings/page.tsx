@@ -91,6 +91,13 @@ export default async function SettingsPage({
                 for å kunne motta betaling.
               </p>
             )}
+            {utbetaling === "feil" && (
+              <p className="text-red-600">
+                Noe gikk galt da vi prøvde å koble utbetaling. Prøv igjen.
+                Vedvarer det, er Stripe Connect trolig ikke ferdig aktivert i
+                live-modus ennå (fullfør plattformprofilen i Stripe).
+              </p>
+            )}
 
             {payoutsReady ? (
               <>
