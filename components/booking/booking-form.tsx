@@ -159,9 +159,15 @@ export function BookingForm({
               <span>{formatNok(quote.cleaningFee)}</span>
             </div>
           )}
+          {quote.serviceFee > 0 && (
+            <div className="flex justify-between">
+              <span>Tjenestegebyr</span>
+              <span>{formatNok(quote.serviceFee)}</span>
+            </div>
+          )}
           <div className="flex justify-between border-t border-hairline pt-1 font-semibold">
             <span>Totalt</span>
-            <span>{formatNok(quote.total)}</span>
+            <span>{formatNok(quote.guestTotal)}</span>
           </div>
         </div>
       )}
@@ -185,7 +191,7 @@ export function BookingForm({
         <p className="text-xs text-ink/70">
           Godkjenner verten forespørselen, betaler du{" "}
           <span className="font-medium text-navy">
-            50 % depositum ({formatNok(quote.total / 2)})
+            50 % depositum ({formatNok(quote.guestTotal / 2)})
           </span>{" "}
           innen 24 timer for å låse oppholdet. Resten må betales senest 7 dager
           før innsjekk — ellers avbestilles oppholdet og depositumet beholdes.

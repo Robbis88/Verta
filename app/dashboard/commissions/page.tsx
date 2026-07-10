@@ -36,7 +36,9 @@ export default async function CommissionsPage() {
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-navy">Provisjon</h1>
         <p className="text-sm text-muted-foreground">
-          10 % av bookinger fra Vertas kanaler. Beregnes månedlig.
+          Verta tar ikke lenger provisjon fra deg. Gjestene betaler i stedet et
+          tjenestegebyr på 7,5 % ved bestilling, så du får hele ditt beløp.
+          Eventuelle rader under er historikk.
         </p>
       </div>
 

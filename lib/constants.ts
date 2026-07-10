@@ -37,7 +37,19 @@ export const BOOST_STATUSES = [
 ] as const;
 export type BoostStatus = (typeof BOOST_STATUSES)[number];
 
-/** Verta tar 10 % provisjon av bookinger fra egne sosiale kanaler. */
+/**
+ * Vertas tjenestegebyr som legges på gjestens bestilling (7,5 % av netter +
+ * rengjøring). Gjesten betaler dette på toppen; utleieren får hele sitt beløp.
+ * Dekker betaling og Vertas provisjon — ikke vask.
+ */
+export const SERVICE_FEE_RATE = 0.075;
+
+/** Beregner tjenestegebyret av utleierens beløp (netter + rengjøring). */
+export function serviceFeeOf(amount: number): number {
+  return Math.round(amount * SERVICE_FEE_RATE * 100) / 100;
+}
+
+/** @deprecated Erstattet av tjenestegebyr på gjesten. Beholdt for historikk. */
 export const COMMISSION_RATE = 0.1;
 
 /** Lavere sats på direktebookinger betalt via Verta (dekker gebyr + margin). */

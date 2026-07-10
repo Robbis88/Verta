@@ -7,8 +7,6 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { cancelAndRefund } from "@/lib/booking";
 import { refundFractionForCheckIn } from "@/lib/cancellation";
 import { stripe, stripeEnabled } from "@/lib/stripe";
-import { commissionRate } from "@/lib/constants";
-import type { BookingSource } from "@/lib/constants";
 
 export type GuestCancelResult = { ok: boolean; message: string };
 
@@ -61,7 +59,7 @@ export async function payDeposit(token: string): Promise<void> {
   const { data: booking } = await supabase
     .from("bookings")
     .select(
-      "id,status,deposit_amount,property_id,guest_email,hold_expires_at,source",
+      "id,status,deposit_amount,amount_total,service_fee,property_id,guest_email,hold_expires_at,source",
     )
     .eq("guest_token", token)
     .maybeSingle();
@@ -97,7 +95,11 @@ export async function payDeposit(token: string): Promise<void> {
   ) {
     redirect(back);
   }
-  const rate = commissionRate(booking.source as BookingSource);
+  // Andel av tjenestegebyret som hører til denne delbetalingen.
+  const amountTotal = Number(booking!.amount_total ?? 0);
+  const fee = Number(booking!.service_fee ?? 0);
+  const depositFee =
+    amountTotal > 0 ? Math.round(fee * (deposit / amountTotal) * 100) : 0;
   const origin =
     process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
@@ -115,7 +117,7 @@ export async function payDeposit(token: string): Promise<void> {
       },
     ],
     payment_intent_data: {
-      application_fee_amount: Math.round(deposit * rate * 100),
+      application_fee_amount: depositFee,
       transfer_data: { destination: owner.stripe_connect_id },
       metadata: { booking_id: booking.id, kind: "deposit" },
     },
@@ -139,7 +141,7 @@ export async function payRemaining(token: string): Promise<void> {
   const { data: booking } = await supabase
     .from("bookings")
     .select(
-      "id,status,remaining_amount,remaining_paid,property_id,guest_email,source",
+      "id,status,remaining_amount,remaining_paid,amount_total,service_fee,property_id,guest_email,source",
     )
     .eq("guest_token", token)
     .maybeSingle();
@@ -172,7 +174,10 @@ export async function payRemaining(token: string): Promise<void> {
     redirect(back);
   }
 
-  const rate = commissionRate(booking!.source as BookingSource);
+  const amountTotal = Number(booking!.amount_total ?? 0);
+  const fee = Number(booking!.service_fee ?? 0);
+  const remainingFee =
+    amountTotal > 0 ? Math.round(fee * (remaining / amountTotal) * 100) : 0;
   const origin = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
   const session = await stripe.checkout.sessions.create({
@@ -189,7 +194,7 @@ export async function payRemaining(token: string): Promise<void> {
       },
     ],
     payment_intent_data: {
-      application_fee_amount: Math.round(remaining * rate * 100),
+      application_fee_amount: remainingFee,
       transfer_data: { destination: owner.stripe_connect_id },
       metadata: { booking_id: booking!.id, kind: "remaining" },
     },

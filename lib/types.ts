@@ -91,6 +91,8 @@ export type Booking = {
   stripe_payment_intent?: string | null;
   amount_total?: number | null;
   application_fee?: number | null;
+  // Vertas tjenestegebyr gjesten betaler (7,5 %) — se sql/040.
+  service_fee?: number | null;
   hold_expires_at?: string | null;
   // Forespørsel-booking — se sql/028.
   num_guests?: number | null;

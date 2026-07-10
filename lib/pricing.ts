@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { serviceFeeOf } from "@/lib/constants";
 
 /**
  * Beregner booking-totaler fra eiendommens lagrede priser.
@@ -23,7 +24,12 @@ export type Quote = {
   nights: number;
   nightlyTotal: number;
   cleaningFee: number;
+  /** Vertas tjenestegebyr (7,5 % av total) — gjesten betaler dette på toppen. */
+  serviceFee: number;
+  /** Utleierens inntekt: netter + rengjøring (uendret betydning). */
   total: number;
+  /** Det gjesten faktisk betaler: total + serviceFee. */
+  guestTotal: number;
 };
 
 /** Listen av netter (ISO-datoer) en gjest betaler for: innsjekk t.o.m. natten før utsjekk. */
@@ -68,7 +74,16 @@ export function quoteFromConfig(
 
   const cleaningFee = config.cleaningFee != null ? Number(config.cleaningFee) : 0;
   const total = Math.round((nightlyTotal + cleaningFee) * 100) / 100;
-  return { nights: nights.length, nightlyTotal, cleaningFee, total };
+  const serviceFee = serviceFeeOf(total);
+  const guestTotal = Math.round((total + serviceFee) * 100) / 100;
+  return {
+    nights: nights.length,
+    nightlyTotal,
+    cleaningFee,
+    serviceFee,
+    total,
+    guestTotal,
+  };
 }
 
 /** Henter en eiendoms pris-konfig (basepris, gebyr, sesonger) via admin-klienten. */

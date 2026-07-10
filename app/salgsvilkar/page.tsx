@@ -21,9 +21,10 @@ export default function SalgsvilkarPage() {
       <H2>1. Priser</H2>
       <p>
         Alle priser oppgis i norske kroner (NOK) og inkluderer offentlige avgifter.
-        Totalprisen for oppholdet — inkludert eventuelle gebyrer for rengjøring
-        eller forbruk — vises tydelig før du bekrefter bestillingen. Det tilkommer
-        ingen skjulte kostnader utover det som er spesifisert ved bestilling.
+        Totalprisen for oppholdet — inkludert rengjøringsgebyr og et tjenestegebyr
+        til Verta på 7,5 % — vises som egne linjer før du bekrefter bestillingen.
+        Det tilkommer ingen skjulte kostnader utover det som er spesifisert ved
+        bestilling.
       </p>
 
       <H2>2. Betaling</H2>

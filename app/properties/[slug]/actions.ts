@@ -8,11 +8,10 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { bookingSchema } from "@/lib/validation";
 import { logAudit } from "@/lib/audit";
 import { stripe, stripeEnabled } from "@/lib/stripe";
-import { commissionRate } from "@/lib/constants";
 import type { BookingSource } from "@/lib/constants";
 import { finalizeBooking } from "@/lib/booking";
 import { sendRequestNotices } from "@/lib/email";
-import { calculateBookingTotal, quoteBookingTotal, type Quote } from "@/lib/pricing";
+import { quoteBookingTotal, type Quote } from "@/lib/pricing";
 import { loggHendelse } from "@/lib/kontrollrom";
 
 export type BookingFormState = {
@@ -97,11 +96,14 @@ export async function createDirectBooking(
   }
 
   const nights = nightsBetween(data.check_in, data.check_out);
-  const total = await calculateBookingTotal(
+  const quote = await quoteBookingTotal(
     property.id,
     data.check_in,
     data.check_out,
   );
+  const total = quote?.total ?? null; // utleierens inntekt (netter + rengjøring)
+  const serviceFee = quote?.serviceFee ?? 0; // Vertas gebyr (gjesten betaler)
+  const guestTotal = quote?.guestTotal ?? null; // det gjesten betaler totalt
 
   // Forespørsel-modus: opprett en 'requested' booking (ingen datolås, ingen
   // betaling), samle gjeste-info, og varsle eier + gjest. Eier godkjenner.
@@ -117,7 +119,8 @@ export async function createDirectBooking(
         check_out: data.check_out,
         nights,
         total_price: total,
-        amount_total: total,
+        amount_total: guestTotal,
+        service_fee: serviceFee,
         num_guests: data.num_guests ?? null,
         guest_message: data.guest_message || null,
         source,
@@ -173,7 +176,6 @@ export async function createDirectBooking(
       total > 0,
   );
 
-  const rate = commissionRate(source);
   const { data: booking, error } = await supabase
     .from("bookings")
     .insert({
@@ -190,8 +192,8 @@ export async function createDirectBooking(
       ...(canCharge
         ? {
             payment_status: "pending",
-            amount_total: total,
-            application_fee: Math.round((total as number) * rate * 100) / 100,
+            amount_total: guestTotal,
+            service_fee: serviceFee,
             hold_expires_at: new Date(Date.now() + 30 * 60_000).toISOString(),
           }
         : {}),
@@ -247,13 +249,14 @@ export async function createDirectBooking(
           product_data: {
             name: `${property.name} — ${nights} ${nights === 1 ? "natt" : "netter"}`,
           },
-          unit_amount: Math.round((total as number) * 100),
+          unit_amount: Math.round((guestTotal as number) * 100),
         },
         quantity: 1,
       },
     ],
     payment_intent_data: {
-      application_fee_amount: Math.round((total as number) * rate * 100),
+      // Verta beholder tjenestegebyret; resten overføres til utleieren.
+      application_fee_amount: Math.round(serviceFee * 100),
       transfer_data: { destination: owner!.stripe_connect_id! },
       metadata: { booking_id: booking.id },
     },

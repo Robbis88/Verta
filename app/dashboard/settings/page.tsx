@@ -104,8 +104,8 @@ export default async function SettingsPage({
                 <p className="text-muted-foreground">
                   Status:{" "}
                   <span className="font-medium text-emerald-600">Aktiv</span> —
-                  du kan motta betaling for gjeste-bookinger (Verta trekker 10 %
-                  i provisjon).
+                  du kan motta betaling for gjeste-bookinger. Du får hele
+                  beløpet; gjesten betaler et tjenestegebyr på 7,5 %.
                 </p>
                 <form action={openConnectDashboard}>
                   <Button type="submit" variant="outline">
@@ -117,8 +117,8 @@ export default async function SettingsPage({
               <>
                 <p className="text-muted-foreground">
                   Koble til en konto for å ta imot betaling når gjester booker
-                  via Verta. Stripe håndterer bankkonto og identitetssjekk. Verta
-                  trekker 10 % provisjon per booking.
+                  via Verta. Stripe håndterer bankkonto og identitetssjekk. Du
+                  får hele beløpet; gjesten betaler et tjenestegebyr på 7,5 %.
                 </p>
                 <form action={startConnectOnboarding}>
                   <Button type="submit">
