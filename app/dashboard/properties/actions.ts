@@ -115,7 +115,6 @@ export async function createProperty(
       loan_amount: data.loan_amount ?? null,
       interest_rate: data.interest_rate ?? null,
       monthly_principal: data.monthly_principal ?? null,
-      video_url: (formData.get("video_url") as string)?.trim() || null,
       lat: coords?.lat ?? null,
       lng: coords?.lng ?? null,
     })
@@ -179,7 +178,6 @@ export async function updateProperty(
       loan_amount: data.loan_amount ?? null,
       interest_rate: data.interest_rate ?? null,
       monthly_principal: data.monthly_principal ?? null,
-      video_url: (formData.get("video_url") as string)?.trim() || null,
       lat: coords?.lat ?? null,
       lng: coords?.lng ?? null,
     })
@@ -417,6 +415,85 @@ export async function suggestReviewReplyAction(
     console.error("suggestReviewReplyAction:", err);
   }
   if (propertyId) revalidatePath(`/dashboard/properties/${propertyId}`);
+}
+
+const VIDEO_BUCKET = "property-videos";
+
+/**
+ * Lager en signert opplastings-URL for en eiendomsvideo, slik at nettleseren kan
+ * laste opp direkte til Storage (utenom Vercels request-grense). Verifiserer
+ * eierskap via RLS før token utstedes.
+ */
+export async function createVideoUpload(
+  propertyId: string,
+  contentType: string,
+): Promise<{ path: string; token: string } | null> {
+  await requireUser();
+  const supabase = await createClient();
+  const { data: owned } = await supabase
+    .from("properties")
+    .select("id")
+    .eq("id", propertyId)
+    .maybeSingle();
+  if (!owned) return null;
+
+  const ext = contentType.includes("webm") ? "webm" : "mp4";
+  const path = `${propertyId}/${crypto.randomUUID()}.${ext}`;
+  const admin = createAdminClient();
+  const { data, error } = await admin.storage
+    .from(VIDEO_BUCKET)
+    .createSignedUploadUrl(path);
+  if (error || !data) return null;
+  return { path, token: data.token };
+}
+
+/** Lagrer den opplastede videoens offentlige URL på eiendommen. */
+export async function setPropertyVideo(
+  propertyId: string,
+  path: string,
+): Promise<void> {
+  await requireUser();
+  const supabase = await createClient();
+  const { data: owned } = await supabase
+    .from("properties")
+    .select("id")
+    .eq("id", propertyId)
+    .maybeSingle();
+  if (!owned) return;
+
+  const admin = createAdminClient();
+  const { data: pub } = admin.storage.from(VIDEO_BUCKET).getPublicUrl(path);
+  await supabase
+    .from("properties")
+    .update({ video_url: pub.publicUrl })
+    .eq("id", propertyId);
+  revalidatePath(`/dashboard/properties/${propertyId}`);
+}
+
+/** Fjerner videoen fra eiendommen (og fra Storage om den ligger i vår bucket). */
+export async function removePropertyVideo(propertyId: string): Promise<void> {
+  await requireUser();
+  const supabase = await createClient();
+  const { data: prop } = await supabase
+    .from("properties")
+    .select("id,video_url")
+    .eq("id", propertyId)
+    .maybeSingle();
+  if (!prop) return;
+
+  const url = (prop as { video_url: string | null }).video_url ?? "";
+  const marker = `/${VIDEO_BUCKET}/`;
+  const idx = url.indexOf(marker);
+  if (idx !== -1) {
+    const objPath = url.slice(idx + marker.length);
+    const admin = createAdminClient();
+    await admin.storage.from(VIDEO_BUCKET).remove([objPath]);
+  }
+  await supabase
+    .from("properties")
+    .update({ video_url: null })
+    .eq("id", propertyId);
+  revalidatePath(`/dashboard/properties/${propertyId}`);
 }
 
 export async function deleteProperty(formData: FormData): Promise<void> {

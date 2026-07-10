@@ -12,8 +12,12 @@ import {
   regeneratePublicListing,
   replyToReview,
   suggestReviewReplyAction,
+  createVideoUpload,
+  setPropertyVideo,
+  removePropertyVideo,
 } from "../actions";
 import { PublicListingEditor } from "@/components/properties/public-listing-editor";
+import { VideoUploader } from "@/components/properties/video-uploader";
 import { PropertyMap } from "@/components/properties/property-map";
 import { ImageManager } from "@/components/properties/image-manager";
 import {
@@ -179,6 +183,21 @@ export default async function PropertyDetailPage({
             images={p.images ?? []}
             uploadAction={uploadPropertyImage}
             deleteAction={deletePropertyImage}
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Video</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <VideoUploader
+            propertyId={p.id}
+            videoUrl={p.video_url ?? null}
+            createUpload={createVideoUpload}
+            setVideo={setPropertyVideo}
+            removeVideo={removePropertyVideo}
           />
         </CardContent>
       </Card>

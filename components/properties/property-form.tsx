@@ -294,19 +294,6 @@ export function PropertyForm({
         </Field>
       </div>
 
-      <Field label="Video-URL (valgfritt)" error={state.fieldErrors?.video_url}>
-        <Input
-          name="video_url"
-          type="url"
-          placeholder="https://…/hytte.mp4"
-          defaultValue={defaults?.video_url ?? ""}
-        />
-        <p className="text-xs text-muted-foreground">
-          Lenke til en mp4/webm-video. Vises som bakgrunn i toppen av den
-          offentlige siden.
-        </p>
-      </Field>
-
       <Field label="Husregler" error={state.fieldErrors?.house_rules}>
         <Textarea
           name="house_rules"
