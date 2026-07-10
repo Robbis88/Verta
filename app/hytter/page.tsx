@@ -5,6 +5,7 @@ import { Search } from "lucide-react";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AMENITY_LABELS } from "@/lib/amenities";
 import { PropertyCard, type Listing } from "@/components/public/property-card";
+import { ListingsMap, type MapPin } from "@/components/public/listings-map";
 import { Footer } from "@/components/landing/Footer";
 
 export const metadata: Metadata = {
@@ -14,7 +15,12 @@ export const metadata: Metadata = {
   alternates: { canonical: "/hytter" },
 };
 
-type Row = Listing & { amenities: string[] | null; id: string };
+type Row = Listing & {
+  amenities: string[] | null;
+  id: string;
+  lat: number | null;
+  lng: number | null;
+};
 
 const FILTER_AMENITIES = [
   "wifi",
@@ -56,7 +62,7 @@ export default async function MarketplacePage({
   const { data } = await supabase
     .from("properties")
     .select(
-      "id,slug,name,address,images,base_nightly_rate,max_guests,bedrooms,amenities",
+      "id,slug,name,address,images,base_nightly_rate,max_guests,bedrooms,amenities,lat,lng",
     )
     .order("created_at", { ascending: false });
   let list = (data ?? []) as Row[];
@@ -93,6 +99,16 @@ export default async function MarketplacePage({
     const bookedIds = new Set((booked ?? []).map((b) => b.property_id));
     list = list.filter((p) => !bookedIds.has(p.id));
   }
+
+  const pins: MapPin[] = list
+    .filter((p) => p.lat != null && p.lng != null)
+    .map((p) => ({
+      slug: p.slug,
+      name: p.name,
+      lat: p.lat as number,
+      lng: p.lng as number,
+      price: p.base_nightly_rate,
+    }));
 
   return (
     <div className="min-h-screen bg-cloud">
@@ -203,6 +219,11 @@ export default async function MarketplacePage({
 
       <main className="px-6 py-10">
         <div className="mx-auto max-w-6xl">
+          {pins.length > 0 && (
+            <div className="mb-8">
+              <ListingsMap pins={pins} />
+            </div>
+          )}
           {list.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-hairline bg-white p-12 text-center text-ink/60">
               Ingen boliger matchet søket. Prøv å justere filtrene.
