@@ -11,6 +11,7 @@ import { logAudit } from "@/lib/audit";
 import { cancelAndRefund } from "@/lib/booking";
 import { sendBookingApproved, sendBookingRejected } from "@/lib/email";
 import { calculateBookingTotal } from "@/lib/pricing";
+import { hoursToRemainingDeadline } from "@/lib/cancellation";
 
 export type OwnerBookingState = {
   error?: string;
@@ -142,7 +143,13 @@ export async function approveBooking(formData: FormData): Promise<void> {
   }
 
   const total = Number(booking.amount_total ?? 0);
-  const deposit = Math.round(total * 0.5 * 100) / 100;
+  // Er innsjekk nærmere enn restfristen (7 dager)? Da er 50/50-splitten umulig
+  // — restfristen ligger alt bak oss. Krev full betaling med en gang, så
+  // unngår vi en «rest» som aldri kan betales og som ville auto-avbestilt.
+  const fullUpfront = hoursToRemainingDeadline(booking.check_in) <= 0;
+  const deposit = fullUpfront
+    ? total
+    : Math.round(total * 0.5 * 100) / 100;
   const remaining = Math.round((total - deposit) * 100) / 100;
   const holdExpires = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 

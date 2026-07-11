@@ -165,6 +165,8 @@ export default async function GuestPage({
   if (booking.status === "approved") {
     const deposit = Number(booking.deposit_amount ?? 0);
     const remaining = Number(booking.remaining_amount ?? 0);
+    // Kortvarsel-booking: hele beløpet betales nå (ingen rest).
+    const fullUpfront = remaining <= 0;
     const expired =
       !!booking.hold_expires_at && isPast(booking.hold_expires_at);
     return (
@@ -177,8 +179,14 @@ export default async function GuestPage({
           <Section title="Oppholdet ditt">
             <Row label="Innsjekk" value={formatDate(booking.check_in)} />
             <Row label="Utsjekk" value={formatDate(booking.check_out)} />
-            <Row label="Depositum nå" value={formatNok(deposit)} />
-            <Row label="Rest før innsjekk" value={formatNok(remaining)} />
+            {fullUpfront ? (
+              <Row label="Å betale nå" value={formatNok(deposit)} />
+            ) : (
+              <>
+                <Row label="Depositum nå" value={formatNok(deposit)} />
+                <Row label="Rest før innsjekk" value={formatNok(remaining)} />
+              </>
+            )}
           </Section>
           {expired ? (
             <p className="text-center text-sm text-destructive">
@@ -189,12 +197,17 @@ export default async function GuestPage({
             <div className="flex flex-col items-center gap-2">
               <form action={payDeposit.bind(null, token)}>
                 <Button type="submit" size="lg">
-                  Betal depositum {formatNok(deposit)}
+                  {fullUpfront
+                    ? `Betal og lås oppholdet ${formatNok(deposit)}`
+                    : `Betal depositum ${formatNok(deposit)}`}
                 </Button>
               </form>
               <p className="text-center text-xs text-ink/60">
-                Betal innen 24 timer for å låse oppholdet. Resten (
-                {formatNok(remaining)}) betales før innsjekk.
+                {fullUpfront
+                  ? "Betal innen 24 timer for å låse oppholdet."
+                  : `Betal innen 24 timer for å låse oppholdet. Resten (${formatNok(
+                      remaining,
+                    )}) betales før innsjekk.`}
               </p>
             </div>
           )}
