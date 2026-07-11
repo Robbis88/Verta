@@ -276,6 +276,7 @@ export default async function PropertyDetailPage({
               check_in_time: p.check_in_time,
               check_out_time: p.check_out_time,
               video_url: p.video_url,
+              listed: p.listed,
               market_value: p.market_value,
               loan_amount: p.loan_amount,
               interest_rate: p.interest_rate,

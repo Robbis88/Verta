@@ -64,6 +64,7 @@ export default async function MarketplacePage({
     .select(
       "id,slug,name,address,images,base_nightly_rate,max_guests,bedrooms,amenities,lat,lng",
     )
+    .eq("listed", true)
     .order("created_at", { ascending: false });
   let list = (data ?? []) as Row[];
 

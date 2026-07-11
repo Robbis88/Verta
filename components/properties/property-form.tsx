@@ -37,6 +37,7 @@ export type PropertyDefaults = {
   check_in_time?: string | null;
   check_out_time?: string | null;
   video_url?: string | null;
+  listed?: boolean | null;
   market_value?: number | null;
   loan_amount?: number | null;
   interest_rate?: number | null;
@@ -82,6 +83,24 @@ export function PropertyForm({
           defaultValue={defaults?.description ?? ""}
         />
       </Field>
+
+      <label className="flex items-start gap-2 rounded-lg border border-hairline p-3">
+        <input
+          type="checkbox"
+          name="listed"
+          defaultChecked={defaults?.listed ?? false}
+          className="mt-0.5 h-4 w-4"
+        />
+        <span>
+          <span className="block text-sm font-medium">
+            Vis i markedsplassen
+          </span>
+          <span className="block text-xs text-muted-foreground">
+            På = eiendommen dukker opp i søk på verta.no og forsiden. Av = kun
+            tilgjengelig via lenken du deler selv.
+          </span>
+        </span>
+      </label>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Field label="Soverom" error={state.fieldErrors?.bedrooms}>

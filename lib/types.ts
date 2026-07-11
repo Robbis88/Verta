@@ -48,6 +48,8 @@ export type Property = {
   public_listing?: string | null;
   area_description?: string | null;
   video_url?: string | null;
+  // Synlig i markedsplass/søk (default av) — se sql/043.
+  listed?: boolean | null;
   // Eiendomsfinans — se sql/033.
   market_value?: number | null;
   loan_amount?: number | null;

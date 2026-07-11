@@ -17,7 +17,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const supabase = createAdminClient();
     const { data } = await supabase
       .from("properties")
-      .select("slug,updated_at");
+      .select("slug,updated_at")
+      .eq("listed", true);
     const propertyRoutes: MetadataRoute.Sitemap = (data ?? []).map((p) => ({
       url: `${siteUrl}/bo/${p.slug}`,
       lastModified: p.updated_at ? new Date(p.updated_at) : undefined,

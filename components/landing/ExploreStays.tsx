@@ -15,6 +15,7 @@ export async function ExploreStays() {
     const { data } = await supabase
       .from("properties")
       .select("slug,name,address,images,base_nightly_rate,max_guests,bedrooms")
+      .eq("listed", true)
       .order("created_at", { ascending: false })
       .limit(12);
     all = (data ?? []) as Listing[];

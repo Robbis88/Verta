@@ -115,6 +115,7 @@ export async function createProperty(
       loan_amount: data.loan_amount ?? null,
       interest_rate: data.interest_rate ?? null,
       monthly_principal: data.monthly_principal ?? null,
+      listed: formData.get("listed") === "on",
       lat: coords?.lat ?? null,
       lng: coords?.lng ?? null,
     })
@@ -178,6 +179,7 @@ export async function updateProperty(
       loan_amount: data.loan_amount ?? null,
       interest_rate: data.interest_rate ?? null,
       monthly_principal: data.monthly_principal ?? null,
+      listed: formData.get("listed") === "on",
       lat: coords?.lat ?? null,
       lng: coords?.lng ?? null,
     })
