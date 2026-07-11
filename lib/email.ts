@@ -322,14 +322,20 @@ export async function sendRequestNotices(opts: {
   checkOut: string;
   numGuests?: number | null;
   message?: string | null;
+  ownerToken?: string | null;
 }): Promise<void> {
   const tasks: Promise<boolean>[] = [];
 
   if (opts.ownerEmail) {
+    // Lenke til svar-siden om vi har token (godkjenn/avslå uten innlogging),
+    // ellers til dashbordet.
+    const actionUrl = opts.ownerToken
+      ? `${SITE_URL}/godkjenn/${opts.ownerToken}`
+      : `${SITE_URL}/dashboard/properties`;
     const body = `
       <p style="font-size:15px;line-height:1.6;margin:0 0 20px;">
         Du har fått en ny <strong>bookingforespørsel</strong> på
-        ${opts.propertyName}. Godkjenn eller avslå den i dashbordet.
+        ${opts.propertyName}. Godkjenn eller avslå den direkte under.
       </p>
       <table style="width:100%;border-collapse:collapse;margin:0 0 8px;">
         ${detailRow("Gjest", opts.guestName)}
@@ -348,10 +354,10 @@ export async function sendRequestNotices(opts: {
           : ""
       }
       <div style="text-align:center;margin:24px 0 0;">
-        <a href="${SITE_URL}/dashboard/properties"
+        <a href="${actionUrl}"
           style="display:inline-block;background:#d8a66a;color:#081b33;font-weight:600;
           font-size:15px;text-decoration:none;padding:12px 28px;border-radius:8px;">
-          Vurder forespørselen
+          Se og svar på forespørselen
         </a>
       </div>`;
     tasks.push(

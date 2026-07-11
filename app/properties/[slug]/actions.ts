@@ -126,7 +126,7 @@ export async function createDirectBooking(
         source,
         status: "requested",
       })
-      .select("id")
+      .select("id,owner_token")
       .single();
 
     if (reqErr) return { error: reqErr.message };
@@ -155,6 +155,7 @@ export async function createDirectBooking(
       checkOut: data.check_out,
       numGuests: data.num_guests ?? null,
       message: data.guest_message || null,
+      ownerToken: booking.owner_token,
     });
 
     return { success: true, requested: true };
