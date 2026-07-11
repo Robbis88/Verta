@@ -3,6 +3,7 @@ import type Stripe from "stripe";
 import { stripe, planFromPriceId, EXTRA_PROPERTY_PRICE_ID } from "@/lib/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { finalizeBooking, notifyRemainingPaid } from "@/lib/booking";
+import { sendClaimPaid } from "@/lib/email";
 import { loggHendelse } from "@/lib/kontrollrom";
 
 /**
@@ -108,6 +109,55 @@ export async function POST(request: Request) {
     // Gjeste-booking betalt → bekreft bookingen og skaff tilkomst/e-post.
     case "checkout.session.completed": {
       const session = event.data.object as Stripe.Checkout.Session;
+
+      // Skadekrav betalt → marker som betalt og varsle eier.
+      if (session.metadata?.kind === "claim") {
+        const claimId = session.metadata.claim_id;
+        if (claimId) {
+          const { data: updated } = await supabase
+            .from("incident_claims")
+            .update({
+              status: "paid",
+              stripe_session_id: session.id,
+              stripe_payment_intent: session.payment_intent
+                ? String(session.payment_intent)
+                : null,
+            })
+            .eq("id", claimId)
+            .eq("status", "pending")
+            .select("id,booking_id,property_id,amount");
+          const claim = updated?.[0];
+          if (claim) {
+            const { data: property } = await supabase
+              .from("properties")
+              .select("name,user_id")
+              .eq("id", claim.property_id)
+              .single();
+            const { data: booking } = await supabase
+              .from("bookings")
+              .select("guest_name")
+              .eq("id", claim.booking_id)
+              .single();
+            const { data: owner } = property
+              ? await supabase
+                  .from("users")
+                  .select("email")
+                  .eq("id", property.user_id)
+                  .single()
+              : { data: null };
+            if (owner?.email) {
+              await sendClaimPaid({
+                to: owner.email,
+                propertyName: property?.name ?? "",
+                guestName: booking?.guest_name ?? "Gjesten",
+                amount: Number(claim.amount),
+              });
+            }
+          }
+        }
+        break;
+      }
+
       const bookingId = session.metadata?.booking_id;
       if (!bookingId) break; // abonnement-checkout, ikke en booking
       const kind = session.metadata?.kind;

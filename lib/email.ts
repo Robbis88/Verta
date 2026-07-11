@@ -464,6 +464,72 @@ export async function sendBookingRejected(opts: {
   });
 }
 
+/** Skadekrav til gjesten etter oppholdet — med bilder og betalingslenke. */
+export async function sendIncidentClaim(opts: {
+  to: string;
+  guestName: string;
+  propertyName: string;
+  amount: number;
+  description?: string | null;
+  photoUrls: string[];
+  claimToken: string;
+}): Promise<boolean> {
+  const photos = opts.photoUrls
+    .slice(0, 4)
+    .map(
+      (u) =>
+        `<img src="${u}" alt="Skadebilde" style="width:120px;height:120px;object-fit:cover;border-radius:8px;margin:0 6px 6px 0;" />`,
+    )
+    .join("");
+  const body = `
+    <p style="font-size:15px;line-height:1.6;margin:0 0 20px;">
+      Hei ${opts.guestName}, etter oppholdet på
+      <strong>${opts.propertyName}</strong> har verten meldt en skade og sendt
+      deg et krav på <strong>${formatNok(opts.amount)}</strong>.
+    </p>
+    ${
+      opts.description
+        ? `<div style="margin:0 0 16px;padding:16px;border-radius:8px;background:#f5f7fa;">
+             <p style="margin:0 0 6px;font-size:13px;color:#4b5563;">Beskrivelse</p>
+             <p style="margin:0;font-size:14px;line-height:1.6;color:#081b33;white-space:pre-line;">${opts.description}</p>
+           </div>`
+        : ""
+    }
+    ${photos ? `<div style="margin:0 0 16px;">${photos}</div>` : ""}
+    <div style="text-align:center;margin:24px 0 0;">
+      <a href="${SITE_URL}/krav/${opts.claimToken}"
+        style="display:inline-block;background:#d8a66a;color:#081b33;font-weight:600;
+        font-size:15px;text-decoration:none;padding:12px 28px;border-radius:8px;">
+        Se kravet og betal
+      </a>
+    </div>`;
+  return send({
+    to: opts.to,
+    subject: `Skadekrav: ${opts.propertyName}`,
+    html: layout("Du har fått et skadekrav", body),
+  });
+}
+
+/** Varsel til eier når et skadekrav er betalt. */
+export async function sendClaimPaid(opts: {
+  to: string;
+  propertyName: string;
+  guestName: string;
+  amount: number;
+}): Promise<boolean> {
+  const body = `
+    <p style="font-size:15px;line-height:1.6;margin:0;">
+      ${opts.guestName} har betalt skadekravet på
+      <strong>${formatNok(opts.amount)}</strong> for
+      <strong>${opts.propertyName}</strong>. Beløpet utbetales til deg.
+    </p>`;
+  return send({
+    to: opts.to,
+    subject: `Skadekrav betalt: ${opts.propertyName}`,
+    html: layout("Skadekrav betalt ✅", body),
+  });
+}
+
 /** Påminnelse til gjesten om å betale restbeløpet innen fristen. */
 export async function sendRemainingDue(opts: {
   to: string;

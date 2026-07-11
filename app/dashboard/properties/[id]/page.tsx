@@ -62,10 +62,10 @@ export default async function PropertyDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ lock?: string; godkjenn?: string }>;
+  searchParams: Promise<{ lock?: string; godkjenn?: string; krav?: string }>;
 }) {
   const { id } = await params;
-  const { lock: lockResult, godkjenn } = await searchParams;
+  const { lock: lockResult, godkjenn, krav } = await searchParams;
   const supabase = await createClient();
 
   const { data: property } = await supabase
@@ -301,6 +301,13 @@ export default async function PropertyDetailPage({
         </p>
       )}
 
+      {krav === "sendt" && (
+        <p className="rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+          Skadekravet er sendt til gjesten på e-post. Du får varsel når det
+          betales.
+        </p>
+      )}
+
       {requests.length > 0 && (
         <Card className="border-gold">
           <CardHeader>
@@ -397,6 +404,14 @@ export default async function PropertyDetailPage({
                       className="text-xs text-muted-foreground underline hover:text-foreground"
                     >
                       Gjesteside
+                    </a>
+                  )}
+                  {b.status !== "cancelled" && (
+                    <a
+                      href={`/dashboard/skade/${b.id}`}
+                      className="text-xs text-amber-600 underline hover:text-amber-700"
+                    >
+                      Meld skade
                     </a>
                   )}
                   {b.status === "cancelled" ? (
