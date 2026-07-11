@@ -184,6 +184,7 @@ export async function approveBooking(formData: FormData): Promise<void> {
       checkIn: booking.check_in,
       checkOut: booking.check_out,
       depositAmount: deposit,
+      fullUpfront,
       payToken: booking.guest_token,
     });
   }

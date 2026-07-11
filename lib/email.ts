@@ -396,29 +396,40 @@ export async function sendBookingApproved(opts: {
   checkOut: string;
   depositAmount: number;
   payToken: string;
+  /** Kortvarsel-booking: hele beløpet betales nå (ingen depositum/rest-splitt). */
+  fullUpfront?: boolean;
 }): Promise<boolean> {
+  const amount = formatNok(opts.depositAmount);
+  const intro = opts.fullUpfront
+    ? `For å låse oppholdet betaler du <strong>hele beløpet på ${amount}</strong> innen 24 timer. Betaler du ikke i tide, frigis datoene.`
+    : `For å låse oppholdet betaler du et depositum på <strong>${amount}</strong> innen 24 timer. Betaler du ikke i tide, frigis datoene.`;
+  const rowLabel = opts.fullUpfront ? "Å betale nå" : "Depositum nå";
+  const cta = opts.fullUpfront
+    ? "Betal og lås oppholdet"
+    : "Betal depositum og lås oppholdet";
+
   const body = `
     <p style="font-size:15px;line-height:1.6;margin:0 0 20px;">
       Hei ${opts.guestName}, gode nyheter — forespørselen din for
-      <strong>${opts.propertyName}</strong> er godkjent! For å låse oppholdet
-      betaler du et depositum på <strong>${formatNok(opts.depositAmount)}</strong>
-      innen 24 timer. Betaler du ikke i tide, frigis datoene.
+      <strong>${opts.propertyName}</strong> er godkjent! ${intro}
     </p>
     <table style="width:100%;border-collapse:collapse;margin:0 0 8px;">
       ${detailRow("Innsjekk", formatDate(opts.checkIn))}
       ${detailRow("Utsjekk", formatDate(opts.checkOut))}
-      ${detailRow("Depositum nå", formatNok(opts.depositAmount))}
+      ${detailRow(rowLabel, amount)}
     </table>
     <div style="text-align:center;margin:24px 0 0;">
       <a href="${SITE_URL}/gjest/${opts.payToken}"
         style="display:inline-block;background:#d8a66a;color:#081b33;font-weight:600;
         font-size:15px;text-decoration:none;padding:12px 28px;border-radius:8px;">
-        Betal depositum og lås oppholdet
+        ${cta}
       </a>
     </div>`;
   return send({
     to: opts.to,
-    subject: `Godkjent: ${opts.propertyName} – betal depositum`,
+    subject: opts.fullUpfront
+      ? `Godkjent: ${opts.propertyName} – betal og lås oppholdet`
+      : `Godkjent: ${opts.propertyName} – betal depositum`,
     html: layout("Forespørselen er godkjent 🎉", body),
   });
 }
