@@ -9,7 +9,7 @@ import {
   requestCleaner,
   cancelRequest,
   reviewCleaner,
-  markRequestPaid,
+  payServiceRequest,
 } from "./actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,10 +37,10 @@ type Cleaner = {
 export default async function FinnVaskehjelpPage({
   searchParams,
 }: {
-  searchParams: Promise<{ property?: string }>;
+  searchParams: Promise<{ property?: string; betalt?: string; feil?: string }>;
 }) {
   await requireUser();
-  const { property: propParam } = await searchParams;
+  const { property: propParam, betalt, feil } = await searchParams;
   const supabase = await createClient();
 
   const { data: propData } = await supabase
@@ -136,6 +136,18 @@ export default async function FinnVaskehjelpPage({
           oppdrag og kjører så langt.
         </p>
       </div>
+
+      {betalt && (
+        <p className="rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+          Betalingen er gjennomført. Vaskeren får beløpet minus Vertas 10 %.
+        </p>
+      )}
+      {feil === "vasker" && (
+        <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          Vaskeren har ikke koblet utbetaling ennå, så oppdraget kan ikke betales
+          gjennom Verta. Be vaskeren koble utbetaling i portalen sin.
+        </p>
+      )}
 
       {properties.length === 0 ? (
         <Card>
@@ -314,10 +326,10 @@ export default async function FinnVaskehjelpPage({
                                 Betalt ✓
                               </span>
                             ) : (
-                              <form action={markRequestPaid}>
+                              <form action={payServiceRequest}>
                                 <input type="hidden" name="id" value={r.id} />
                                 <Button type="submit" size="sm">
-                                  Marker betalt
+                                  Betal
                                 </Button>
                               </form>
                             ))}

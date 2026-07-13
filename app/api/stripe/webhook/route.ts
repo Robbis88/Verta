@@ -158,6 +158,19 @@ export async function POST(request: Request) {
         break;
       }
 
+      // Vaskeoppdrag betalt → marker service_request som betalt.
+      if (session.metadata?.kind === "service") {
+        const requestId = session.metadata.request_id;
+        if (requestId) {
+          await supabase
+            .from("service_requests")
+            .update({ payment_status: "paid" })
+            .eq("id", requestId)
+            .eq("payment_status", "unpaid");
+        }
+        break;
+      }
+
       const bookingId = session.metadata?.booking_id;
       if (!bookingId) break; // abonnement-checkout, ikke en booking
       const kind = session.metadata?.kind;

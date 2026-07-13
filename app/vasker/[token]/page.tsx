@@ -314,7 +314,7 @@ export default async function CleanerPortal({
                 aldri kontant «på si».
               </li>
               <li>
-                Verta trekker <strong>12 % i formidlingsgebyr</strong>; resten
+                Verta trekker <strong>10 % i formidlingsgebyr</strong>; resten
                 er ditt.
               </li>
               <li>

@@ -65,4 +65,4 @@ export function commissionRate(source: BookingSource): number {
 }
 
 /** Verta sitt formidlingsgebyr på vaske-oppdrag i markedsplassen. */
-export const MARKET_FEE_RATE = 0.12;
+export const MARKET_FEE_RATE = 0.1;
