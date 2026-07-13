@@ -115,7 +115,7 @@ export async function cancelAndRefund(opts: {
   const { data: booking } = await supabase
     .from("bookings")
     .select(
-      "id,property_id,guest_name,guest_email,check_in,check_out,status,access_code_id,payment_status,stripe_payment_intent,amount_total",
+      "id,property_id,guest_name,guest_email,check_in,check_out,status,access_code_id,payment_status,stripe_payment_intent,amount_total,deposit_amount,remaining_amount,remaining_paid,remaining_payment_intent",
     )
     .eq("id", opts.bookingId)
     .maybeSingle();
@@ -126,9 +126,20 @@ export async function cancelAndRefund(opts: {
   const fraction = Math.max(0, Math.min(1, opts.refundFraction));
   const wasPaid =
     booking.payment_status === "paid" && !!booking.stripe_payment_intent;
-  const total = Number(booking.amount_total ?? 0);
+
+  // Gjesten kan ha betalt i to deler (depositum + rest) = to Stripe-betalinger.
+  // Hoved-betalingen belastet deposit_amount (forespørsel-flyt) eller hele
+  // amount_total (instant); restbetalingen belastet remaining_amount.
+  const depositAmt = Number(booking.deposit_amount ?? 0);
+  const mainCharged =
+    depositAmt > 0 ? depositAmt : Number(booking.amount_total ?? 0);
+  const remainingCharged =
+    booking.remaining_paid && booking.remaining_payment_intent
+      ? Number(booking.remaining_amount ?? 0)
+      : 0;
+  const paidTotal = mainCharged + remainingCharged;
   const refundAmount =
-    wasPaid && fraction > 0 ? Math.round(total * fraction * 100) / 100 : 0;
+    wasPaid && fraction > 0 ? Math.round(paidTotal * fraction * 100) / 100 : 0;
 
   // Marker kansellert (idempotent via status-guard). Refundert-status kun hvis
   // faktisk refundert; ellers beholdes 'paid' (beløpet er beholdt).
@@ -156,20 +167,33 @@ export async function cancelAndRefund(opts: {
     }
   }
 
-  // Refunder gjesten (proporsjonalt), og reverser eier-overføring + provisjon.
+  // Refunder gjesten proporsjonalt fra HVER betaling (depositum + evt. rest),
+  // og reverser eier-overføring + provisjon. Full refusjon (fraction=1) tar
+  // hele hver betaling.
   if (stripe && refundAmount > 0) {
-    try {
-      await stripe.refunds.create({
-        payment_intent: booking.stripe_payment_intent!,
-        // Utelat amount ved full refusjon (unngår avrundingsavvik).
-        ...(fraction < 1
-          ? { amount: Math.round(total * fraction * 100) }
-          : {}),
-        refund_application_fee: true,
-        reverse_transfer: true,
+    const charges: { pi: string; amount: number }[] = [
+      { pi: booking.stripe_payment_intent!, amount: mainCharged },
+    ];
+    if (remainingCharged > 0) {
+      charges.push({
+        pi: booking.remaining_payment_intent!,
+        amount: remainingCharged,
       });
-    } catch (err) {
-      console.error("Refusjon feilet:", err);
+    }
+    for (const c of charges) {
+      try {
+        await stripe.refunds.create({
+          payment_intent: c.pi,
+          // Utelat amount ved full refusjon (unngår avrundingsavvik).
+          ...(fraction < 1
+            ? { amount: Math.round(c.amount * fraction * 100) }
+            : {}),
+          refund_application_fee: true,
+          reverse_transfer: true,
+        });
+      } catch (err) {
+        console.error("Refusjon feilet for betaling:", c.pi, err);
+      }
     }
   }
 

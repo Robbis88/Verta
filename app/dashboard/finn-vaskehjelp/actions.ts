@@ -160,6 +160,6 @@ export async function payServiceRequest(formData: FormData): Promise<void> {
     metadata: { request_id: req!.id, kind: "service" },
     success_url: `${origin}/dashboard/finn-vaskehjelp?betalt=1`,
     cancel_url: `${origin}/dashboard/finn-vaskehjelp`,
-  });
+  }, { idempotencyKey: `service-${req!.id}` });
   redirect(session.url!);
 }

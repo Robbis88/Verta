@@ -67,7 +67,7 @@ export async function payClaim(token: string): Promise<void> {
     metadata: { claim_id: claim!.id, kind: "claim" },
     success_url: `${origin}/krav/${token}?betalt=1`,
     cancel_url: `${origin}/krav/${token}`,
-  });
+  }, { idempotencyKey: `claim-${claim!.id}` });
 
   redirect(session.url!);
 }

@@ -125,7 +125,7 @@ export async function payDeposit(token: string): Promise<void> {
     metadata: { booking_id: booking.id, kind: "deposit" },
     success_url: `${origin}/gjest/${token}?betalt=1`,
     cancel_url: `${origin}/gjest/${token}`,
-  });
+  }, { idempotencyKey: `deposit-${booking!.id}` });
 
   redirect(session.url!);
 }
@@ -202,7 +202,7 @@ export async function payRemaining(token: string): Promise<void> {
     metadata: { booking_id: booking!.id, kind: "remaining" },
     success_url: `${origin}/gjest/${token}?betalt=1`,
     cancel_url: `${origin}/gjest/${token}`,
-  });
+  }, { idempotencyKey: `remaining-${booking!.id}` });
 
   redirect(session.url!);
 }
