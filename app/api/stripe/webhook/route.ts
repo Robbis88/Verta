@@ -221,9 +221,15 @@ export async function POST(request: Request) {
     // Krever at webhook-endepunktet også lytter på Connect-hendelser.
     case "account.updated": {
       const account = event.data.object as Stripe.Account;
+      const enabled = account.payouts_enabled === true;
+      // Kontoen kan tilhøre en utleier (users) eller en vasker (cleaners).
       await supabase
         .from("users")
-        .update({ payouts_enabled: account.payouts_enabled === true })
+        .update({ payouts_enabled: enabled })
+        .eq("stripe_connect_id", account.id);
+      await supabase
+        .from("cleaners")
+        .update({ payouts_enabled: enabled })
         .eq("stripe_connect_id", account.id);
       break;
     }

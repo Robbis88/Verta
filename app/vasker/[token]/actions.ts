@@ -1,13 +1,62 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { geocodeNorway } from "@/lib/geocode";
+import { stripe, stripeEnabled } from "@/lib/stripe";
 import { CLEANING_PHOTOS_BUCKET } from "@/lib/storage";
 
 const MAX_PHOTO_BYTES = 10 * 1024 * 1024; // 10 MB
 const ALLOWED_PHOTO_TYPES = ["image/jpeg", "image/png", "image/webp"];
+
+/**
+ * Starter (eller gjenopptar) Stripe Connect-onboarding for vaskeren, så hen kan
+ * få betalt sporbart gjennom Verta. Feiler noe, vises en pen melding i stedet
+ * for at portalen krasjer.
+ */
+export async function startCleanerConnect(token: string): Promise<void> {
+  const supabase = createAdminClient();
+  const { data: cleaner } = await supabase
+    .from("cleaners")
+    .select("id,email,stripe_connect_id")
+    .eq("access_token", token)
+    .maybeSingle();
+  if (!cleaner) redirect(`/vasker/${token}`);
+  if (!stripe || !stripeEnabled) redirect(`/vasker/${token}?utbetaling=av`);
+
+  const origin = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  let url: string;
+  try {
+    let connectId = cleaner!.stripe_connect_id ?? null;
+    if (!connectId) {
+      const account = await stripe.accounts.create({
+        type: "express",
+        country: "NO",
+        email: cleaner!.email ?? undefined,
+        capabilities: { transfers: { requested: true } },
+        metadata: { cleaner_id: cleaner!.id },
+      });
+      connectId = account.id;
+      await supabase
+        .from("cleaners")
+        .update({ stripe_connect_id: connectId })
+        .eq("id", cleaner!.id);
+    }
+    const link = await stripe.accountLinks.create({
+      account: connectId,
+      refresh_url: `${origin}/api/stripe/connect/cleaner/refresh?token=${token}`,
+      return_url: `${origin}/api/stripe/connect/cleaner/return?token=${token}`,
+      type: "account_onboarding",
+    });
+    url = link.url;
+  } catch (err) {
+    console.error("Vasker Connect-onboarding feilet:", err);
+    redirect(`/vasker/${token}?utbetaling=feil`);
+  }
+  redirect(url);
+}
 
 /**
  * Vaskeren oppdaterer sin egen profil: tilgjengelig for andre oppdrag, hvor

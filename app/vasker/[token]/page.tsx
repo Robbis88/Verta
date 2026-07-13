@@ -7,6 +7,7 @@ import {
   respondToRequest,
   uploadCleaningPhoto,
   deleteCleaningPhoto,
+  startCleanerConnect,
 } from "./actions";
 import { ClockButtons } from "@/components/cleaning/clock-buttons";
 import { signedPhotoUrls } from "@/lib/storage";
@@ -29,6 +30,8 @@ type Cleaner = {
   hourly_rate: number | null;
   bio: string | null;
   base_address: string | null;
+  stripe_connect_id: string | null;
+  payouts_enabled: boolean | null;
 };
 
 type Task = {
@@ -58,15 +61,20 @@ export const metadata: Metadata = { title: "Mine oppgaver — Verta" };
 
 export default async function CleanerPortal({
   params,
+  searchParams,
 }: {
   params: Promise<{ token: string }>;
+  searchParams: Promise<{ utbetaling?: string }>;
 }) {
   const { token } = await params;
+  const { utbetaling } = await searchParams;
   const supabase = createAdminClient();
 
   const { data: cleanerData } = await supabase
     .from("cleaners")
-    .select("id,name,available_for_hire,max_travel_km,hourly_rate,bio,base_address")
+    .select(
+      "id,name,available_for_hire,max_travel_km,hourly_rate,bio,base_address,stripe_connect_id,payouts_enabled",
+    )
     .eq("access_token", token)
     .maybeSingle();
   if (!cleanerData) notFound();
@@ -273,6 +281,74 @@ export default async function CleanerPortal({
             </ul>
           </div>
         )}
+
+        <div className="mt-2 rounded-xl border border-hairline bg-white p-5">
+          <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-gold">
+            Betaling og utbetaling
+          </h2>
+
+          {utbetaling === "klar" && (
+            <p className="mb-3 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
+              Utbetaling er koblet ✓ Du kan nå få betalt gjennom Verta.
+            </p>
+          )}
+          {utbetaling === "ufullstendig" && (
+            <p className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+              Oppsettet er ikke helt ferdig ennå. Fullfør registreringen hos
+              Stripe (bankkonto + ID) for å kunne motta betaling.
+            </p>
+          )}
+          {(utbetaling === "feil" ||
+            utbetaling === "av" ||
+            utbetaling === "fortsett") && (
+            <p className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+              Noe gikk galt eller ble avbrutt. Prøv å koble utbetaling på nytt.
+            </p>
+          )}
+
+          <div className="space-y-2 text-sm leading-relaxed text-ink/80">
+            <p>Slik fungerer betaling gjennom Verta:</p>
+            <ul className="list-disc space-y-1 pl-5">
+              <li>
+                Du får betalt <strong>direkte til din egen konto</strong> —
+                aldri kontant «på si».
+              </li>
+              <li>
+                Verta trekker <strong>12 % i formidlingsgebyr</strong>; resten
+                er ditt.
+              </li>
+              <li>
+                Du er <strong>selv ansvarlig for skatt</strong> av det du
+                tjener. Tar du oppdrag jevnlig, bør du registrere et{" "}
+                <strong>enkeltpersonforetak</strong> (gratis via Altinn/
+                Brønnøysund) og fakturere.
+              </li>
+              <li>
+                Verta rapporterer utbetalinger til Skatteetaten, slik loven
+                krever for digitale plattformer — så alt er hvitt.
+              </li>
+            </ul>
+          </div>
+
+          <div className="mt-4">
+            {cleaner.payouts_enabled ? (
+              <p className="text-sm font-medium text-emerald-600">
+                ✓ Utbetaling er aktiv
+              </p>
+            ) : (
+              <form action={startCleanerConnect.bind(null, token)}>
+                <Button
+                  type="submit"
+                  className="bg-gold text-navy hover:bg-gold/90"
+                >
+                  {cleaner.stripe_connect_id
+                    ? "Fullfør utbetaling-oppsett"
+                    : "Koble utbetaling"}
+                </Button>
+              </form>
+            )}
+          </div>
+        </div>
 
         <div className="mt-2 rounded-xl border border-hairline bg-white p-5">
           <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-gold">
