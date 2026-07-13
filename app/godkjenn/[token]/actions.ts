@@ -23,11 +23,13 @@ export async function approveByToken(token: string): Promise<void> {
 
   const res = await approveRequest(id);
   if (res.ok) redirect(`/godkjenn/${token}?resultat=godkjent`);
-  redirect(
-    `/godkjenn/${token}?resultat=${
-      res.reason === "no_payouts" ? "utbetaling" : "opptatt"
-    }`,
-  );
+  const resultat =
+    res.reason === "no_payouts"
+      ? "utbetaling"
+      : res.reason === "conflict"
+        ? "opptatt"
+        : "behandlet";
+  redirect(`/godkjenn/${token}?resultat=${resultat}`);
 }
 
 /** Avslår forespørselen fra e-postlenken (uten innlogging). */

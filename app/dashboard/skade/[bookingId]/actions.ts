@@ -13,7 +13,7 @@ const BUCKET = "incident-photos";
 export async function createClaimPhotoUpload(
   bookingId: string,
   contentType: string,
-): Promise<{ path: string; token: string; publicUrl: string } | null> {
+): Promise<{ path: string; token: string } | null> {
   await requireUser();
   const supabase = await createClient();
   // Eierskap via RLS: klarer vi å lese bookingen, eier vi den.
@@ -35,8 +35,8 @@ export async function createClaimPhotoUpload(
     .from(BUCKET)
     .createSignedUploadUrl(path);
   if (error || !data) return null;
-  const { data: pub } = admin.storage.from(BUCKET).getPublicUrl(path);
-  return { path, token: data.token, publicUrl: pub.publicUrl };
+  // Lagrer STIEN (ikke offentlig URL) — bucketen er privat.
+  return { path, token: data.token };
 }
 
 /** Oppretter et skadekrav og sender gjesten kravet på e-post. */
@@ -82,7 +82,7 @@ export async function createIncidentClaim(formData: FormData): Promise<void> {
       propertyName: property?.name ?? "",
       amount,
       description,
-      photoUrls: photos,
+      photoCount: photos.length,
       claimToken: claim.claim_token,
     });
   }

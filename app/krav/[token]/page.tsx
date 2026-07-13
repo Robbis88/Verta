@@ -43,7 +43,18 @@ export default async function KravPage({
     .single();
 
   const paid = claim.status === "paid" || betalt === "1";
-  const photos = claim.photos ?? [];
+
+  // Bildene ligger som private stier — lag kortlevde signerte URL-er.
+  const paths = claim.photos ?? [];
+  let photoUrls: string[] = [];
+  if (paths.length > 0) {
+    const { data: signed } = await supabase.storage
+      .from("incident-photos")
+      .createSignedUrls(paths, 3600);
+    photoUrls = (signed ?? [])
+      .map((s) => s.signedUrl)
+      .filter((u): u is string => Boolean(u));
+  }
 
   return (
     <main className="min-h-screen bg-cloud">
@@ -80,9 +91,9 @@ export default async function KravPage({
                   {claim.description}
                 </p>
               )}
-              {photos.length > 0 && (
+              {photoUrls.length > 0 && (
                 <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-4">
-                  {photos.map((url) => (
+                  {photoUrls.map((url) => (
                     <a
                       key={url}
                       href={url}

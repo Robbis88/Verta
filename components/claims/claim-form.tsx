@@ -15,7 +15,7 @@ const MAX_BYTES = 10 * 1024 * 1024;
 type CreateUpload = (
   bookingId: string,
   contentType: string,
-) => Promise<{ path: string; token: string; publicUrl: string } | null>;
+) => Promise<{ path: string; token: string } | null>;
 
 /**
  * Skjema for å melde skade: beløp, beskrivelse og bilder. Bildene lastes opp
@@ -31,7 +31,7 @@ export function ClaimForm({
   uploadAction: CreateUpload;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const [photos, setPhotos] = useState<string[]>([]);
+  const [photos, setPhotos] = useState<{ path: string; preview: string }[]>([]);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -57,7 +57,11 @@ export function ClaimForm({
           setError("Opplasting feilet.");
           continue;
         }
-        setPhotos((p) => [...p, signed.publicUrl]);
+        // Lagre stien (sendes med skjemaet); forhåndsvis fra den lokale fila.
+        setPhotos((p) => [
+          ...p,
+          { path: signed.path, preview: URL.createObjectURL(file) },
+        ]);
       } catch {
         setError("Noe gikk galt under opplastingen.");
       }
@@ -68,8 +72,8 @@ export function ClaimForm({
   return (
     <form action={createAction} className="flex max-w-lg flex-col gap-4">
       <input type="hidden" name="booking_id" value={bookingId} />
-      {photos.map((url) => (
-        <input key={url} type="hidden" name="photos" value={url} />
+      {photos.map((p) => (
+        <input key={p.path} type="hidden" name="photos" value={p.path} />
       ))}
 
       <div className="flex flex-col gap-1.5">
@@ -99,11 +103,11 @@ export function ClaimForm({
         <Label>Bilder (bevis)</Label>
         {photos.length > 0 && (
           <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-            {photos.map((url) => (
+            {photos.map((p) => (
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                key={url}
-                src={url}
+                key={p.path}
+                src={p.preview}
                 alt="Skadebilde"
                 className="aspect-square w-full rounded-md object-cover"
               />

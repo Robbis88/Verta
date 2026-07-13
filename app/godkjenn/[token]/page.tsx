@@ -70,9 +70,11 @@ export default async function GodkjennPage({
           ? { tone: "warn", text: "Du må koble utbetaling først (Innstillinger → «Koble utbetaling») før du kan godkjenne bookinger." }
           : resultat === "opptatt"
             ? { tone: "warn", text: "Datoene ble nettopp opptatt av en annen booking. Forespørselen kunne ikke godkjennes." }
-            : resultat === "ukjent"
-              ? { tone: "warn", text: "Fant ikke forespørselen." }
-              : null;
+            : resultat === "behandlet"
+              ? { tone: "info", text: "Denne forespørselen er allerede behandlet." }
+              : resultat === "ukjent"
+                ? { tone: "warn", text: "Fant ikke forespørselen." }
+                : null;
 
   const bannerClass =
     banner?.tone === "ok"

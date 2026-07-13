@@ -471,16 +471,9 @@ export async function sendIncidentClaim(opts: {
   propertyName: string;
   amount: number;
   description?: string | null;
-  photoUrls: string[];
+  photoCount: number;
   claimToken: string;
 }): Promise<boolean> {
-  const photos = opts.photoUrls
-    .slice(0, 4)
-    .map(
-      (u) =>
-        `<img src="${u}" alt="Skadebilde" style="width:120px;height:120px;object-fit:cover;border-radius:8px;margin:0 6px 6px 0;" />`,
-    )
-    .join("");
   const body = `
     <p style="font-size:15px;line-height:1.6;margin:0 0 20px;">
       Hei ${opts.guestName}, etter oppholdet på
@@ -495,7 +488,11 @@ export async function sendIncidentClaim(opts: {
            </div>`
         : ""
     }
-    ${photos ? `<div style="margin:0 0 16px;">${photos}</div>` : ""}
+    ${
+      opts.photoCount > 0
+        ? `<p style="font-size:14px;color:#4b5563;margin:0 0 16px;">${opts.photoCount} bilde${opts.photoCount === 1 ? "" : "r"} er vedlagt kravet — åpne lenken under for å se dem.</p>`
+        : ""
+    }
     <div style="text-align:center;margin:24px 0 0;">
       <a href="${SITE_URL}/krav/${opts.claimToken}"
         style="display:inline-block;background:#d8a66a;color:#081b33;font-weight:600;
