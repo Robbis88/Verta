@@ -512,11 +512,23 @@ export async function addRentalItem(formData: FormData): Promise<void> {
   const quantity = Math.max(1, Number(formData.get("quantity")) || 1);
   if (!propertyId || !name || !Number.isFinite(price) || price < 0) return;
 
+  // Pris per ekstra døgn (valgfri). Tom → samme pris hvert døgn.
+  const extraRaw = String(formData.get("price_extra_day") ?? "").trim();
+  const priceExtraDay =
+    extraRaw && Number.isFinite(Number(extraRaw)) && Number(extraRaw) >= 0
+      ? Number(extraRaw)
+      : null;
+
   const supabase = await createClient();
   // RLS with check (owns_property) sikrer at eiendommen tilhører brukeren.
-  await supabase
-    .from("rental_items")
-    .insert({ property_id: propertyId, name, description, price, quantity });
+  await supabase.from("rental_items").insert({
+    property_id: propertyId,
+    name,
+    description,
+    price,
+    price_extra_day: priceExtraDay,
+    quantity,
+  });
   revalidatePath(`/dashboard/properties/${propertyId}`);
 }
 

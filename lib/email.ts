@@ -534,12 +534,14 @@ export async function sendRentalPaid(opts: {
   itemName: string;
   guestName: string;
   quantity: number;
+  days?: number;
   amount: number;
   guestContact?: string | null;
 }): Promise<boolean> {
+  const dager = opts.days && opts.days > 1 ? ` i ${opts.days} døgn` : "";
   const body = `
     <p style="font-size:15px;line-height:1.6;margin:0;">
-      ${opts.guestName} har leid <strong>${opts.quantity} × ${opts.itemName}</strong>
+      ${opts.guestName} har leid <strong>${opts.quantity} × ${opts.itemName}</strong>${dager}
       på <strong>${opts.propertyName}</strong> for
       <strong>${formatNok(opts.amount)}</strong> (Verta 10 %, resten utbetales
       til deg).${opts.guestContact ? ` Kontakt: ${opts.guestContact}.` : ""}

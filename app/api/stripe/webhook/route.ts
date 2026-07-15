@@ -168,7 +168,7 @@ export async function POST(request: Request) {
             .eq("id", orderId)
             .eq("status", "pending")
             .select(
-              "id,property_id,item_id,guest_name,guest_contact,quantity,amount",
+              "id,property_id,item_id,guest_name,guest_contact,quantity,days,amount",
             );
           const order = updated?.[0];
           if (order) {
@@ -198,6 +198,7 @@ export async function POST(request: Request) {
                 itemName: item?.name ?? "utstyr",
                 guestName: order.guest_name,
                 quantity: order.quantity,
+                days: order.days,
                 amount: Number(order.amount),
                 guestContact: order.guest_contact,
               });

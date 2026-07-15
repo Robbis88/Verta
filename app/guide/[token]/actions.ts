@@ -50,6 +50,7 @@ export async function rentItem(
   const guestName = String(formData.get("guest_name") ?? "").trim();
   const guestContact = String(formData.get("guest_contact") ?? "").trim() || null;
   const quantity = Math.max(1, Number(formData.get("quantity")) || 1);
+  const days = Math.max(1, Number(formData.get("days")) || 1);
   if (!itemId || !guestName) redirect(back);
 
   const supabase = createAdminClient();
@@ -62,7 +63,7 @@ export async function rentItem(
 
   const { data: item } = await supabase
     .from("rental_items")
-    .select("id,name,price,active,property_id")
+    .select("id,name,price,price_extra_day,active,property_id")
     .eq("id", itemId)
     .maybeSingle();
   if (!item || !item.active || item.property_id !== property!.id) redirect(back);
@@ -81,7 +82,14 @@ export async function rentItem(
     redirect(back);
   }
 
-  const amount = Math.round(Number(item!.price) * quantity * 100) / 100;
+  // Pris per stk = første døgn + (ekstra døgn × pris per ekstra døgn). Mangler
+  // egen ekstra-døgn-pris brukes ordinær døgnpris for alle døgn.
+  const firstDay = Number(item!.price);
+  const extraDay =
+    item!.price_extra_day != null ? Number(item!.price_extra_day) : firstDay;
+  const perUnit = firstDay + extraDay * (days - 1);
+  const unitAmount = Math.round(perUnit * 100); // øre, per stk
+  const amount = Math.round(perUnit * quantity * 100) / 100;
   const fee = Math.round(amount * MARKET_FEE_RATE * 100) / 100;
 
   const { data: order } = await supabase
@@ -92,6 +100,7 @@ export async function rentItem(
       guest_name: guestName,
       guest_contact: guestContact,
       quantity,
+      days,
       amount,
       verta_fee: fee,
       status: "pending",
@@ -108,8 +117,10 @@ export async function rentItem(
       {
         price_data: {
           currency: "nok",
-          product_data: { name: `Leie: ${item!.name}` },
-          unit_amount: Math.round(Number(item!.price) * 100),
+          product_data: {
+            name: `Leie: ${item!.name} (${days} døgn)`,
+          },
+          unit_amount: unitAmount,
         },
         quantity,
       },

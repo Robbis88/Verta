@@ -106,7 +106,7 @@ export default async function PropertyDetailPage({
 
   const { data: rentalData } = await supabase
     .from("rental_items")
-    .select("id,name,description,price,quantity")
+    .select("id,name,description,price,price_extra_day,quantity")
     .eq("property_id", id)
     .order("created_at");
   const rentalItems = (rentalData ?? []) as {
@@ -114,6 +114,7 @@ export default async function PropertyDetailPage({
     name: string;
     description: string | null;
     price: number;
+    price_extra_day: number | null;
     quantity: number;
   }[];
 
@@ -393,9 +394,9 @@ export default async function PropertyDetailPage({
         </CardHeader>
         <CardContent className="flex flex-col gap-4 text-sm">
           <p className="text-muted-foreground">
-            Har du sykler, ski eller kajakk stående? Legg dem ut her, så kan
-            gjestene leie og betale rett i gjesteguiden. Verta beholder 10 % —
-            resten går til deg.
+            Har du sykler, ski eller kajakk stående? Legg dem ut her med
+            døgnpris, så kan gjestene velge antall døgn og betale rett i
+            gjesteguiden. Verta beholder 10 % — resten går til deg.
           </p>
 
           {rentalItems.length > 0 && (
@@ -414,8 +415,14 @@ export default async function PropertyDetailPage({
                     )}
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="whitespace-nowrap font-semibold text-gold">
-                      {formatNok(Number(it.price))}
+                    <span className="whitespace-nowrap text-right text-sm font-semibold text-gold">
+                      {formatNok(Number(it.price))}/døgn
+                      {it.price_extra_day != null && (
+                        <span className="block text-xs font-normal text-muted-foreground">
+                          +{formatNok(Number(it.price_extra_day))} per ekstra
+                          døgn
+                        </span>
+                      )}
                     </span>
                     <form action={deleteRentalItem}>
                       <input type="hidden" name="id" value={it.id} />
@@ -440,22 +447,36 @@ export default async function PropertyDetailPage({
             className="flex flex-col gap-3 rounded-lg border border-hairline p-3"
           >
             <input type="hidden" name="property_id" value={p.id} />
+            <input
+              name="name"
+              required
+              placeholder="Navn (f.eks. Slalåmski)"
+              className="h-10 rounded-lg border border-hairline bg-white px-3 text-sm shadow-sm"
+            />
             <div className="flex flex-col gap-2 sm:flex-row">
-              <input
-                name="name"
-                required
-                placeholder="Navn (f.eks. Elsykkel)"
-                className="h-10 flex-1 rounded-lg border border-hairline bg-white px-3 text-sm shadow-sm"
-              />
-              <input
-                name="price"
-                type="number"
-                min={0}
-                step="1"
-                required
-                placeholder="Pris (kr)"
-                className="h-10 w-full rounded-lg border border-hairline bg-white px-3 text-sm shadow-sm sm:w-32"
-              />
+              <label className="flex flex-1 flex-col gap-1 text-xs text-muted-foreground">
+                Pris per døgn (kr)
+                <input
+                  name="price"
+                  type="number"
+                  min={0}
+                  step="1"
+                  required
+                  placeholder="100"
+                  className="h-10 rounded-lg border border-hairline bg-white px-3 text-sm shadow-sm"
+                />
+              </label>
+              <label className="flex flex-1 flex-col gap-1 text-xs text-muted-foreground">
+                Pris per ekstra døgn (valgfritt)
+                <input
+                  name="price_extra_day"
+                  type="number"
+                  min={0}
+                  step="1"
+                  placeholder="70"
+                  className="h-10 rounded-lg border border-hairline bg-white px-3 text-sm shadow-sm"
+                />
+              </label>
             </div>
             <input
               name="description"

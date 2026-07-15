@@ -10,6 +10,7 @@ import { PropertyMap } from "@/components/properties/property-map";
 import { GuideChat } from "@/components/guide/guide-chat";
 import { Button } from "@/components/ui/button";
 import { formatNok } from "@/lib/utils";
+import { RentForm } from "@/components/guide/rent-form";
 import { contactHost, rentItem } from "./actions";
 
 export const metadata: Metadata = { title: "Gjesteguide — Verta" };
@@ -53,7 +54,7 @@ export default async function GuidePage({
 
   const { data: itemsData } = await supabase
     .from("rental_items")
-    .select("id,name,description,price")
+    .select("id,name,description,price,price_extra_day")
     .eq("property_id", g.id)
     .eq("active", true)
     .order("created_at");
@@ -62,6 +63,7 @@ export default async function GuidePage({
     name: string;
     description: string | null;
     price: number;
+    price_extra_day: number | null;
   }[];
 
   const [travelGuide, pois] = await Promise.all([
@@ -177,43 +179,30 @@ export default async function GuidePage({
               >
                 <div className="flex items-center justify-between gap-3">
                   <span className="font-medium text-navy">{it.name}</span>
-                  <span className="whitespace-nowrap text-sm font-semibold text-gold">
-                    {formatNok(Number(it.price))}
+                  <span className="whitespace-nowrap text-right text-sm font-semibold text-gold">
+                    {formatNok(Number(it.price))}/døgn
+                    {it.price_extra_day != null && (
+                      <span className="block text-xs font-normal text-ink/50">
+                        +{formatNok(Number(it.price_extra_day))} per ekstra døgn
+                      </span>
+                    )}
                   </span>
                 </div>
                 {it.description && (
                   <p className="mt-0.5 text-sm text-ink/60">{it.description}</p>
                 )}
-                <form
+                <RentForm
+                  item={{
+                    id: it.id,
+                    name: it.name,
+                    price: Number(it.price),
+                    priceExtraDay:
+                      it.price_extra_day != null
+                        ? Number(it.price_extra_day)
+                        : null,
+                  }}
                   action={rentItem.bind(null, token)}
-                  className="mt-2 flex flex-col gap-2"
-                >
-                  <input type="hidden" name="item_id" value={it.id} />
-                  <div className="flex gap-2">
-                    <input
-                      name="quantity"
-                      type="number"
-                      min={1}
-                      defaultValue={1}
-                      aria-label="Antall"
-                      className="h-9 w-16 rounded-lg border border-hairline bg-white px-2 text-sm shadow-sm"
-                    />
-                    <input
-                      name="guest_name"
-                      required
-                      placeholder="Ditt navn"
-                      className="h-9 flex-1 rounded-lg border border-hairline bg-white px-2 text-sm shadow-sm"
-                    />
-                  </div>
-                  <input
-                    name="guest_contact"
-                    placeholder="E-post eller telefon (valgfritt)"
-                    className="h-9 rounded-lg border border-hairline bg-white px-2 text-sm shadow-sm"
-                  />
-                  <Button type="submit" size="sm">
-                    Lei og betal
-                  </Button>
-                </form>
+                />
               </div>
             ))}
           </Section>
