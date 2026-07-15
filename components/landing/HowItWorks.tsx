@@ -14,7 +14,7 @@ const steps = [
   {
     num: 3,
     title: "Velg plan",
-    desc: "Basis, Pluss eller Premium. Oppgrader når du vil.",
+    desc: "Én plan, alt inkludert. 14 dagers gratis prøve.",
     time: "1 min",
   },
   {

@@ -39,7 +39,7 @@ const features: { icon: LucideIcon; title: string; description: string }[] = [
   },
   {
     icon: BarChart3,
-    title: "Premium analytics",
+    title: "Avansert analyse",
     description: "ROI per boost. Inntekt per kanal. Sanntidssporing.",
   },
 ];

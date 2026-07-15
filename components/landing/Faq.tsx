@@ -13,7 +13,7 @@ const faqs = [
   },
   {
     q: "Hva slags support får jeg?",
-    a: "Du får hjelp på e-post, og Premium har prioritert support. I tillegg finnes en innebygd assistent i appen som svarer på praktiske spørsmål.",
+    a: "Du får hjelp på e-post og prioritert support. I tillegg finnes en innebygd assistent i appen som svarer på praktiske spørsmål.",
   },
   {
     q: "Hvor raskt kommer jeg i gang?",

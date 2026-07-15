@@ -71,7 +71,7 @@ export async function createOnboardingProperty(
   redirect("/onboarding/plan");
 }
 
-const TIERS = ["basis", "pluss", "premium"] as const;
+const TIERS = ["premium"] as const;
 
 /** Steg 2: velg plan. Stripe Checkout hvis konfigurert, ellers dev-fallback. */
 export async function choosePlan(formData: FormData): Promise<void> {

@@ -16,15 +16,11 @@ import {
 } from "@/components/ui/card";
 
 const tiers = [
-  { key: "basis" as const, blurb: "Kalender, bookingside, skatt-rapport, AI-annonse." },
-  {
-    key: "pluss" as const,
-    blurb: "Alt i Basis + multi-kanal, boost, SMS og analytics.",
-    highlighted: true,
-  },
   {
     key: "premium" as const,
-    blurb: "Alt i Pluss + smartlås, priority support og API-tilgang.",
+    blurb:
+      "Alt inkludert: kalender, bookingside uten gebyr, multi-kanal, boost, smartlås, skatt og AI. 1 eiendom (+199 kr/mnd per ekstra).",
+    highlighted: true,
   },
 ];
 

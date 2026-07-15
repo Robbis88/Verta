@@ -75,8 +75,6 @@ export async function getAdminMetrics(): Promise<AdminMetrics> {
 
   const byTier: Record<Plan, number> = {
     gratis: 0,
-    basis: 0,
-    pluss: 0,
     premium: 0,
   };
   let mrrNok = 0;

@@ -11,12 +11,13 @@ export const stripe = stripeEnabled
 
 type PaidPlan = Exclude<Plan, "gratis">;
 
-/** Price-ID per betalt plan (fra Stripe-dashbordet). */
+/** Price-ID for den ene betalte planen (fra Stripe-dashbordet). */
 export const PRICE_IDS: Record<PaidPlan, string | undefined> = {
-  basis: process.env.STRIPE_PRICE_BASIS,
-  pluss: process.env.STRIPE_PRICE_PLUSS,
   premium: process.env.STRIPE_PRICE_PREMIUM,
 };
+
+/** Valgfri årspris (3 990 kr/år) for samme plan. */
+export const PRICE_ID_YEARLY = process.env.STRIPE_PRICE_PREMIUM_YEARLY;
 
 export const EXTRA_PROPERTY_PRICE_ID = process.env.STRIPE_PRICE_EXTRA_PROPERTY;
 

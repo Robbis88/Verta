@@ -3,18 +3,19 @@
  * Gjenbrukes i UI, server actions og som referanse for RLS-policyene.
  */
 
+// Én betalt plan: 399 kr/mnd, alt inkludert, 1 bolig (+199/mnd per ekstra).
+// 'gratis' beholdes kun som "ikke abonnent"-tilstand (betalingsmuren).
+// Intern nøkkel 'premium' = den betalte planen.
 export const PLANS = {
   gratis: { label: "Gratis", priceNok: 0 },
-  basis: { label: "Basis", priceNok: 149 },
-  pluss: { label: "Pluss", priceNok: 249 },
-  premium: { label: "Premium", priceNok: 399 },
+  premium: { label: "Verta", priceNok: 399 },
 } as const;
 
 export type Plan = keyof typeof PLANS;
 
-export const EXTRA_PROPERTY_PRICE_NOK = 99;
+export const EXTRA_PROPERTY_PRICE_NOK = 199;
 
-/** Antall eiendommer en bruker kan ha. Premium kan kjøpe ekstra à 99 kr/mnd. */
+/** Antall eiendommer en bruker kan ha. Abonnent: 1 + kjøpte ekstra à 199/mnd. */
 export function propertyLimit(plan: Plan, extra = 0): number {
   return plan === "premium" ? 1 + extra : 1;
 }

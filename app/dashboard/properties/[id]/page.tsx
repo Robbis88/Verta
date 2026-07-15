@@ -100,8 +100,7 @@ export default async function PropertyDetailPage({
     created_at: string;
   }[];
 
-  const profile = await getCurrentProfile();
-  const isPremium = profile?.plan === "premium";
+  await getCurrentProfile();
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "";
   const bookingUrl = `${siteUrl}/bo/${p.slug}`;
@@ -590,15 +589,7 @@ export default async function PropertyDetailPage({
               Vi fikk ikke koblet til låsen. Prøv på nytt.
             </p>
           )}
-          {!isPremium ? (
-            <p className="text-sm text-muted-foreground">
-              Smartlås er en Premium-funksjon.{" "}
-              <Link href="/onboarding/plan" className="underline">
-                Oppgrader til Premium
-              </Link>{" "}
-              for å koble til smartlås.
-            </p>
-          ) : lock && lock.status !== "pending" ? (
+          {lock && lock.status !== "pending" ? (
             <div className="flex flex-col gap-4">
               <div className="flex items-center gap-3 text-sm">
                 <Badge>{lock.status}</Badge>
