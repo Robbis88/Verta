@@ -188,6 +188,39 @@ export default async function PropertyDetailPage({
 
       <Card>
         <CardHeader>
+          <CardTitle>Gjesteguide</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3 text-sm">
+          <p className="text-muted-foreground">
+            Del denne lenken med gjestene dine — også Airbnb-gjester. De får
+            WiFi, «slik funker det», lokale tips og en AI-assistent som svarer på
+            deres eget språk.
+          </p>
+          <div className="flex flex-col gap-2 rounded-lg border border-hairline p-3">
+            <span className="text-xs font-medium text-muted-foreground">
+              Guide-lenke
+            </span>
+            <div className="flex items-center justify-between gap-2">
+              <a
+                href={`${siteUrl}/guide/${p.guide_token}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="truncate font-medium text-navy underline"
+              >
+                {siteUrl}/guide/{p.guide_token}
+              </a>
+              <CopyButton text={`${siteUrl}/guide/${p.guide_token}`} />
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Fyll inn «Slik funker det» under «Rediger», så svarer AI-en enda
+            bedre.
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle>Video</CardTitle>
         </CardHeader>
         <CardContent>
@@ -268,6 +301,7 @@ export default async function PropertyDetailPage({
               wifi_password: p.wifi_password,
               house_rules: p.house_rules,
               checkout_info: p.checkout_info,
+              appliances_info: p.appliances_info,
               booking_mode: p.booking_mode,
               amenities: p.amenities,
               beds: p.beds,

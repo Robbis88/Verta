@@ -527,6 +527,33 @@ export async function sendClaimPaid(opts: {
   });
 }
 
+/** Gjesten trenger hjelp fra gjesteguiden → melding til utleieren. */
+export async function sendGuideMessage(opts: {
+  to: string;
+  propertyName: string;
+  message: string;
+  guestContact?: string | null;
+}): Promise<boolean> {
+  const body = `
+    <p style="font-size:15px;line-height:1.6;margin:0 0 16px;">
+      En gjest på <strong>${opts.propertyName}</strong> trenger hjelp og har
+      sendt deg en melding fra gjesteguiden:
+    </p>
+    <div style="margin:0 0 16px;padding:16px;border-radius:8px;background:#f5f7fa;">
+      <p style="margin:0;font-size:14px;line-height:1.6;color:#081b33;white-space:pre-line;">${opts.message}</p>
+    </div>
+    ${
+      opts.guestContact
+        ? `<p style="font-size:14px;color:#4b5563;margin:0;">Svar til gjesten: ${opts.guestContact}</p>`
+        : ""
+    }`;
+  return send({
+    to: opts.to,
+    subject: `Gjest trenger hjelp: ${opts.propertyName}`,
+    html: layout("Melding fra en gjest 💬", body),
+  });
+}
+
 /** Påminnelse til gjesten om å betale restbeløpet innen fristen. */
 export async function sendRemainingDue(opts: {
   to: string;

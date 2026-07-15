@@ -50,6 +50,9 @@ export type Property = {
   video_url?: string | null;
   // Synlig i markedsplass/søk (default av) — se sql/043.
   listed?: boolean | null;
+  // Delbar gjesteguide + «slik funker det»-notater — se sql/048.
+  guide_token?: string | null;
+  appliances_info?: string | null;
   // Eiendomsfinans — se sql/033.
   market_value?: number | null;
   loan_amount?: number | null;

@@ -30,6 +30,7 @@ export type PropertyDefaults = {
   wifi_password?: string | null;
   house_rules?: string | null;
   checkout_info?: string | null;
+  appliances_info?: string | null;
   booking_mode?: "instant" | "request" | null;
   amenities?: string[] | null;
   beds?: number | null;
@@ -329,6 +330,22 @@ export function PropertyForm({
           placeholder="F.eks: Utsjekk innen kl. 11. Søppel i container ved porten. Lås døra."
           defaultValue={defaults?.checkout_info ?? ""}
         />
+      </Field>
+
+      <Field
+        label="Slik funker det (for gjesteguiden)"
+        error={state.fieldErrors?.appliances_info}
+      >
+        <Textarea
+          name="appliances_info"
+          rows={4}
+          placeholder="F.eks: Varmepumpe: trykk ON på fjernkontrollen, still 22°. TV: bruk Telenor-fjernkontrollen, kilde HDMI 1. Peis: bruk kun tørr ved fra kurven."
+          defaultValue={defaults?.appliances_info ?? ""}
+        />
+        <p className="text-xs text-muted-foreground">
+          AI-assistenten i gjesteguiden svarer gjestene ut fra dette (og WiFi,
+          husregler osv.).
+        </p>
       </Field>
 
       {state.error && <p className="text-sm text-destructive">{state.error}</p>}

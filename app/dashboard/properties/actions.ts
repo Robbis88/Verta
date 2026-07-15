@@ -116,6 +116,8 @@ export async function createProperty(
       interest_rate: data.interest_rate ?? null,
       monthly_principal: data.monthly_principal ?? null,
       listed: formData.get("listed") === "on",
+      appliances_info:
+        (formData.get("appliances_info") as string)?.trim() || null,
       lat: coords?.lat ?? null,
       lng: coords?.lng ?? null,
     })
@@ -180,6 +182,8 @@ export async function updateProperty(
       interest_rate: data.interest_rate ?? null,
       monthly_principal: data.monthly_principal ?? null,
       listed: formData.get("listed") === "on",
+      appliances_info:
+        (formData.get("appliances_info") as string)?.trim() || null,
       lat: coords?.lat ?? null,
       lng: coords?.lng ?? null,
     })
