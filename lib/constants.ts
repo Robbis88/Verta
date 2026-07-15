@@ -15,6 +15,9 @@ export type Plan = keyof typeof PLANS;
 
 export const EXTRA_PROPERTY_PRICE_NOK = 199;
 
+/** Årspris for premium: 2 måneder gratis mot månedsprisen (399 × 10). */
+export const PREMIUM_YEARLY_PRICE_NOK = 3990;
+
 /** Antall eiendommer en bruker kan ha. Abonnent: 1 + kjøpte ekstra à 199/mnd. */
 export function propertyLimit(plan: Plan, extra = 0): number {
   return plan === "premium" ? 1 + extra : 1;

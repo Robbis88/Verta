@@ -4,8 +4,12 @@ const faqs = [
     a: "Du kobler kalenderne fra Airbnb og Booking.com med toveis iCal-synk, og tar i tillegg imot direkte bookinger via din egen bookingside med bilder, kart og fasiliteter. Du velger selv: la gjesten betale direkte, eller godkjenn hver forespørsel med depositum. Alt samles i én kalender uten dobbeltbooking.",
   },
   {
+    q: "Hva koster Verta, og tar dere provisjon?",
+    a: "Én fast pris på 399 kr/mnd (+199 kr/mnd per ekstra eiendom), eller 3 990 kr/år med to måneder gratis. Ingen provisjon på leien — gjesten betaler deg direkte og betaler null plattformgebyr. Du starter med 14 dagers gratis prøve og kan avslutte når som helst.",
+  },
+  {
     q: "Hvordan fungerer utbetalinger og økonomi?",
-    a: "Gjesten betaler via Verta, pengene går rett til deg, og Verta tar en liten provisjon. Under Eiendomsøkonomi ser du hva hytta koster og tjener per måned, kvartal og år — resultat før og etter skatt, kontantstrøm, delt eierskap og en ferdig bankrapport. Grunnlaget til skatterapporten fylles ut automatisk.",
+    a: "Gjesten betaler rett til din egen konto via Stripe, så pengene er dine fra første krone. Under Eiendomsøkonomi ser du hva hytta koster og tjener per måned, kvartal og år — resultat før og etter skatt, kontantstrøm, delt eierskap og en ferdig bankrapport. Grunnlaget til skatterapporten fylles ut automatisk.",
   },
   {
     q: "Hvilke integrasjoner støttes?",

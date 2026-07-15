@@ -11,6 +11,7 @@ export function Navbar() {
           <a href="#funksjoner" className="hover:text-white">Funksjoner</a>
           <a href="#innsikt" className="hover:text-white">Innsikt</a>
           <a href="#integrasjoner" className="hover:text-white">Integrasjoner</a>
+          <a href="#priser" className="hover:text-white">Priser</a>
           <a href="#faq" className="hover:text-white">FAQ</a>
         </div>
         <div className="flex items-center gap-3">

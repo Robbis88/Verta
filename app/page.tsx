@@ -7,6 +7,7 @@ import { Insights } from "@/components/landing/Insights";
 import { ExploreStays } from "@/components/landing/ExploreStays";
 import { Integrations } from "@/components/landing/Integrations";
 import { Testimonials } from "@/components/landing/Testimonials";
+import { PricingTable } from "@/components/landing/PricingTable";
 import { Faq } from "@/components/landing/Faq";
 import { FinalCta } from "@/components/landing/FinalCta";
 import { Footer } from "@/components/landing/Footer";
@@ -49,6 +50,7 @@ export default function Home() {
 
       <Integrations />
       <Testimonials />
+      <PricingTable />
       <Faq />
 
       <VideoSection

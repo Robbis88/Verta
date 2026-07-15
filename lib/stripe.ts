@@ -24,6 +24,8 @@ export const EXTRA_PROPERTY_PRICE_ID = process.env.STRIPE_PRICE_EXTRA_PROPERTY;
 /** Finner planen som hører til en Stripe price-ID. */
 export function planFromPriceId(priceId: string | undefined): PaidPlan | null {
   if (!priceId) return null;
+  // Årsprisen er samme plan (premium), bare annen faktureringsperiode.
+  if (PRICE_ID_YEARLY && priceId === PRICE_ID_YEARLY) return "premium";
   for (const [plan, id] of Object.entries(PRICE_IDS) as [PaidPlan, string?][]) {
     if (id && id === priceId) return plan;
   }

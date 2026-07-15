@@ -2,42 +2,42 @@ import {
   CalendarCheck,
   CalendarDays,
   TrendingUp,
-  Users,
+  Languages,
+  Bike,
   KeyRound,
-  Wrench,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 const features: { icon: LucideIcon; title: string; text: string }[] = [
   {
     icon: CalendarCheck,
-    title: "Booking og betaling",
-    text: "Egen bookingside med bilder, kart og fasiliteter. Ta imot bookinger og betaling direkte — eller godkjenn hver gjest med depositum.",
+    title: "Bookingside uten gebyr",
+    text: "Egen bookingside med bilder, kart og fasiliteter. Gjesten betaler deg direkte — null plattformgebyr på leien. Ta imot betaling med en gang, eller godkjenn hver gjest med depositum.",
   },
   {
     icon: CalendarDays,
-    title: "Kalender",
+    title: "Kalender og kanaler",
     text: "Én delt kalender med toveis synk mot Airbnb og Booking. Alltid oppdatert tilgjengelighet, uten dobbeltbooking.",
   },
   {
-    icon: TrendingUp,
-    title: "Eiendomsøkonomi",
-    text: "Se hva hytta koster og tjener per måned, kvartal og år — resultat før og etter skatt, kontantstrøm og ferdig bankrapport.",
+    icon: Languages,
+    title: "AI-gjesteguide på alle språk",
+    text: "Digital guide med WiFi, innsjekk og lokale tips — og en AI-concierge som svarer gjestene på deres eget språk, døgnet rundt. Fungerer også for Airbnb-gjester.",
   },
   {
-    icon: Users,
-    title: "Delt eierskap",
-    text: "Eierandeler, hvem som har betalt hva, og automatisk forslag til oppgjør når dere er flere som eier sammen.",
+    icon: Bike,
+    title: "Utleie av utstyr",
+    text: "La gjestene leie sykler, ski og kajakk direkte i gjesteguiden. Betalingen skjer automatisk og går rett til deg.",
+  },
+  {
+    icon: TrendingUp,
+    title: "Eiendomsøkonomi og skatt",
+    text: "Se hva hytta koster og tjener per måned, kvartal og år. Delt eierskap med oppgjør, og ferdig skatterapport til banken.",
   },
   {
     icon: KeyRound,
-    title: "Gjester",
-    text: "Digital gjesteguide, adgangskoder og smartlås — en proff opplevelse fra booking til utsjekk.",
-  },
-  {
-    icon: Wrench,
-    title: "Drift og vedlikehold",
-    text: "Rengjøring, vaskehjelp, vedlikeholdssaker og lager med varsler, så ingenting faller mellom to stoler.",
+    title: "Vask, drift og smartlås",
+    text: "Vaske-marked, vedlikeholdssaker, lager og smartlås — Nuki, Igloohome og Salto. Hele driften samlet på ett sted.",
   },
 ];
 

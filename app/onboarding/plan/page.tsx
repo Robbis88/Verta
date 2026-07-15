@@ -3,8 +3,8 @@ import { redirect } from "next/navigation";
 
 import { choosePlan } from "../actions";
 import { createClient } from "@/lib/supabase/server";
-import { PLANS } from "@/lib/constants";
-import { stripeEnabled } from "@/lib/stripe";
+import { PLANS, PREMIUM_YEARLY_PRICE_NOK } from "@/lib/constants";
+import { stripeEnabled, PRICE_ID_YEARLY } from "@/lib/stripe";
 import { cn, formatNok } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { DeleteAccountButton } from "@/components/settings/delete-account-button";
@@ -75,6 +75,44 @@ export default async function PlanPage() {
                   className="flex flex-col items-start gap-3"
                 >
                   <input type="hidden" name="tier" value={tier.key} />
+
+                  {stripeEnabled && PRICE_ID_YEARLY && (
+                    <fieldset className="flex w-full flex-col gap-2">
+                      <label className="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-hairline p-3 text-sm has-[:checked]:border-gold has-[:checked]:bg-gold/5">
+                        <span className="flex items-center gap-2">
+                          <input
+                            type="radio"
+                            name="billing"
+                            value="monthly"
+                            defaultChecked
+                            className="h-4 w-4"
+                          />
+                          <span className="font-medium">Månedlig</span>
+                        </span>
+                        <span className="text-muted-foreground">
+                          {formatNok(plan.priceNok)}/mnd
+                        </span>
+                      </label>
+                      <label className="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-hairline p-3 text-sm has-[:checked]:border-gold has-[:checked]:bg-gold/5">
+                        <span className="flex items-center gap-2">
+                          <input
+                            type="radio"
+                            name="billing"
+                            value="yearly"
+                            className="h-4 w-4"
+                          />
+                          <span className="font-medium">Årlig</span>
+                          <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                            2 mnd gratis
+                          </span>
+                        </span>
+                        <span className="text-muted-foreground">
+                          {formatNok(PREMIUM_YEARLY_PRICE_NOK)}/år
+                        </span>
+                      </label>
+                    </fieldset>
+                  )}
+
                   <label className="flex items-start gap-2 text-xs text-muted-foreground">
                     <input
                       type="checkbox"

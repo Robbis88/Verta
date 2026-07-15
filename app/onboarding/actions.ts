@@ -10,7 +10,7 @@ import { createClient } from "@/lib/supabase/server";
 import { propertySchema } from "@/lib/validation";
 import { slugify } from "@/lib/utils";
 import { logAudit } from "@/lib/audit";
-import { stripe, stripeEnabled, PRICE_IDS } from "@/lib/stripe";
+import { stripe, stripeEnabled, PRICE_IDS, PRICE_ID_YEARLY } from "@/lib/stripe";
 import type { Plan } from "@/lib/constants";
 
 export type PropertyFormState = {
@@ -79,6 +79,10 @@ export async function choosePlan(formData: FormData): Promise<void> {
   const tier = String(formData.get("tier") ?? "") as Plan;
   if (!TIERS.includes(tier as (typeof TIERS)[number])) return;
 
+  // Måned (standard) eller år. Årspris brukes kun hvis den er konfigurert.
+  const yearly =
+    String(formData.get("billing") ?? "") === "yearly" && Boolean(PRICE_ID_YEARLY);
+
   const supabase = await createClient();
 
   // Registrer at eieren godtok vilkår + databehandleravtale ved planvalg.
@@ -94,7 +98,9 @@ export async function choosePlan(formData: FormData): Promise<void> {
     "http://localhost:3000";
 
   // Produksjonsflyt: Stripe Checkout.
-  if (stripe && stripeEnabled && PRICE_IDS[tier as (typeof TIERS)[number]]) {
+  const monthlyPrice = PRICE_IDS[tier as (typeof TIERS)[number]];
+  const priceId = yearly ? PRICE_ID_YEARLY! : monthlyPrice;
+  if (stripe && stripeEnabled && priceId) {
     let customerId = profile?.stripe_customer_id ?? null;
     if (!customerId) {
       const customer = await stripe.customers.create({
@@ -113,7 +119,7 @@ export async function choosePlan(formData: FormData): Promise<void> {
       mode: "subscription",
       // Tving norsk Checkout uansett nettleserspråk (ellers faller Stripe til auto).
       locale: "nb",
-      line_items: [{ price: PRICE_IDS[tier as (typeof TIERS)[number]]!, quantity: 1 }],
+      line_items: [{ price: priceId, quantity: 1 }],
       // 14 dager gratis prøve: kort kreves, men trekkes først etter prøveperioden.
       subscription_data: { trial_period_days: 14 },
       // Verifiser sesjonen ved retur og sett planen synkront, så brukeren ikke
