@@ -9,7 +9,8 @@ import { NearbyPois } from "@/components/public/nearby-pois";
 import { PropertyMap } from "@/components/properties/property-map";
 import { GuideChat } from "@/components/guide/guide-chat";
 import { Button } from "@/components/ui/button";
-import { contactHost } from "./actions";
+import { formatNok } from "@/lib/utils";
+import { contactHost, rentItem } from "./actions";
 
 export const metadata: Metadata = { title: "Gjesteguide — Verta" };
 
@@ -34,10 +35,10 @@ export default async function GuidePage({
   searchParams,
 }: {
   params: Promise<{ token: string }>;
-  searchParams: Promise<{ sendt?: string }>;
+  searchParams: Promise<{ sendt?: string; leid?: string; leiefeil?: string }>;
 }) {
   const { token } = await params;
-  const { sendt } = await searchParams;
+  const { sendt, leid, leiefeil } = await searchParams;
 
   const supabase = createAdminClient();
   const { data } = await supabase
@@ -49,6 +50,19 @@ export default async function GuidePage({
     .maybeSingle();
   if (!data) notFound();
   const g = data as Guide;
+
+  const { data: itemsData } = await supabase
+    .from("rental_items")
+    .select("id,name,description,price")
+    .eq("property_id", g.id)
+    .eq("active", true)
+    .order("created_at");
+  const rentalItems = (itemsData ?? []) as {
+    id: string;
+    name: string;
+    description: string | null;
+    price: number;
+  }[];
 
   const [travelGuide, pois] = await Promise.all([
     getTravelGuide({
@@ -140,6 +154,68 @@ export default async function GuidePage({
             {g.lat != null && g.lng != null && (
               <PropertyMap lat={g.lat} lng={g.lng} />
             )}
+          </Section>
+        )}
+
+        {rentalItems.length > 0 && (
+          <Section title="Lei utstyr">
+            {leid && (
+              <p className="text-sm text-emerald-700">
+                Takk! Utstyret er leid. Verten er varslet. 🎉
+              </p>
+            )}
+            {leiefeil && (
+              <p className="text-sm text-amber-700">
+                Beklager, leien kunne ikke fullføres. Prøv igjen, eller kontakt
+                verten.
+              </p>
+            )}
+            {rentalItems.map((it) => (
+              <div
+                key={it.id}
+                className="border-t border-hairline pt-3 first:border-t-0 first:pt-0"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <span className="font-medium text-navy">{it.name}</span>
+                  <span className="whitespace-nowrap text-sm font-semibold text-gold">
+                    {formatNok(Number(it.price))}
+                  </span>
+                </div>
+                {it.description && (
+                  <p className="mt-0.5 text-sm text-ink/60">{it.description}</p>
+                )}
+                <form
+                  action={rentItem.bind(null, token)}
+                  className="mt-2 flex flex-col gap-2"
+                >
+                  <input type="hidden" name="item_id" value={it.id} />
+                  <div className="flex gap-2">
+                    <input
+                      name="quantity"
+                      type="number"
+                      min={1}
+                      defaultValue={1}
+                      aria-label="Antall"
+                      className="h-9 w-16 rounded-lg border border-hairline bg-white px-2 text-sm shadow-sm"
+                    />
+                    <input
+                      name="guest_name"
+                      required
+                      placeholder="Ditt navn"
+                      className="h-9 flex-1 rounded-lg border border-hairline bg-white px-2 text-sm shadow-sm"
+                    />
+                  </div>
+                  <input
+                    name="guest_contact"
+                    placeholder="E-post eller telefon (valgfritt)"
+                    className="h-9 rounded-lg border border-hairline bg-white px-2 text-sm shadow-sm"
+                  />
+                  <Button type="submit" size="sm">
+                    Lei og betal
+                  </Button>
+                </form>
+              </div>
+            ))}
           </Section>
         )}
 

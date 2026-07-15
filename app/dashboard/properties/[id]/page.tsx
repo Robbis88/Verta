@@ -15,6 +15,8 @@ import {
   createVideoUpload,
   setPropertyVideo,
   removePropertyVideo,
+  addRentalItem,
+  deleteRentalItem,
 } from "../actions";
 import { PublicListingEditor } from "@/components/properties/public-listing-editor";
 import { VideoUploader } from "@/components/properties/video-uploader";
@@ -98,6 +100,19 @@ export default async function PropertyDetailPage({
     comment: string | null;
     owner_reply: string | null;
     created_at: string;
+  }[];
+
+  const { data: rentalData } = await supabase
+    .from("rental_items")
+    .select("id,name,description,price,quantity")
+    .eq("property_id", id)
+    .order("created_at");
+  const rentalItems = (rentalData ?? []) as {
+    id: string;
+    name: string;
+    description: string | null;
+    price: number;
+    quantity: number;
   }[];
 
   await getCurrentProfile();
@@ -216,6 +231,88 @@ export default async function PropertyDetailPage({
             Fyll inn «Slik funker det» under «Rediger», så svarer AI-en enda
             bedre.
           </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Utleie av utstyr</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4 text-sm">
+          <p className="text-muted-foreground">
+            Har du sykler, ski eller kajakk stående? Legg dem ut her, så kan
+            gjestene leie og betale rett i gjesteguiden. Verta beholder 10 % —
+            resten går til deg.
+          </p>
+
+          {rentalItems.length > 0 && (
+            <ul className="flex flex-col gap-2">
+              {rentalItems.map((it) => (
+                <li
+                  key={it.id}
+                  className="flex items-center justify-between gap-3 rounded-lg border border-hairline p-3"
+                >
+                  <div className="min-w-0">
+                    <p className="font-medium text-navy">{it.name}</p>
+                    {it.description && (
+                      <p className="truncate text-xs text-muted-foreground">
+                        {it.description}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="whitespace-nowrap font-semibold text-gold">
+                      {formatNok(Number(it.price))}
+                    </span>
+                    <form action={deleteRentalItem}>
+                      <input type="hidden" name="id" value={it.id} />
+                      <input type="hidden" name="property_id" value={p.id} />
+                      <Button
+                        type="submit"
+                        variant="ghost"
+                        size="sm"
+                        className="text-red-600 hover:text-red-700"
+                      >
+                        Fjern
+                      </Button>
+                    </form>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <form
+            action={addRentalItem}
+            className="flex flex-col gap-3 rounded-lg border border-hairline p-3"
+          >
+            <input type="hidden" name="property_id" value={p.id} />
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <input
+                name="name"
+                required
+                placeholder="Navn (f.eks. Elsykkel)"
+                className="h-10 flex-1 rounded-lg border border-hairline bg-white px-3 text-sm shadow-sm"
+              />
+              <input
+                name="price"
+                type="number"
+                min={0}
+                step="1"
+                required
+                placeholder="Pris (kr)"
+                className="h-10 w-full rounded-lg border border-hairline bg-white px-3 text-sm shadow-sm sm:w-32"
+              />
+            </div>
+            <input
+              name="description"
+              placeholder="Kort beskrivelse (valgfritt)"
+              className="h-10 rounded-lg border border-hairline bg-white px-3 text-sm shadow-sm"
+            />
+            <Button type="submit" size="sm" className="self-start">
+              Legg til utstyr
+            </Button>
+          </form>
         </CardContent>
       </Card>
 

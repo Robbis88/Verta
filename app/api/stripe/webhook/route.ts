@@ -3,7 +3,7 @@ import type Stripe from "stripe";
 import { stripe, planFromPriceId, EXTRA_PROPERTY_PRICE_ID } from "@/lib/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { finalizeBooking, notifyRemainingPaid } from "@/lib/booking";
-import { sendClaimPaid } from "@/lib/email";
+import { sendClaimPaid, sendRentalPaid } from "@/lib/email";
 import { loggHendelse } from "@/lib/kontrollrom";
 
 /**
@@ -151,6 +151,55 @@ export async function POST(request: Request) {
                 propertyName: property?.name ?? "",
                 guestName: booking?.guest_name ?? "Gjesten",
                 amount: Number(claim.amount),
+              });
+            }
+          }
+        }
+        break;
+      }
+
+      // Utstyr leid → marker ordre betalt og varsle eier.
+      if (session.metadata?.kind === "rental") {
+        const orderId = session.metadata.rental_order_id;
+        if (orderId) {
+          const { data: updated } = await supabase
+            .from("rental_orders")
+            .update({ status: "paid", stripe_session_id: session.id })
+            .eq("id", orderId)
+            .eq("status", "pending")
+            .select(
+              "id,property_id,item_id,guest_name,guest_contact,quantity,amount",
+            );
+          const order = updated?.[0];
+          if (order) {
+            const { data: property } = await supabase
+              .from("properties")
+              .select("name,user_id")
+              .eq("id", order.property_id)
+              .single();
+            const { data: item } = order.item_id
+              ? await supabase
+                  .from("rental_items")
+                  .select("name")
+                  .eq("id", order.item_id)
+                  .single()
+              : { data: null };
+            const { data: owner } = property
+              ? await supabase
+                  .from("users")
+                  .select("email")
+                  .eq("id", property.user_id)
+                  .single()
+              : { data: null };
+            if (owner?.email) {
+              await sendRentalPaid({
+                to: owner.email,
+                propertyName: property?.name ?? "",
+                itemName: item?.name ?? "utstyr",
+                guestName: order.guest_name,
+                quantity: order.quantity,
+                amount: Number(order.amount),
+                guestContact: order.guest_contact,
               });
             }
           }

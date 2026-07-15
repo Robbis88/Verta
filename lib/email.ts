@@ -527,6 +527,30 @@ export async function sendClaimPaid(opts: {
   });
 }
 
+/** Varsel til eier når en gjest har leid utstyr. */
+export async function sendRentalPaid(opts: {
+  to: string;
+  propertyName: string;
+  itemName: string;
+  guestName: string;
+  quantity: number;
+  amount: number;
+  guestContact?: string | null;
+}): Promise<boolean> {
+  const body = `
+    <p style="font-size:15px;line-height:1.6;margin:0;">
+      ${opts.guestName} har leid <strong>${opts.quantity} × ${opts.itemName}</strong>
+      på <strong>${opts.propertyName}</strong> for
+      <strong>${formatNok(opts.amount)}</strong> (Verta 10 %, resten utbetales
+      til deg).${opts.guestContact ? ` Kontakt: ${opts.guestContact}.` : ""}
+    </p>`;
+  return send({
+    to: opts.to,
+    subject: `Utstyr leid: ${opts.propertyName}`,
+    html: layout("Utstyr leid 🚲", body),
+  });
+}
+
 /** Gjesten trenger hjelp fra gjesteguiden → melding til utleieren. */
 export async function sendGuideMessage(opts: {
   to: string;

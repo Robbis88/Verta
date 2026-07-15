@@ -502,6 +502,35 @@ export async function removePropertyVideo(propertyId: string): Promise<void> {
   revalidatePath(`/dashboard/properties/${propertyId}`);
 }
 
+/** Legger til et utstyr til utleie (sykkel, ski osv.) på en eiendom. */
+export async function addRentalItem(formData: FormData): Promise<void> {
+  await requireUser();
+  const propertyId = String(formData.get("property_id") ?? "");
+  const name = String(formData.get("name") ?? "").trim();
+  const price = Number(formData.get("price"));
+  const description = String(formData.get("description") ?? "").trim() || null;
+  const quantity = Math.max(1, Number(formData.get("quantity")) || 1);
+  if (!propertyId || !name || !Number.isFinite(price) || price < 0) return;
+
+  const supabase = await createClient();
+  // RLS with check (owns_property) sikrer at eiendommen tilhører brukeren.
+  await supabase
+    .from("rental_items")
+    .insert({ property_id: propertyId, name, description, price, quantity });
+  revalidatePath(`/dashboard/properties/${propertyId}`);
+}
+
+/** Fjerner et utleie-utstyr. */
+export async function deleteRentalItem(formData: FormData): Promise<void> {
+  await requireUser();
+  const id = String(formData.get("id") ?? "");
+  const propertyId = String(formData.get("property_id") ?? "");
+  if (!id) return;
+  const supabase = await createClient();
+  await supabase.from("rental_items").delete().eq("id", id);
+  revalidatePath(`/dashboard/properties/${propertyId}`);
+}
+
 export async function deleteProperty(formData: FormData): Promise<void> {
   const user = await requireUser();
   const id = String(formData.get("id") ?? "");
