@@ -68,11 +68,40 @@ export default async function PlanPage() {
                   </span>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="flex items-center justify-between gap-4">
+              <CardContent className="flex flex-col gap-4">
                 <p className="text-sm text-muted-foreground">{tier.blurb}</p>
-                <form action={choosePlan}>
+                <form
+                  action={choosePlan}
+                  className="flex flex-col items-start gap-3"
+                >
                   <input type="hidden" name="tier" value={tier.key} />
-                  <Button type="submit" variant={tier.highlighted ? "default" : "outline"}>
+                  <label className="flex items-start gap-2 text-xs text-muted-foreground">
+                    <input
+                      type="checkbox"
+                      name="dba"
+                      required
+                      className="mt-0.5 h-4 w-4"
+                    />
+                    <span>
+                      Jeg godtar{" "}
+                      <Link href="/vilkar" className="underline">
+                        vilkårene
+                      </Link>
+                      ,{" "}
+                      <Link href="/personvern" className="underline">
+                        personvernerklæringen
+                      </Link>{" "}
+                      og{" "}
+                      <Link href="/databehandleravtale" className="underline">
+                        databehandleravtalen
+                      </Link>
+                      .
+                    </span>
+                  </label>
+                  <Button
+                    type="submit"
+                    variant={tier.highlighted ? "default" : "outline"}
+                  >
                     {stripeEnabled ? `Start ${plan.label}` : `Velg ${plan.label}`}
                   </Button>
                 </form>

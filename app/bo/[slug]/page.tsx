@@ -22,6 +22,7 @@ import { Footer } from "@/components/landing/Footer";
 
 type PublicProperty = {
   id: string;
+  user_id: string;
   name: string;
   description: string | null;
   address: string | null;
@@ -47,7 +48,7 @@ type PublicProperty = {
 };
 
 const SELECT =
-  "id,name,description,address,bedrooms,bathrooms,max_guests,base_nightly_rate,cleaning_fee,booking_mode,images,beds,sleeping_arrangements,check_in_time,check_out_time,house_rules,amenities,lat,lng,public_listing,area_description,video_url,nearby_pois";
+  "id,user_id,name,description,address,bedrooms,bathrooms,max_guests,base_nightly_rate,cleaning_fee,booking_mode,images,beds,sleeping_arrangements,check_in_time,check_out_time,house_rules,amenities,lat,lng,public_listing,area_description,video_url,nearby_pois";
 
 async function getProperty(slug: string): Promise<PublicProperty | null> {
   const supabase = createAdminClient();
@@ -126,6 +127,14 @@ export default async function PublicStayPage({
     getNearbyPois(property),
     getPropertyReviews(property.id),
   ]);
+
+  // Utleieren er selger (direktebooking) — vis navnet i booking-boksen.
+  const { data: ownerRow } = await createAdminClient()
+    .from("users")
+    .select("name")
+    .eq("id", property.user_id)
+    .maybeSingle();
+  const ownerName = (ownerRow?.name as string | null) ?? null;
   const today = new Date().toISOString().slice(0, 10);
 
   const images = property.images ?? [];
@@ -409,6 +418,11 @@ export default async function PublicStayPage({
                   </span>
                 )}
               </div>
+
+              <p className="mb-4 text-xs text-ink/60">
+                {ownerName ? `Direktebooking hos ${ownerName}` : "Direktebooking"}{" "}
+                — betaling går rett til utleieren, uten plattformgebyr.
+              </p>
 
               {betalt && (
                 <p className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">

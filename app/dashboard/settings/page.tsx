@@ -112,7 +112,8 @@ export default async function SettingsPage({
                   <span className="font-medium text-emerald-600">Aktiv</span> —
                   gjestene betaler <strong>deg direkte</strong>. Verta tar ingen
                   provisjon på leien. Kortgebyr fra Stripe (~2–3 %) trekkes av
-                  dine utbetalinger.
+                  dine utbetalinger — du ser <strong>brutto → kortgebyr →
+                  netto</strong> per betaling i Stripe-dashbordet.
                 </p>
                 <form action={openConnectDashboard}>
                   <Button type="submit" variant="outline">

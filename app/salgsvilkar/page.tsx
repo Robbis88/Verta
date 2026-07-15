@@ -3,6 +3,10 @@ import Link from "next/link";
 import { LegalLayout, H2 } from "@/components/legal/legal-layout";
 import { COMPANY } from "@/lib/company";
 
+// JURIDISK: Denne teksten er oppdatert til direktebooking-modellen (utleieren er
+// selger og betalingsmottaker; Verta er plattform/formidler, ikke part i
+// leieavtalen). Bør gjennomgås av jurist før endelig lansering.
+
 export const metadata = {
   title: "Salgsvilkår — Verta",
 };
@@ -11,30 +15,32 @@ export default function SalgsvilkarPage() {
   return (
     <LegalLayout title="Salgsvilkår">
       <p>
-        Disse salgsvilkårene gjelder når du som gjest bestiller og betaler for et
-        opphold gjennom Verta. Betalingen håndteres av {COMPANY.legalName}{" "}
-        (org.nr. {COMPANY.orgNr}) på vegne av utleieren av eiendommen. Selve
-        leieavtalen om oppholdet inngås mellom deg og utleieren; Verta formidler
-        bestillingen og gjennomfører betalingen.
+        Disse salgsvilkårene gjelder når du som gjest bestiller et opphold via
+        Verta. <strong>Avtalen om oppholdet inngås direkte mellom deg og
+        utleieren</strong> av den enkelte eiendommen, som er selger og
+        betalingsmottaker. Utleierens navn og kontaktinformasjon vises på
+        bookingsiden. Verta ({COMPANY.legalName}, org.nr. {COMPANY.orgNr})
+        leverer plattformen og formidler bestillingen, men er ikke part i
+        leieavtalen og mottar ikke betaling for oppholdet.
       </p>
 
       <H2>1. Priser</H2>
       <p>
         Alle priser oppgis i norske kroner (NOK) og inkluderer offentlige avgifter.
-        Totalprisen for oppholdet — inkludert rengjøringsgebyr og et tjenestegebyr
-        til Verta på 7,5 % — vises som egne linjer før du bekrefter bestillingen.
-        Det tilkommer ingen skjulte kostnader utover det som er spesifisert ved
-        bestilling.
+        Totalprisen — inkludert eventuelt rengjøringsgebyr — vises som egne linjer
+        før du bekrefter bestillingen. <strong>Det tilkommer ingen
+        plattformgebyr:</strong> du betaler utleierens pris direkte. Ingen skjulte
+        kostnader utover det som er spesifisert ved bestilling.
       </p>
 
       <H2>2. Betaling</H2>
       <p>
-        Du kan betale med Vipps eller betalingskort. Betalingen belastes ved
-        bestilling, med mindre annet er oppgitt for den enkelte eiendommen.
-        Bestillingen er bindende når betalingen er gjennomført, og du mottar en
-        bekreftelse på e-post. Betalingsopplysningene dine håndteres av vår
-        betalingsleverandør (Vipps MobilePay / Stripe) — Verta lagrer ikke
-        kortnummeret ditt.
+        Du betaler med betalingskort <strong>direkte til utleieren</strong> via
+        vår betalingsleverandør Stripe. Betalingen belastes ved bestilling, med
+        mindre annet er oppgitt for den enkelte eiendommen. Bestillingen er
+        bindende når betalingen er gjennomført, og du mottar en bekreftelse på
+        e-post. Kortopplysningene håndteres av Stripe — verken Verta eller
+        utleieren lagrer kortnummeret ditt.
       </p>
 
       <H2>3. Angrerett</H2>
@@ -49,8 +55,8 @@ export default function SalgsvilkarPage() {
       <H2>4. Avbestilling og refusjon</H2>
       <p>
         Avbestillingsvilkårene for det enkelte oppholdet vises ved bestilling og
-        utgjør en del av avtalen. Med mindre annet er oppgitt for eiendommen,
-        gjelder følgende standardvilkår:
+        utgjør en del av avtalen med utleieren. Med mindre annet er oppgitt for
+        eiendommen, gjelder følgende standardvilkår:
       </p>
       <ul className="ml-5 list-disc">
         <li>
@@ -66,11 +72,8 @@ export default function SalgsvilkarPage() {
         </li>
       </ul>
       <p>
-        Avbestilling gjøres ved å kontakte oss på{" "}
-        <a href={`mailto:${COMPANY.contactEmail}`} className="underline">
-          {COMPANY.contactEmail}
-        </a>
-        . Refusjon skjer til samme betalingsmiddel som ble brukt ved kjøpet,
+        Avbestilling gjøres fra gjestesiden din eller ved å kontakte utleieren.
+        Refusjon skjer fra utleieren til samme betalingsmiddel som ble brukt,
         normalt innen 14 dager. Blir oppholdet avlyst av utleieren, får du alltid
         full refusjon.
       </p>
@@ -78,19 +81,19 @@ export default function SalgsvilkarPage() {
       <H2>5. Mangler og reklamasjon</H2>
       <p>
         Har oppholdet en mangel i forhold til det som er beskrevet, kan du
-        reklamere. Ta kontakt så raskt som mulig — helst under oppholdet — så vi
-        kan forsøke å rette forholdet. Krav om prisavslag eller erstatning
+        reklamere til utleieren. Ta kontakt så raskt som mulig — helst under
+        oppholdet — så forholdet kan rettes. Krav om prisavslag eller erstatning
         behandles i samsvar med gjeldende forbrukerlovgivning.
       </p>
 
       <H2>6. Klagehåndtering</H2>
       <p>
-        Klager rettes til{" "}
+        Klager rettes først til utleieren. Trenger du hjelp med selve plattformen,
+        kontakt Verta på{" "}
         <a href={`mailto:${COMPANY.contactEmail}`} className="underline">
           {COMPANY.contactEmail}
         </a>
-        . Vi svarer normalt innen få virkedager og forsøker alltid å finne en
-        løsning. Kommer vi ikke til enighet, kan du bringe saken inn for{" "}
+        . Kommer du og utleieren ikke til enighet, kan du bringe saken inn for{" "}
         <a
           href="https://www.forbrukertilsynet.no"
           target="_blank"
@@ -111,10 +114,11 @@ export default function SalgsvilkarPage() {
         .
       </p>
 
-      <H2>7. Selger og kontakt</H2>
+      <H2>7. Selger og plattform</H2>
       <p>
-        Betalingen håndteres av {COMPANY.legalName}, org.nr. {COMPANY.orgNr},{" "}
-        {COMPANY.address}. Kontakt:{" "}
+        <strong>Selger</strong> er utleieren av den enkelte eiendommen (navn og
+        kontaktinfo vises på bookingsiden). <strong>Plattform</strong> er{" "}
+        {COMPANY.legalName}, org.nr. {COMPANY.orgNr}, {COMPANY.address} — kontakt{" "}
         <a href={`mailto:${COMPANY.contactEmail}`} className="underline">
           {COMPANY.contactEmail}
         </a>

@@ -80,6 +80,13 @@ export async function choosePlan(formData: FormData): Promise<void> {
   if (!TIERS.includes(tier as (typeof TIERS)[number])) return;
 
   const supabase = await createClient();
+
+  // Registrer at eieren godtok vilkår + databehandleravtale ved planvalg.
+  await supabase
+    .from("users")
+    .update({ dba_signed_at: new Date().toISOString() })
+    .eq("id", user.id);
+
   const profile = await getCurrentProfile();
   const origin =
     (await headers()).get("origin") ??
