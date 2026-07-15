@@ -79,11 +79,9 @@ export async function startConnectOnboarding(
  */
 export async function openConnectDashboard(): Promise<void> {
   await requireUser();
-  const profile = await getCurrentProfile();
-  if (!stripe || !profile?.stripe_connect_id) return;
-
-  const link = await stripe.accounts.createLoginLink(profile.stripe_connect_id);
-  redirect(link.url);
+  // Standard-kontoer eies av utleieren selv — de logger inn på sitt eget
+  // Stripe-dashboard (createLoginLink gjelder kun Express/Custom).
+  redirect("https://dashboard.stripe.com");
 }
 
 /** Åpner Stripe Billing Portal så brukeren kan endre/si opp abonnement. */
