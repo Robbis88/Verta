@@ -17,6 +17,8 @@ import {
   removePropertyVideo,
   addRentalItem,
   deleteRentalItem,
+  addEquipment,
+  deleteEquipment,
 } from "../actions";
 import { PublicListingEditor } from "@/components/properties/public-listing-editor";
 import { VideoUploader } from "@/components/properties/video-uploader";
@@ -114,6 +116,23 @@ export default async function PropertyDetailPage({
     price: number;
     quantity: number;
   }[];
+
+  const { data: equipmentData } = await supabase
+    .from("house_equipment")
+    .select("id,name,category,location,brand,model,warranty_until,notes")
+    .eq("property_id", id)
+    .order("created_at");
+  const equipment = (equipmentData ?? []) as {
+    id: string;
+    name: string;
+    category: string | null;
+    location: string | null;
+    brand: string | null;
+    model: string | null;
+    warranty_until: string | null;
+    notes: string | null;
+  }[];
+  const todayIso = new Date().toISOString().slice(0, 10);
 
   await getCurrentProfile();
 
@@ -231,6 +250,140 @@ export default async function PropertyDetailPage({
             Fyll inn «Slik funker det» under «Rediger», så svarer AI-en enda
             bedre.
           </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Utstyrs-liste</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4 text-sm">
+          <p className="text-muted-foreground">
+            Hva som finnes i boligen, hvor det er, merke/modell og notater. Da
+            kan AI-assistenten i gjesteguiden forklare gjestene hvordan hver ting
+            brukes — også på deres eget språk. Begynn med det viktigste: TV, AC,
+            kaffemaskin, vaskemaskin.
+          </p>
+
+          {equipment.length > 0 && (
+            <ul className="flex flex-col gap-2">
+              {equipment.map((e) => (
+                <li
+                  key={e.id}
+                  className="flex items-start justify-between gap-3 rounded-lg border border-hairline p-3"
+                >
+                  <div className="min-w-0">
+                    <p className="font-medium text-navy">
+                      {e.name}
+                      {e.location && (
+                        <span className="font-normal text-muted-foreground">
+                          {" "}
+                          · {e.location}
+                        </span>
+                      )}
+                      {e.warranty_until && e.warranty_until >= todayIso && (
+                        <span className="ml-2 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                          Garanti
+                        </span>
+                      )}
+                    </p>
+                    {(e.brand || e.model) && (
+                      <p className="text-xs text-muted-foreground">
+                        {[e.brand, e.model].filter(Boolean).join(" ")}
+                      </p>
+                    )}
+                    {e.notes && (
+                      <p className="mt-0.5 text-xs text-ink/60">{e.notes}</p>
+                    )}
+                  </div>
+                  <form action={deleteEquipment}>
+                    <input type="hidden" name="id" value={e.id} />
+                    <input type="hidden" name="property_id" value={p.id} />
+                    <Button
+                      type="submit"
+                      variant="ghost"
+                      size="sm"
+                      className="text-red-600 hover:text-red-700"
+                    >
+                      Fjern
+                    </Button>
+                  </form>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <form
+            action={addEquipment}
+            className="flex flex-col gap-3 rounded-lg border border-hairline p-3"
+          >
+            <input type="hidden" name="property_id" value={p.id} />
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <input
+                name="name"
+                required
+                placeholder="Navn (f.eks. TV i stuen)"
+                className="h-10 flex-1 rounded-lg border border-hairline bg-white px-3 text-sm shadow-sm"
+              />
+              <select
+                name="category"
+                defaultValue=""
+                className="h-10 rounded-lg border border-hairline bg-white px-3 text-sm shadow-sm sm:w-40"
+              >
+                <option value="">Kategori …</option>
+                <option value="TV">TV</option>
+                <option value="Kjøkken">Kjøkken</option>
+                <option value="Klima">Klima (AC/varmepumpe)</option>
+                <option value="Vaskemaskin">Vaskemaskin</option>
+                <option value="Underholdning">Underholdning</option>
+                <option value="Oppvarming">Oppvarming</option>
+                <option value="Annet">Annet</option>
+              </select>
+              <input
+                name="location"
+                placeholder="Sted (f.eks. Stue)"
+                className="h-10 rounded-lg border border-hairline bg-white px-3 text-sm shadow-sm sm:w-40"
+              />
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <input
+                name="brand"
+                placeholder="Merke (Samsung)"
+                className="h-10 flex-1 rounded-lg border border-hairline bg-white px-3 text-sm shadow-sm"
+              />
+              <input
+                name="model"
+                placeholder="Modell (UE55TU8000)"
+                className="h-10 flex-1 rounded-lg border border-hairline bg-white px-3 text-sm shadow-sm"
+              />
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <label className="flex flex-1 flex-col gap-1 text-xs text-muted-foreground">
+                Kjøpt
+                <input
+                  name="purchased_at"
+                  type="date"
+                  className="h-10 rounded-lg border border-hairline bg-white px-3 text-sm shadow-sm"
+                />
+              </label>
+              <label className="flex flex-1 flex-col gap-1 text-xs text-muted-foreground">
+                Garanti til
+                <input
+                  name="warranty_until"
+                  type="date"
+                  className="h-10 rounded-lg border border-hairline bg-white px-3 text-sm shadow-sm"
+                />
+              </label>
+            </div>
+            <input
+              name="notes"
+              placeholder="Notater (f.eks. «Fjernkontroll i skuffen», «Filter byttes hver 6. mnd»)"
+              className="h-10 rounded-lg border border-hairline bg-white px-3 text-sm shadow-sm"
+            />
+            <Button type="submit" size="sm" className="self-start">
+              Legg til utstyr
+            </Button>
+          </form>
         </CardContent>
       </Card>
 

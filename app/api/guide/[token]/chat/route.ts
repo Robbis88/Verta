@@ -25,7 +25,7 @@ export async function POST(
   const { data: p } = await supabase
     .from("properties")
     .select(
-      "name,address,wifi_name,wifi_password,access_info,appliances_info,house_rules,checkout_info,amenities,travel_guide",
+      "id,name,address,wifi_name,wifi_password,access_info,appliances_info,house_rules,checkout_info,amenities,travel_guide",
     )
     .eq("guide_token", token)
     .maybeSingle();
@@ -38,6 +38,27 @@ export async function POST(
     .filter(Boolean)
     .join(", ");
 
+  // Registrert utstyr (TV, AC, kaffemaskin …) med merke/modell. AI-en kjenner
+  // vanlige modeller og kan forklare bruken, kombinert med eierens notater.
+  const { data: eq } = await supabase
+    .from("house_equipment")
+    .select("name,category,location,brand,model,notes")
+    .eq("property_id", p.id)
+    .order("created_at");
+  const equipmentLines = (eq ?? [])
+    .map((e) => {
+      const model = [e.brand, e.model].filter(Boolean).join(" ");
+      const parts = [
+        `- ${e.name}`,
+        e.location ? `(${e.location})` : "",
+        model ? `— ${model}` : "",
+        e.category ? `[${e.category}]` : "",
+        e.notes ? `Notat: ${e.notes}` : "",
+      ].filter(Boolean);
+      return parts.join(" ");
+    })
+    .join("\n");
+
   const system = `Du er den digitale vertskaps-assistenten for utleieboligen "${p.name}"${
     p.address ? ` (${p.address})` : ""
   }. Du hjelper gjesten under oppholdet.
@@ -45,7 +66,9 @@ export async function POST(
 VIKTIGE REGLER:
 - Svar ALLTID på SAMME SPRÅK som gjesten skriver på (engelsk → engelsk, norsk → norsk, tysk → tysk, osv.).
 - Vær kort, vennlig og konkret.
-- Bruk KUN fakta under. Finner du ikke svaret, eller virker noe ikke (f.eks. varmepumpe), be gjesten vennlig trykke «Kontakt verten» så tar utleieren over. IKKE finn på svar.
+- Bruk KUN fakta under om selve boligen (WiFi, tilkomst, regler osv.). IKKE finn på slike detaljer.
+- UNNTAK for utstyr: For apparatene i «UTSTYR I BOLIGEN» kan du bruke din generelle kunnskap om nettopp det merket/modellen til å forklare praktisk bruk (f.eks. hvordan bytte kilde på en Samsung-TV, starte en vaskemaskin, stille en varmepumpe). Kombiner med eierens notater. Er du usikker på modellen, gi et trygt generelt svar og be dem eventuelt kontakte verten.
+- Finner du ikke svaret, eller virker noe ikke i praksis, be gjesten vennlig trykke «Kontakt verten» så tar utleieren over.
 
 FAKTA OM BOLIGEN:
 - WiFi: ${p.wifi_name ?? "ukjent"}${p.wifi_password ? ` / passord: ${p.wifi_password}` : ""}
@@ -54,7 +77,10 @@ FAKTA OM BOLIGEN:
 - Husregler: ${p.house_rules ?? "ingen oppgitt"}
 - Utsjekk: ${p.checkout_info ?? "ingen oppgitt"}
 - Fasiliteter: ${amenities || "ingen oppgitt"}
-- Lokale anbefalinger: ${p.travel_guide ?? "ingen oppgitt"}`;
+- Lokale anbefalinger: ${p.travel_guide ?? "ingen oppgitt"}
+
+UTSTYR I BOLIGEN (merke/modell + eierens notater):
+${equipmentLines || "- ingen registrert"}`;
 
   const stream = anthropic.messages.stream({
     model: DEFAULT_MODEL,

@@ -531,6 +531,46 @@ export async function deleteRentalItem(formData: FormData): Promise<void> {
   revalidatePath(`/dashboard/properties/${propertyId}`);
 }
 
+/**
+ * Registrerer et apparat/utstyr i boligen (TV, AC, kaffemaskin osv.) med
+ * merke/modell. AI-guiden bruker dette til å forklare gjestene bruken.
+ */
+export async function addEquipment(formData: FormData): Promise<void> {
+  await requireUser();
+  const propertyId = String(formData.get("property_id") ?? "");
+  const name = String(formData.get("name") ?? "").trim();
+  if (!propertyId || !name) return;
+
+  const trimOrNull = (key: string) =>
+    String(formData.get(key) ?? "").trim() || null;
+
+  const supabase = await createClient();
+  // RLS with check (owns_property) sikrer at eiendommen tilhører brukeren.
+  await supabase.from("house_equipment").insert({
+    property_id: propertyId,
+    name,
+    category: trimOrNull("category"),
+    location: trimOrNull("location"),
+    brand: trimOrNull("brand"),
+    model: trimOrNull("model"),
+    purchased_at: trimOrNull("purchased_at"),
+    warranty_until: trimOrNull("warranty_until"),
+    notes: trimOrNull("notes"),
+  });
+  revalidatePath(`/dashboard/properties/${propertyId}`);
+}
+
+/** Fjerner et registrert apparat/utstyr fra boligen. */
+export async function deleteEquipment(formData: FormData): Promise<void> {
+  await requireUser();
+  const id = String(formData.get("id") ?? "");
+  const propertyId = String(formData.get("property_id") ?? "");
+  if (!id) return;
+  const supabase = await createClient();
+  await supabase.from("house_equipment").delete().eq("id", id);
+  revalidatePath(`/dashboard/properties/${propertyId}`);
+}
+
 export async function deleteProperty(formData: FormData): Promise<void> {
   const user = await requireUser();
   const id = String(formData.get("id") ?? "");
