@@ -95,13 +95,7 @@ export async function payDeposit(token: string): Promise<void> {
   ) {
     redirect(back);
   }
-  // Andel av tjenestegebyret som hører til denne delbetalingen.
-  const amountTotal = Number(booking!.amount_total ?? 0);
-  const fee = Number(booking!.service_fee ?? 0);
-  const depositFee =
-    amountTotal > 0 ? Math.round(fee * (deposit / amountTotal) * 100) : 0;
-  const origin =
-    process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  const origin = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
   const session = await stripe.checkout.sessions.create({
     mode: "payment",
@@ -116,16 +110,15 @@ export async function payDeposit(token: string): Promise<void> {
         quantity: 1,
       },
     ],
-    payment_intent_data: {
-      application_fee_amount: depositFee,
-      transfer_data: { destination: owner.stripe_connect_id },
-      metadata: { booking_id: booking.id, kind: "deposit" },
-    },
+    payment_intent_data: { metadata: { booking_id: booking.id, kind: "deposit" } },
     customer_email: booking.guest_email || undefined,
     metadata: { booking_id: booking.id, kind: "deposit" },
     success_url: `${origin}/gjest/${token}?betalt=1`,
     cancel_url: `${origin}/gjest/${token}`,
-  }, { idempotencyKey: `deposit-${booking!.id}` });
+  }, {
+    idempotencyKey: `deposit-${booking!.id}`,
+    stripeAccount: owner.stripe_connect_id,
+  });
 
   redirect(session.url!);
 }
@@ -174,10 +167,6 @@ export async function payRemaining(token: string): Promise<void> {
     redirect(back);
   }
 
-  const amountTotal = Number(booking!.amount_total ?? 0);
-  const fee = Number(booking!.service_fee ?? 0);
-  const remainingFee =
-    amountTotal > 0 ? Math.round(fee * (remaining / amountTotal) * 100) : 0;
   const origin = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
   const session = await stripe.checkout.sessions.create({
@@ -194,15 +183,16 @@ export async function payRemaining(token: string): Promise<void> {
       },
     ],
     payment_intent_data: {
-      application_fee_amount: remainingFee,
-      transfer_data: { destination: owner.stripe_connect_id },
       metadata: { booking_id: booking!.id, kind: "remaining" },
     },
     customer_email: booking!.guest_email || undefined,
     metadata: { booking_id: booking!.id, kind: "remaining" },
     success_url: `${origin}/gjest/${token}?betalt=1`,
     cancel_url: `${origin}/gjest/${token}`,
-  }, { idempotencyKey: `remaining-${booking!.id}` });
+  }, {
+    idempotencyKey: `remaining-${booking!.id}`,
+    stripeAccount: owner.stripe_connect_id,
+  });
 
   redirect(session.url!);
 }

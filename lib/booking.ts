@@ -123,6 +123,24 @@ export async function cancelAndRefund(opts: {
     return { ok: false, refunded: 0, wasPaid: false };
   }
 
+  // Direct charges ligger på eierens Stripe-konto — refusjon må gjøres der.
+  let ownerAccount: string | null = null;
+  {
+    const { data: prop } = await supabase
+      .from("properties")
+      .select("user_id")
+      .eq("id", booking.property_id)
+      .single();
+    if (prop) {
+      const { data: ownerRow } = await supabase
+        .from("users")
+        .select("stripe_connect_id")
+        .eq("id", prop.user_id)
+        .single();
+      ownerAccount = ownerRow?.stripe_connect_id ?? null;
+    }
+  }
+
   const fraction = Math.max(0, Math.min(1, opts.refundFraction));
   const wasPaid =
     booking.payment_status === "paid" && !!booking.stripe_payment_intent;
@@ -168,9 +186,9 @@ export async function cancelAndRefund(opts: {
   }
 
   // Refunder gjesten proporsjonalt fra HVER betaling (depositum + evt. rest),
-  // og reverser eier-overføring + provisjon. Full refusjon (fraction=1) tar
-  // hele hver betaling.
-  if (stripe && refundAmount > 0) {
+  // på eierens konto (direct charge). Full refusjon (fraction=1) tar hele
+  // hver betaling.
+  if (stripe && refundAmount > 0 && ownerAccount) {
     const charges: { pi: string; amount: number }[] = [
       { pi: booking.stripe_payment_intent!, amount: mainCharged },
     ];
@@ -182,15 +200,16 @@ export async function cancelAndRefund(opts: {
     }
     for (const c of charges) {
       try {
-        await stripe.refunds.create({
-          payment_intent: c.pi,
-          // Utelat amount ved full refusjon (unngår avrundingsavvik).
-          ...(fraction < 1
-            ? { amount: Math.round(c.amount * fraction * 100) }
-            : {}),
-          refund_application_fee: true,
-          reverse_transfer: true,
-        });
+        await stripe.refunds.create(
+          {
+            payment_intent: c.pi,
+            // Utelat amount ved full refusjon (unngår avrundingsavvik).
+            ...(fraction < 1
+              ? { amount: Math.round(c.amount * fraction * 100) }
+              : {}),
+          },
+          { stripeAccount: ownerAccount },
+        );
       } catch (err) {
         console.error("Refusjon feilet for betaling:", c.pi, err);
       }

@@ -169,6 +169,9 @@ export function BookingForm({
             <span>Totalt</span>
             <span>{formatNok(quote.guestTotal)}</span>
           </div>
+          <p className="pt-1 text-xs font-normal text-ink/60">
+            Ingen plattformgebyr — du betaler utleieren direkte.
+          </p>
         </div>
       )}
 

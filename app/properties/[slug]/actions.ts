@@ -255,19 +255,15 @@ export async function createDirectBooking(
         quantity: 1,
       },
     ],
-    payment_intent_data: {
-      // Verta beholder tjenestegebyret; resten overføres til utleieren.
-      application_fee_amount: Math.round(serviceFee * 100),
-      transfer_data: { destination: owner!.stripe_connect_id! },
-      metadata: { booking_id: booking.id },
-    },
+    payment_intent_data: { metadata: { booking_id: booking.id } },
     customer_email: data.guest_email || undefined,
     metadata: { booking_id: booking.id },
     success_url: `${origin}/bo/${slug}?betalt=1`,
     cancel_url: `${origin}/bo/${slug}?avbrutt=1`,
     // Reservasjonen holdes i 30 min; utløper checkouten frigis datoene.
     expires_at: Math.floor(Date.now() / 1000) + 1800,
-  });
+    // Direct charge: gjesten betaler direkte på eierens konto (0 % til Verta).
+  }, { stripeAccount: owner!.stripe_connect_id! });
 
   redirect(session.url!);
 }

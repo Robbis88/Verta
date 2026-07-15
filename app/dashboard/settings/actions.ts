@@ -20,10 +20,17 @@ async function siteOrigin(): Promise<string> {
  * kan motta utbetaling for gjeste-bookinger. Oppretter en Express-konto første
  * gang, og sender brukeren til Stripe sin onboarding via en Account Link.
  */
-export async function startConnectOnboarding(): Promise<void> {
+export async function startConnectOnboarding(
+  formData: FormData,
+): Promise<void> {
   const user = await requireUser();
   const profile = await getCurrentProfile();
   if (!stripe || !stripeEnabled) return;
+
+  // Eieren må bekrefte at kortgebyr belastes egen konto (direktebooking-modell).
+  if (formData.get("gebyr") !== "on") {
+    redirect("/dashboard/settings?utbetaling=gebyr");
+  }
 
   const origin = await siteOrigin();
   let url: string;
@@ -31,23 +38,25 @@ export async function startConnectOnboarding(): Promise<void> {
     let connectId = profile?.stripe_connect_id ?? null;
 
     if (!connectId) {
+      // Standard-konto: eieren er merchant of record og bærer kortgebyret.
+      // Gjesten belastes direkte på denne kontoen (direct charge), Verta 0 %.
       const account = await stripe.accounts.create({
-        type: "express",
+        type: "standard",
         country: "NO",
         email: profile?.email ?? user.email ?? undefined,
-        // Destination charges: plattformen tar betalingen, eierens konto mottar
-        // overføringen. Da holder det å be om transfers-kapabiliteten.
-        capabilities: { transfers: { requested: true } },
-        // business_type settes ikke — Stripe spør eieren (privatperson vs. AS).
         metadata: { user_id: user.id },
       });
       connectId = account.id;
-      const supabase = await createClient();
-      await supabase
-        .from("users")
-        .update({ stripe_connect_id: connectId })
-        .eq("id", user.id);
     }
+
+    const supabase = await createClient();
+    await supabase
+      .from("users")
+      .update({
+        stripe_connect_id: connectId,
+        gebyr_bekreftet_at: new Date().toISOString(),
+      })
+      .eq("id", user.id);
 
     const link = await stripe.accountLinks.create({
       account: connectId,
@@ -57,8 +66,6 @@ export async function startConnectOnboarding(): Promise<void> {
     });
     url = link.url;
   } catch (err) {
-    // Ikke la en Stripe-feil krasje hele innstillinger-siden. Logg den ekte
-    // årsaken (synlig i Vercel-loggene) og vis en pen melding i stedet.
     console.error("Connect-onboarding feilet:", err);
     redirect("/dashboard/settings?utbetaling=feil");
   }

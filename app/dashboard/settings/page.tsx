@@ -98,29 +98,52 @@ export default async function SettingsPage({
                 live-modus ennå (fullfør plattformprofilen i Stripe).
               </p>
             )}
+            {utbetaling === "gebyr" && (
+              <p className="text-amber-600">
+                Du må huke av bekreftelsen om kortgebyr før du kan koble
+                utbetaling.
+              </p>
+            )}
 
             {payoutsReady ? (
               <>
                 <p className="text-muted-foreground">
                   Status:{" "}
                   <span className="font-medium text-emerald-600">Aktiv</span> —
-                  du kan motta betaling for gjeste-bookinger. Du får hele
-                  beløpet; gjesten betaler et tjenestegebyr på 7,5 %.
+                  gjestene betaler <strong>deg direkte</strong>. Verta tar ingen
+                  provisjon på leien. Kortgebyr fra Stripe (~2–3 %) trekkes av
+                  dine utbetalinger.
                 </p>
                 <form action={openConnectDashboard}>
                   <Button type="submit" variant="outline">
-                    Åpne utbetalings-dashbord
+                    Åpne Stripe-dashbordet
                   </Button>
                 </form>
               </>
             ) : (
               <>
                 <p className="text-muted-foreground">
-                  Koble til en konto for å ta imot betaling når gjester booker
-                  via Verta. Stripe håndterer bankkonto og identitetssjekk. Du
-                  får hele beløpet; gjesten betaler et tjenestegebyr på 7,5 %.
+                  Koble til din egen Stripe-konto, så betaler gjestene deg{" "}
+                  <strong>direkte</strong> når de booker. Du er selger, Verta tar{" "}
+                  <strong>0 % av leien</strong>. Kortgebyret (~2–3 %) fra Stripe
+                  trekkes av dine utbetalinger.
                 </p>
-                <form action={startConnectOnboarding}>
+                <form
+                  action={startConnectOnboarding}
+                  className="flex flex-col items-start gap-3"
+                >
+                  <label className="flex items-start gap-2">
+                    <input
+                      type="checkbox"
+                      name="gebyr"
+                      required
+                      className="mt-0.5 h-4 w-4"
+                    />
+                    <span>
+                      Jeg forstår at kortgebyr (~2–3 %) belastes min Stripe-konto,
+                      og at Verta ikke tar provisjon på leien.
+                    </span>
+                  </label>
                   <Button type="submit">
                     {hasConnect ? "Fullfør oppsett" : "Koble utbetaling"}
                   </Button>

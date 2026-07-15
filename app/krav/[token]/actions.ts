@@ -58,16 +58,16 @@ export async function payClaim(token: string): Promise<void> {
         quantity: 1,
       },
     ],
-    // Hele beløpet går til utleieren (ingen provisjon på skadekrav).
-    payment_intent_data: {
-      transfer_data: { destination: owner.stripe_connect_id },
-      metadata: { claim_id: claim!.id, kind: "claim" },
-    },
+    // Direct charge: hele beløpet betales direkte på eierens konto.
+    payment_intent_data: { metadata: { claim_id: claim!.id, kind: "claim" } },
     customer_email: booking?.guest_email || undefined,
     metadata: { claim_id: claim!.id, kind: "claim" },
     success_url: `${origin}/krav/${token}?betalt=1`,
     cancel_url: `${origin}/krav/${token}`,
-  }, { idempotencyKey: `claim-${claim!.id}` });
+  }, {
+    idempotencyKey: `claim-${claim!.id}`,
+    stripeAccount: owner.stripe_connect_id,
+  });
 
   redirect(session.url!);
 }

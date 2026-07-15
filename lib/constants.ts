@@ -39,11 +39,11 @@ export const BOOST_STATUSES = [
 export type BoostStatus = (typeof BOOST_STATUSES)[number];
 
 /**
- * Vertas tjenestegebyr som legges på gjestens bestilling (7,5 % av netter +
- * rengjøring). Gjesten betaler dette på toppen; utleieren får hele sitt beløp.
- * Dekker betaling og Vertas provisjon — ikke vask.
+ * Tjenestegebyr på gjestens bestilling. Satt til 0: i direktebooking-modellen
+ * betaler gjesten eierens pris direkte (direct charge til eierens konto), og
+ * Verta tar 0 % av leien. Feltet/funksjonen beholdes for historikk.
  */
-export const SERVICE_FEE_RATE = 0.075;
+export const SERVICE_FEE_RATE = 0;
 
 /** Beregner tjenestegebyret av utleierens beløp (netter + rengjøring). */
 export function serviceFeeOf(amount: number): number {
