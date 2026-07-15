@@ -89,13 +89,25 @@ export async function openBillingPortal(): Promise<void> {
   await requireUser();
   const profile = await getCurrentProfile();
   const customerId = profile?.stripe_customer_id;
-  if (!stripe || !customerId) return;
+  // Ingen Stripe-kunde ennå (f.eks. plan satt manuelt/uten Checkout) → ingen
+  // portal å åpne. Gi beskjed i stedet for å la knappen «gjøre ingenting».
+  if (!stripe || !stripeEnabled || !customerId) {
+    redirect("/dashboard/settings?abonnement=mangler");
+  }
 
-  const session = await stripe.billingPortal.sessions.create({
-    customer: customerId,
-    return_url: `${await siteOrigin()}/dashboard/settings`,
-  });
-  redirect(session.url);
+  let url: string;
+  try {
+    const session = await stripe.billingPortal.sessions.create({
+      customer: customerId,
+      return_url: `${await siteOrigin()}/dashboard/settings`,
+    });
+    url = session.url;
+  } catch {
+    // Vanligste årsak i live-modus: Customer Portal er ikke aktivert i Stripe
+    // (Innstillinger → Betaling → Kundeportal → Aktiver).
+    redirect("/dashboard/settings?abonnement=feil");
+  }
+  redirect(url);
 }
 
 /** Premium: kjøp en ekstra eiendom (+99 kr/mnd) via Stripe Checkout. */

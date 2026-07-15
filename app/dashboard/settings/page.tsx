@@ -21,11 +21,11 @@ import {
 export default async function SettingsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ utbetaling?: string }>;
+  searchParams: Promise<{ utbetaling?: string; abonnement?: string }>;
 }) {
   const profile = await getCurrentProfile();
   const plan: Plan = profile?.plan ?? "gratis";
-  const { utbetaling } = await searchParams;
+  const { utbetaling, abonnement } = await searchParams;
 
   const hasConnect = Boolean(profile?.stripe_connect_id);
   const payoutsReady = profile?.payouts_enabled === true;
@@ -59,6 +59,20 @@ export default async function SettingsPage({
             <p className="text-muted-foreground">
               Nåværende plan: {PLANS[plan].label}
             </p>
+            {abonnement === "mangler" && (
+              <p className="text-amber-600">
+                Vi finner ingen aktiv Stripe-kunde på kontoen din, så det er
+                ingen abonnement å administrere ennå. Planen din er trolig satt
+                manuelt uten et Stripe-abonnement.
+              </p>
+            )}
+            {abonnement === "feil" && (
+              <p className="text-red-600">
+                Kunne ikke åpne abonnementsportalen. I live-modus må Stripe
+                Customer Portal aktiveres først (Stripe → Innstillinger →
+                Betaling → Kundeportal → Aktiver).
+              </p>
+            )}
             <form action={openBillingPortal}>
               <Button type="submit" variant="outline">
                 Administrer abonnement
