@@ -627,6 +627,33 @@ export async function refundRentalOrder(formData: FormData): Promise<void> {
   revalidatePath(`/dashboard/properties/${propertyId}`);
 }
 
+/**
+ * Setter pris på sen utsjekk / tidlig innsjekk (tomt felt = ikke tilbudt).
+ * Gjesten kjøper det på gjestesiden når kalenderen tillater det.
+ */
+export async function updateStayExtras(formData: FormData): Promise<void> {
+  await requireUser();
+  const propertyId = String(formData.get("property_id") ?? "");
+  if (!propertyId) return;
+
+  const priceOrNull = (key: string): number | null => {
+    const raw = String(formData.get(key) ?? "").trim().replace(",", ".");
+    if (!raw) return null;
+    const n = Number(raw);
+    return Number.isFinite(n) && n >= 0 ? n : null;
+  };
+
+  const supabase = await createClient();
+  await supabase
+    .from("properties")
+    .update({
+      late_checkout_price: priceOrNull("late_checkout_price"),
+      early_checkin_price: priceOrNull("early_checkin_price"),
+    })
+    .eq("id", propertyId);
+  revalidatePath(`/dashboard/properties/${propertyId}`);
+}
+
 /** Legger til en fast kontakt (snekker, brøyting, vaktmester …) på en bolig. */
 export async function addContact(formData: FormData): Promise<void> {
   await requireUser();

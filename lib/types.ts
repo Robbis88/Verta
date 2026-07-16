@@ -53,6 +53,9 @@ export type Property = {
   // Delbar gjesteguide + «slik funker det»-notater — se sql/048.
   guide_token?: string | null;
   appliances_info?: string | null;
+  // Sen utsjekk / tidlig innsjekk-priser (null = ikke tilbudt) — se sql/057.
+  late_checkout_price?: number | null;
+  early_checkin_price?: number | null;
   // Eiendomsfinans — se sql/033.
   market_value?: number | null;
   loan_amount?: number | null;

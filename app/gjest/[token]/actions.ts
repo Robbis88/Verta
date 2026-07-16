@@ -198,6 +198,91 @@ export async function payRemaining(token: string): Promise<void> {
 }
 
 /**
+ * Gjesten kjøper sen utsjekk eller tidlig innsjekk (betalt tillegg). Direct
+ * charge rett til eierens konto — en forlengelse av oppholdet, 0 % til Verta.
+ * Webhooken markerer bookingen betalt.
+ */
+export async function payStayExtra(
+  token: string,
+  kind: string,
+): Promise<void> {
+  const supabase = createAdminClient();
+  const back = `/gjest/${token}?feil=1`;
+  if (kind !== "late_checkout" && kind !== "early_checkin") redirect(back);
+
+  const { data: booking } = await supabase
+    .from("bookings")
+    .select(
+      "id,status,property_id,guest_email,late_checkout_paid,early_checkin_paid",
+    )
+    .eq("guest_token", token)
+    .maybeSingle();
+  if (!booking || booking.status !== "confirmed") redirect(back);
+  const alreadyPaid =
+    kind === "late_checkout"
+      ? booking!.late_checkout_paid
+      : booking!.early_checkin_paid;
+  if (alreadyPaid) redirect(`/gjest/${token}`);
+
+  const { data: property } = await supabase
+    .from("properties")
+    .select("name,user_id,late_checkout_price,early_checkin_price")
+    .eq("id", booking!.property_id)
+    .single();
+  const price =
+    kind === "late_checkout"
+      ? Number(property?.late_checkout_price ?? 0)
+      : Number(property?.early_checkin_price ?? 0);
+  if (!property || price <= 0) redirect(back);
+
+  const { data: owner } = await supabase
+    .from("users")
+    .select("stripe_connect_id,payouts_enabled")
+    .eq("id", property.user_id)
+    .single();
+  if (
+    !stripe ||
+    !stripeEnabled ||
+    !owner?.payouts_enabled ||
+    !owner?.stripe_connect_id
+  ) {
+    redirect(back);
+  }
+
+  const label = kind === "late_checkout" ? "Sen utsjekk" : "Tidlig innsjekk";
+  const origin = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  const session = await stripe.checkout.sessions.create(
+    {
+      mode: "payment",
+      locale: "nb",
+      line_items: [
+        {
+          price_data: {
+            currency: "nok",
+            product_data: { name: `${label} — ${property.name}` },
+            unit_amount: Math.round(price * 100),
+          },
+          quantity: 1,
+        },
+      ],
+      payment_intent_data: {
+        metadata: { booking_id: booking!.id, kind: "stay_extra", extra_kind: kind },
+      },
+      customer_email: booking!.guest_email || undefined,
+      metadata: { booking_id: booking!.id, kind: "stay_extra", extra_kind: kind },
+      success_url: `${origin}/gjest/${token}?ekstra=1`,
+      cancel_url: `${origin}/gjest/${token}`,
+    },
+    {
+      idempotencyKey: `stayextra-${kind}-${booking!.id}`,
+      stripeAccount: owner.stripe_connect_id,
+    },
+  );
+
+  redirect(session.url!);
+}
+
+/**
  * Gjesten avbestiller sitt eget opphold via den tokeniserte gjestesiden.
  * Token-en (guest_token) er tilgangsnøkkelen — ingen innlogging. Refusjon
  * beregnes fra kanselleringspolicyen ut fra hvor lenge før innsjekk det er.

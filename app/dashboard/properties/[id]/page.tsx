@@ -24,6 +24,7 @@ import {
   deleteContact,
   addLocalLink,
   deleteLocalLink,
+  updateStayExtras,
 } from "../actions";
 import { PublicListingEditor } from "@/components/properties/public-listing-editor";
 import { VideoUploader } from "@/components/properties/video-uploader";
@@ -791,6 +792,55 @@ export default async function PropertyDetailPage({
             />
             <Button type="submit" size="sm" className="self-start">
               Legg til lenke
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Sen utsjekk / tidlig innsjekk</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4 text-sm">
+          <p className="text-muted-foreground">
+            Selg sen utsjekk og tidlig innsjekk som betalt tillegg. Gjesten
+            kjøper det selv på gjestesiden — men bare når kalenderen tillater det
+            (ingen ny gjest samme dag). Pengene går rett til deg. Tomt felt = ikke
+            tilbudt.
+          </p>
+          <form
+            action={updateStayExtras}
+            className="flex flex-col gap-3 rounded-lg border border-hairline p-3"
+          >
+            <input type="hidden" name="property_id" value={p.id} />
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <label className="flex flex-1 flex-col gap-1 text-xs text-muted-foreground">
+                Sen utsjekk (kr)
+                <input
+                  name="late_checkout_price"
+                  type="number"
+                  min={0}
+                  step="1"
+                  defaultValue={p.late_checkout_price ?? ""}
+                  placeholder="f.eks. 300"
+                  className="h-10 rounded-lg border border-hairline bg-white px-3 text-sm shadow-sm"
+                />
+              </label>
+              <label className="flex flex-1 flex-col gap-1 text-xs text-muted-foreground">
+                Tidlig innsjekk (kr)
+                <input
+                  name="early_checkin_price"
+                  type="number"
+                  min={0}
+                  step="1"
+                  defaultValue={p.early_checkin_price ?? ""}
+                  placeholder="f.eks. 300"
+                  className="h-10 rounded-lg border border-hairline bg-white px-3 text-sm shadow-sm"
+                />
+              </label>
+            </div>
+            <Button type="submit" size="sm" className="self-start">
+              Lagre
             </Button>
           </form>
         </CardContent>

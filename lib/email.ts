@@ -553,6 +553,28 @@ export async function sendRentalPaid(opts: {
   });
 }
 
+/** Varsel til eier når en gjest har kjøpt sen utsjekk / tidlig innsjekk. */
+export async function sendStayExtraPaid(opts: {
+  to: string;
+  propertyName: string;
+  guestName: string;
+  label: string; // «Sen utsjekk» / «Tidlig innsjekk»
+  amount: number;
+}): Promise<boolean> {
+  const body = `
+    <p style="font-size:15px;line-height:1.6;margin:0;">
+      ${opts.guestName} har kjøpt <strong>${opts.label.toLowerCase()}</strong> på
+      <strong>${opts.propertyName}</strong> for
+      <strong>${formatNok(opts.amount)}</strong> (går rett til deg). Husk å ta
+      hensyn til det ved rengjøring/klargjøring.
+    </p>`;
+  return send({
+    to: opts.to,
+    subject: `${opts.label}: ${opts.propertyName}`,
+    html: layout(`${opts.label} kjøpt 🕐`, body),
+  });
+}
+
 /** Gjesten trenger hjelp fra gjesteguiden → melding til utleieren. */
 export async function sendGuideMessage(opts: {
   to: string;

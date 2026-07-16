@@ -3,7 +3,7 @@ import type Stripe from "stripe";
 import { stripe, planFromPriceId, isExtraPropertyPrice } from "@/lib/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { finalizeBooking, notifyRemainingPaid } from "@/lib/booking";
-import { sendClaimPaid, sendRentalPaid } from "@/lib/email";
+import { sendClaimPaid, sendRentalPaid, sendStayExtraPaid } from "@/lib/email";
 import { loggHendelse } from "@/lib/kontrollrom";
 import { recordCriticalAlert } from "@/lib/critical-alerts";
 
@@ -329,6 +329,56 @@ export async function POST(request: Request) {
           }
         } else {
           await alertOrphanPayment(session, "vaskebetaling uten oppdrag-id");
+        }
+        break;
+      }
+
+      // Sen utsjekk / tidlig innsjekk kjøpt → marker bookingen og varsle eier.
+      if (session.metadata?.kind === "stay_extra") {
+        const bId = session.metadata.booking_id;
+        const extraKind = session.metadata.extra_kind;
+        const col =
+          extraKind === "late_checkout"
+            ? "late_checkout_paid"
+            : extraKind === "early_checkin"
+              ? "early_checkin_paid"
+              : null;
+        if (bId && col) {
+          const { data: updated } = await supabase
+            .from("bookings")
+            .update({ [col]: true })
+            .eq("id", bId)
+            .eq(col, false)
+            .select("id,property_id,guest_name");
+          const row = updated?.[0];
+          if (row) {
+            const { data: property } = await supabase
+              .from("properties")
+              .select("name,user_id,late_checkout_price,early_checkin_price")
+              .eq("id", row.property_id)
+              .single();
+            const { data: owner } = property
+              ? await supabase
+                  .from("users")
+                  .select("email")
+                  .eq("id", property.user_id)
+                  .single()
+              : { data: null };
+            if (owner?.email && property) {
+              const late = extraKind === "late_checkout";
+              await sendStayExtraPaid({
+                to: owner.email,
+                propertyName: property.name ?? "",
+                guestName: row.guest_name,
+                label: late ? "Sen utsjekk" : "Tidlig innsjekk",
+                amount: Number(
+                  late
+                    ? property.late_checkout_price
+                    : property.early_checkin_price,
+                ),
+              });
+            }
+          }
         }
         break;
       }

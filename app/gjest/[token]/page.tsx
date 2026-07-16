@@ -18,6 +18,7 @@ import {
   cancelBookingAsGuest,
   payDeposit,
   payRemaining,
+  payStayExtra,
   submitReview,
 } from "./actions";
 
@@ -35,6 +36,8 @@ type GuestBooking = {
   remaining_amount: number | null;
   remaining_paid: boolean | null;
   hold_expires_at: string | null;
+  late_checkout_paid: boolean | null;
+  early_checkin_paid: boolean | null;
 };
 
 type GuestProperty = {
@@ -47,6 +50,8 @@ type GuestProperty = {
   house_rules: string | null;
   checkout_info: string | null;
   travel_guide: string | null;
+  late_checkout_price: number | null;
+  early_checkin_price: number | null;
 };
 
 async function getStay(token: string) {
@@ -54,7 +59,7 @@ async function getStay(token: string) {
   const { data: booking } = await supabase
     .from("bookings")
     .select(
-      "id,guest_name,check_in,check_out,status,access_code,property_id,payment_status,amount_total,deposit_amount,remaining_amount,remaining_paid,hold_expires_at",
+      "id,guest_name,check_in,check_out,status,access_code,property_id,payment_status,amount_total,deposit_amount,remaining_amount,remaining_paid,hold_expires_at,late_checkout_paid,early_checkin_paid",
     )
     .eq("guest_token", token)
     .maybeSingle();
@@ -64,7 +69,7 @@ async function getStay(token: string) {
   const { data: property } = await supabase
     .from("properties")
     .select(
-      "id,name,address,access_info,wifi_name,wifi_password,house_rules,checkout_info,travel_guide",
+      "id,name,address,access_info,wifi_name,wifi_password,house_rules,checkout_info,travel_guide,late_checkout_price,early_checkin_price",
     )
     .eq("id", b.property_id)
     .single();
@@ -76,10 +81,25 @@ async function getStay(token: string) {
     .eq("booking_id", b.id)
     .maybeSingle();
 
+  // Kalender-sjekk for sen utsjekk / tidlig innsjekk: finnes det en annen aktiv
+  // booking som sjekker INN på utsjekksdagen (blokkerer sen utsjekk) eller UT på
+  // innsjekksdagen (blokkerer tidlig innsjekk)?
+  const { data: neighbours } = await supabase
+    .from("bookings")
+    .select("id,check_in,check_out")
+    .eq("property_id", b.property_id)
+    .not("status", "in", "(cancelled,requested)")
+    .neq("id", b.id);
+  const rows = (neighbours ?? []) as { check_in: string; check_out: string }[];
+  const lateCheckoutFree = !rows.some((r) => r.check_in === b.check_out);
+  const earlyCheckinFree = !rows.some((r) => r.check_out === b.check_in);
+
   return {
     booking: b,
     property: property as GuestProperty,
     reviewed: Boolean(review),
+    lateCheckoutFree,
+    earlyCheckinFree,
   };
 }
 
@@ -111,8 +131,22 @@ export default async function GuestPage({
   const stay = await getStay(token);
   if (!stay) notFound();
 
-  const { booking, property, reviewed } = stay;
-  const stayOver = booking.check_out <= new Date().toISOString().slice(0, 10);
+  const { booking, property, reviewed, lateCheckoutFree, earlyCheckinFree } =
+    stay;
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const stayOver = booking.check_out <= todayStr;
+  const beforeCheckIn = todayStr < booking.check_in;
+
+  // Sen utsjekk / tidlig innsjekk som betalt tillegg — kun når eier tilbyr det,
+  // kalenderen er ledig, og det ikke alt er kjøpt / tidsvinduet ikke er forbi.
+  const showLateCheckout =
+    property.late_checkout_price != null &&
+    lateCheckoutFree &&
+    !stayOver;
+  const showEarlyCheckin =
+    property.early_checkin_price != null &&
+    earlyCheckinFree &&
+    beforeCheckIn;
 
   // Avbestilt opphold: vis en enkel bekreftelse i stedet for 404 (skjuler
   // tilkomst/WiFi). Denne tilstanden treffes rett etter at gjesten avbestiller.
@@ -278,6 +312,43 @@ export default async function GuestPage({
               </Button>
             </form>
             <p className="mt-2 text-xs text-ink/60">{REMAINING_POLICY_TEXT}</p>
+          </Section>
+        )}
+
+        {(showLateCheckout ||
+          showEarlyCheckin ||
+          booking.late_checkout_paid ||
+          booking.early_checkin_paid) && (
+          <Section title="Gjør oppholdet bedre">
+            {booking.late_checkout_paid ? (
+              <Row label="Sen utsjekk" value="Bekreftet ✓" />
+            ) : showLateCheckout ? (
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-sm text-ink">Sen utsjekk</span>
+                <form action={payStayExtra.bind(null, token, "late_checkout")}>
+                  <Button type="submit" size="sm">
+                    Bestill{" "}
+                    {formatNok(Number(property.late_checkout_price))}
+                  </Button>
+                </form>
+              </div>
+            ) : null}
+            {booking.early_checkin_paid ? (
+              <Row label="Tidlig innsjekk" value="Bekreftet ✓" />
+            ) : showEarlyCheckin ? (
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-sm text-ink">Tidlig innsjekk</span>
+                <form action={payStayExtra.bind(null, token, "early_checkin")}>
+                  <Button type="submit" size="sm">
+                    Bestill{" "}
+                    {formatNok(Number(property.early_checkin_price))}
+                  </Button>
+                </form>
+              </div>
+            ) : null}
+            <p className="mt-1 text-xs text-ink/50">
+              Betales direkte til verten og bekreftes med en gang.
+            </p>
           </Section>
         )}
 
