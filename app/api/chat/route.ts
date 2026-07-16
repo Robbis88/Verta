@@ -1,6 +1,6 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import type { NextRequest } from "next/server";
-import { anthropic, DEFAULT_MODEL } from "@/lib/anthropic";
+import { anthropic, CHAT_MODEL } from "@/lib/anthropic";
 
 const LANDING_SYSTEM = `Du er «Vera», Verta sin vennlige assistent. Verta er en norsk SaaS for utleieforvaltning av hytter, leiligheter og Airbnb-utleie.
 
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
   const trimmed = messages.slice(-12);
 
   const stream = anthropic.messages.stream({
-    model: DEFAULT_MODEL,
+    model: CHAT_MODEL,
     max_tokens: 1024,
     system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
     messages: trimmed,

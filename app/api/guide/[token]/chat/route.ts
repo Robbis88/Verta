@@ -1,9 +1,15 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import type { NextRequest } from "next/server";
 
-import { anthropic, DEFAULT_MODEL } from "@/lib/anthropic";
+import { anthropic, CHAT_MODEL } from "@/lib/anthropic";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AMENITY_LABELS } from "@/lib/amenities";
+
+// Tak per guide-token: nok for en ekte gjest, stopper spam. Beskytter mot at
+// én gjest kjører opp Anthropic-kostnaden på den åpne (innloggingsfrie) chatten.
+const MAX_PER_MINUTE = 8;
+const MAX_PER_DAY = 120;
+const MAX_INPUT_CHARS = 2000;
 
 /**
  * AI-concierge for en delbar gjesteguide. Svarer gjesten KUN fra boligens fakta,
@@ -21,7 +27,39 @@ export async function POST(
     return Response.json({ error: "messages må være en liste" }, { status: 400 });
   }
 
+  // Avvis urimelig lange meldinger (billig DoS-vern + kostnadstak).
+  const lastUser = [...messages].reverse().find((m) => m.role === "user");
+  const lastText =
+    typeof lastUser?.content === "string" ? lastUser.content : "";
+  if (lastText.length > MAX_INPUT_CHARS) {
+    return Response.json(
+      { error: "Meldingen er for lang. Del den gjerne opp." },
+      { status: 413 },
+    );
+  }
+
   const supabase = createAdminClient();
+
+  // Rate limiting per guide-token (minutt + døgn). Lagrer kun tellere, ikke
+  // innhold. Går telleren over taket → 429 med vennlig beskjed.
+  const now = new Date();
+  const minuteBucket = now.toISOString().slice(0, 16);
+  const dayBucket = now.toISOString().slice(0, 10);
+  const [minRes, dayRes] = await Promise.all([
+    supabase.rpc("bump_guide_limit", { p_token: token, p_bucket: minuteBucket }),
+    supabase.rpc("bump_guide_limit", { p_token: token, p_bucket: dayBucket }),
+  ]);
+  const minuteCount = (minRes.data as number | null) ?? 0;
+  const dayCount = (dayRes.data as number | null) ?? 0;
+  if (minuteCount > MAX_PER_MINUTE || dayCount > MAX_PER_DAY) {
+    return Response.json(
+      {
+        error:
+          "For mange meldinger akkurat nå. Vent litt og prøv igjen, eller trykk «Kontakt verten» under.",
+      },
+      { status: 429 },
+    );
+  }
   const { data: p } = await supabase
     .from("properties")
     .select(
@@ -83,7 +121,7 @@ UTSTYR I BOLIGEN (merke/modell + eierens notater):
 ${equipmentLines || "- ingen registrert"}`;
 
   const stream = anthropic.messages.stream({
-    model: DEFAULT_MODEL,
+    model: CHAT_MODEL,
     max_tokens: 1024,
     system: [
       { type: "text", text: system, cache_control: { type: "ephemeral" } },

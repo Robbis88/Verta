@@ -32,6 +32,24 @@ export function GuideChat({ token }: { token: string }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messages: next }),
       });
+      // Rate limit / for lang melding o.l. kommer som JSON med en beskjed.
+      if (res.status === 429 || res.status === 413) {
+        const data = (await res.json().catch(() => null)) as {
+          error?: string;
+        } | null;
+        setMessages((m) => {
+          const copy = [...m];
+          copy[copy.length - 1] = {
+            role: "assistant",
+            content:
+              data?.error ??
+              "For mange meldinger akkurat nå. Prøv igjen om litt.",
+          };
+          return copy;
+        });
+        setBusy(false);
+        return;
+      }
       if (!res.ok || !res.body) throw new Error("nettverk");
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
