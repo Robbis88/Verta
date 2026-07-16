@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { finalizeBooking, notifyRemainingPaid } from "@/lib/booking";
 import { sendClaimPaid, sendRentalPaid } from "@/lib/email";
 import { loggHendelse } from "@/lib/kontrollrom";
+import { recordCriticalAlert } from "@/lib/critical-alerts";
 
 /**
  * Sikkerhetsnett: en betaling kom inn, men vi fant ingen aktiv booking/ordre å
@@ -17,24 +18,33 @@ async function alertOrphanPayment(
   session: Stripe.Checkout.Session,
   reason: string,
 ): Promise<void> {
+  const detaljer = {
+    arsak: reason,
+    session_id: session.id,
+    belop: (session.amount_total ?? 0) / 100,
+    valuta: (session.currency ?? "").toUpperCase(),
+    kind: session.metadata?.kind ?? "ukjent",
+    referanse:
+      session.metadata?.booking_id ??
+      session.metadata?.rental_order_id ??
+      session.metadata?.claim_id ??
+      session.metadata?.request_id ??
+      "ingen",
+    betaling: session.payment_intent ? String(session.payment_intent) : "",
+  };
   await loggHendelse({
     type: "system",
     alvorlighet: "critical",
     tittel: "Betaling uten match — sjekk webhook/Connect-oppsett",
-    detaljer: {
-      arsak: reason,
-      session_id: session.id,
-      belop: (session.amount_total ?? 0) / 100,
-      valuta: (session.currency ?? "").toUpperCase(),
-      kind: session.metadata?.kind ?? "ukjent",
-      referanse:
-        session.metadata?.booking_id ??
-        session.metadata?.rental_order_id ??
-        session.metadata?.claim_id ??
-        session.metadata?.request_id ??
-        "ingen",
-      betaling: session.payment_intent ? String(session.payment_intent) : "",
-    },
+    detaljer,
+  });
+  // Plattform-nivå (property_id null) → synlig for admin i dashbordet.
+  await recordCriticalAlert({
+    kind: "orphan_payment",
+    title: `Betaling uten match (${(session.amount_total ?? 0) / 100} ${(
+      session.currency ?? ""
+    ).toUpperCase()})`,
+    details: detaljer,
   });
 }
 

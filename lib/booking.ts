@@ -2,6 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { provisionBookingAccess } from "@/lib/access";
 import { stripe } from "@/lib/stripe";
 import { loggHendelse } from "@/lib/kontrollrom";
+import { recordCriticalAlert } from "@/lib/critical-alerts";
 import { seamEnabled, removeAccessCode } from "@/lib/seam";
 import {
   hoursToRemainingDeadline,
@@ -241,19 +242,31 @@ export async function cancelAndRefund(opts: {
       .eq("id", booking.id);
   }
 
-  // Refusjon feilet eller er delvis → logg som kritisk så du kan rydde manuelt.
+  // Refusjon feilet eller er delvis → logg som kritisk så du kan rydde manuelt
+  // (både eksternt kontrollrom og lokalt dashbord-varsel).
   if (refundFailed) {
+    const detaljer = {
+      booking_id: booking.id,
+      intendert: intendedRefund,
+      faktisk_refundert: actualRefunded,
+      eierkonto: ownerAccount ?? "mangler",
+    };
     await loggHendelse({
       type: "system",
       alvorlighet: "critical",
       tittel: "Refusjon feilet ved avbestilling",
-      detaljer: {
-        booking_id: booking.id,
-        intendert: intendedRefund,
-        faktisk_refundert: actualRefunded,
-        eierkonto: ownerAccount ?? "mangler",
-      },
+      detaljer,
       bruker_ref: booking.guest_email ?? undefined,
+    });
+    await recordCriticalAlert({
+      kind: "refund_failed",
+      title: `Refusjon feilet — ${booking.guest_name}`,
+      details: {
+        ...detaljer,
+        gjest: booking.guest_name,
+        gjest_epost: booking.guest_email ?? null,
+      },
+      propertyId: booking.property_id,
     });
   }
 

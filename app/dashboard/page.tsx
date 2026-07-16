@@ -8,8 +8,11 @@ import {
 } from "lucide-react";
 
 import { getCurrentProfile } from "@/lib/auth";
+import { isAdmin } from "@/lib/admin";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getDashboardMetrics } from "@/lib/analytics";
+import { resolveAlert } from "./alert-actions";
 import { PLANS, propertyLimit, type Plan } from "@/lib/constants";
 import { formatNok } from "@/lib/utils";
 import { KpiCard, MonthChart, PanelCard } from "@/components/dashboard/overview-ui";
@@ -93,6 +96,23 @@ export default async function DashboardPage() {
     property_id: string;
   }[];
 
+  // Uløste kritiske varsler (refusjons-svikt, foreldreløse betalinger). Admin
+  // ser alt (også plattform-nivå); eier ser kun sine egne (via RLS).
+  const admin = isAdmin(profile?.email);
+  const alertClient = admin ? createAdminClient() : supabase;
+  const { data: alertRows } = await alertClient
+    .from("critical_alerts")
+    .select("id,kind,title,created_at")
+    .eq("resolved", false)
+    .order("created_at", { ascending: false })
+    .limit(20);
+  const criticalAlerts = (alertRows ?? []) as {
+    id: string;
+    kind: string;
+    title: string;
+    created_at: string;
+  }[];
+
   // Månedstrend på inntekt.
   const monthRevenue = m.byMonth[month] ?? 0;
   const prevRevenue = month > 0 ? m.byMonth[month - 1] : 0;
@@ -126,6 +146,49 @@ export default async function DashboardPage() {
           {PLANS[plan].label} · {m.propertyCount} / {limit} eiendommer
         </span>
       </div>
+
+      {criticalAlerts.length > 0 && (
+        <div className="rounded-xl border-2 border-red-600 bg-red-100 p-4">
+          <div className="mb-3 flex items-center gap-2">
+            <span className="inline-flex size-2.5 animate-blink rounded-full bg-red-700" />
+            <h2 className="text-sm font-bold text-red-800">
+              {criticalAlerts.length} kritisk
+              {criticalAlerts.length === 1 ? "" : "e"} varsel
+              {criticalAlerts.length === 1 ? "" : "er"} — betaling/refusjon
+            </h2>
+          </div>
+          <ul className="flex flex-col gap-2">
+            {criticalAlerts.map((a) => (
+              <li
+                key={a.id}
+                className="flex items-center justify-between gap-2 rounded-lg bg-white px-3 py-2 shadow-sm"
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium text-navy">
+                    {a.title}
+                  </p>
+                  <p className="text-xs text-ink/60">
+                    {a.kind === "refund_failed"
+                      ? "Refusjon feilet — gjesten er ikke tilbakebetalt"
+                      : "Betaling mottatt uten match — sjekk Stripe/Connect"}
+                  </p>
+                </div>
+                <form action={resolveAlert}>
+                  <input type="hidden" name="id" value={a.id} />
+                  <Button
+                    type="submit"
+                    variant="ghost"
+                    size="sm"
+                    className="shrink-0 text-red-700 hover:text-red-800"
+                  >
+                    Marker som løst
+                  </Button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {requests.length > 0 && (
         <div className="rounded-xl border-2 border-red-500 bg-red-50 p-4">
