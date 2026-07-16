@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendGuideMessage } from "@/lib/email";
+import { subscribeNewsletter } from "@/lib/newsletter";
 import { stripe, stripeEnabled } from "@/lib/stripe";
 import { marketFeeOf } from "@/lib/constants";
 
@@ -38,6 +39,23 @@ export async function contactHost(
     });
   }
   redirect(`/guide/${token}?sendt=1`);
+}
+
+/**
+ * Gjesten melder seg på Verta-nyhetsbrevet fra guiden. Krever aktivt samtykke
+ * (avkryssing). Lagres kun ved gyldig e-post + samtykke.
+ */
+export async function subscribeFromGuide(
+  token: string,
+  formData: FormData,
+): Promise<void> {
+  const consent = formData.get("consent") === "on";
+  const email = String(formData.get("email") ?? "").trim();
+  const name = String(formData.get("name") ?? "").trim() || null;
+  if (consent && email) {
+    await subscribeNewsletter({ email, name, source: "guide" });
+  }
+  redirect(`/guide/${token}?nyhetsbrev=1`);
 }
 
 /** Gjesten leier et utstyr og betaler. Verta beholder 10 %, resten til eier. */

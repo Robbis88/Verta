@@ -11,7 +11,7 @@ import { GuideChat } from "@/components/guide/guide-chat";
 import { Button } from "@/components/ui/button";
 import { formatNok } from "@/lib/utils";
 import { RentForm } from "@/components/guide/rent-form";
-import { contactHost, rentItem } from "./actions";
+import { contactHost, rentItem, subscribeFromGuide } from "./actions";
 
 export const metadata: Metadata = { title: "Gjesteguide — Verta" };
 
@@ -36,10 +36,15 @@ export default async function GuidePage({
   searchParams,
 }: {
   params: Promise<{ token: string }>;
-  searchParams: Promise<{ sendt?: string; leid?: string; leiefeil?: string }>;
+  searchParams: Promise<{
+    sendt?: string;
+    leid?: string;
+    leiefeil?: string;
+    nyhetsbrev?: string;
+  }>;
 }) {
   const { token } = await params;
-  const { sendt, leid, leiefeil } = await searchParams;
+  const { sendt, leid, leiefeil, nyhetsbrev } = await searchParams;
 
   const supabase = createAdminClient();
   const { data } = await supabase
@@ -282,6 +287,51 @@ export default async function GuidePage({
                 className="h-10 rounded-lg border border-hairline bg-white px-3 text-sm shadow-sm"
               />
               <Button type="submit">Send til verten</Button>
+            </form>
+          )}
+        </Section>
+
+        <Section title="Hold deg oppdatert">
+          {nyhetsbrev ? (
+            <p className="text-sm text-emerald-700">
+              Takk! Du er meldt på. Du kan melde deg av når som helst via lenken i
+              e-posten. ✅
+            </p>
+          ) : (
+            <form
+              action={subscribeFromGuide.bind(null, token)}
+              className="flex flex-col gap-2"
+            >
+              <p className="text-sm text-ink/70">
+                Få tips og tilbud fra Verta på e-post. Meld deg av når som helst.
+              </p>
+              <input
+                name="name"
+                placeholder="Navn (valgfritt)"
+                className="h-9 rounded-lg border border-hairline bg-white px-2 text-sm shadow-sm"
+              />
+              <input
+                name="email"
+                type="email"
+                required
+                placeholder="Din e-post"
+                className="h-9 rounded-lg border border-hairline bg-white px-2 text-sm shadow-sm"
+              />
+              <label className="flex items-start gap-2 text-xs text-ink/60">
+                <input
+                  type="checkbox"
+                  name="consent"
+                  required
+                  className="mt-0.5 h-4 w-4"
+                />
+                <span>
+                  Ja, Verta kan sende meg nyhetsbrev på e-post. Jeg kan melde meg
+                  av når som helst.
+                </span>
+              </label>
+              <Button type="submit" size="sm" className="self-start">
+                Meld meg på
+              </Button>
             </form>
           )}
         </Section>

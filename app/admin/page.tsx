@@ -36,6 +36,12 @@ export default async function AdminPage() {
             Kanaler
           </Link>
           <Link
+            href="/admin/nyhetsbrev"
+            className="text-sm text-gold-light hover:text-gold"
+          >
+            Nyhetsbrev
+          </Link>
+          <Link
             href="/dashboard"
             className="text-sm text-white/70 hover:text-white"
           >
