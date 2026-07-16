@@ -111,10 +111,7 @@ export async function createProperty(
       sleeping_arrangements: data.sleeping_arrangements || null,
       check_in_time: data.check_in_time || null,
       check_out_time: data.check_out_time || null,
-      market_value: data.market_value ?? null,
-      loan_amount: data.loan_amount ?? null,
-      interest_rate: data.interest_rate ?? null,
-      monthly_principal: data.monthly_principal ?? null,
+      // Finansfelter (verdi/lån/rente/avdrag) redigeres på Eiendomsøkonomi.
       listed: formData.get("listed") === "on",
       appliances_info:
         (formData.get("appliances_info") as string)?.trim() || null,
@@ -177,10 +174,7 @@ export async function updateProperty(
       sleeping_arrangements: data.sleeping_arrangements || null,
       check_in_time: data.check_in_time || null,
       check_out_time: data.check_out_time || null,
-      market_value: data.market_value ?? null,
-      loan_amount: data.loan_amount ?? null,
-      interest_rate: data.interest_rate ?? null,
-      monthly_principal: data.monthly_principal ?? null,
+      // Finansfelter (verdi/lån/rente/avdrag) redigeres på Eiendomsøkonomi.
       listed: formData.get("listed") === "on",
       appliances_info:
         (formData.get("appliances_info") as string)?.trim() || null,

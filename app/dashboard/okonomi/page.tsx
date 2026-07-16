@@ -6,16 +6,18 @@ import { formatNok } from "@/lib/utils";
 import { StatCard, EmptyOkonomi } from "@/components/okonomi/ui";
 import { AiBox } from "@/components/okonomi/ai-box";
 import { Button } from "@/components/ui/button";
+import { updateEconomy } from "./actions";
 
 const MONTHS_SO_FAR = 7; // mock: antall måneder hittil i år
 
 export default async function OkonomiOversikt({
   searchParams,
 }: {
-  searchParams: Promise<{ eiendom?: string }>;
+  searchParams: Promise<{ eiendom?: string; lagret?: string }>;
 }) {
-  const { eiendom } = await searchParams;
-  const { selected, economy } = await getEconomyContext(eiendom);
+  const { eiendom, lagret } = await searchParams;
+  const { selected, selectedFinance, economy } =
+    await getEconomyContext(eiendom);
   if (!selected || !economy) return <EmptyOkonomi />;
 
   const equity = economy.value - economy.loan;
@@ -71,6 +73,74 @@ export default async function OkonomiOversikt({
           <Link href={`/dashboard/okonomi/kostnader${qs}`}>Se kostnadene</Link>
         </Button>
       </div>
+
+      <details className="rounded-xl border border-hairline bg-white p-5">
+        <summary className="cursor-pointer text-sm font-semibold text-navy">
+          Rediger verdi, lån og rente
+        </summary>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Disse tallene brukes til egenkapital, belåningsgrad, renter og
+          kontantstrøm over. Gjelder <strong>{selected.name}</strong>.
+        </p>
+        {lagret && (
+          <p className="mt-2 text-sm text-emerald-600">Lagret. ✅</p>
+        )}
+        <form
+          action={updateEconomy}
+          className="mt-4 grid gap-4 sm:grid-cols-2"
+        >
+          <input type="hidden" name="property_id" value={selected.id} />
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="text-muted-foreground">Antatt verdi (kr)</span>
+            <input
+              name="market_value"
+              type="number"
+              min={0}
+              step="1000"
+              defaultValue={selectedFinance?.market_value ?? ""}
+              className="h-10 rounded-lg border border-hairline bg-white px-3 shadow-sm"
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="text-muted-foreground">Lån (kr)</span>
+            <input
+              name="loan_amount"
+              type="number"
+              min={0}
+              step="1000"
+              defaultValue={selectedFinance?.loan_amount ?? ""}
+              className="h-10 rounded-lg border border-hairline bg-white px-3 shadow-sm"
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="text-muted-foreground">Rente (%)</span>
+            <input
+              name="interest_rate"
+              type="number"
+              min={0}
+              step="0.01"
+              defaultValue={selectedFinance?.interest_rate ?? ""}
+              className="h-10 rounded-lg border border-hairline bg-white px-3 shadow-sm"
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="text-muted-foreground">Avdrag per måned (kr)</span>
+            <input
+              name="monthly_principal"
+              type="number"
+              min={0}
+              step="100"
+              defaultValue={selectedFinance?.monthly_principal ?? ""}
+              className="h-10 rounded-lg border border-hairline bg-white px-3 shadow-sm"
+            />
+          </label>
+          <div className="sm:col-span-2">
+            <Button type="submit" size="sm">
+              Lagre
+            </Button>
+          </div>
+        </form>
+      </details>
 
       <AiBox />
     </div>

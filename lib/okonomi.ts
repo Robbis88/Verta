@@ -300,9 +300,17 @@ function applyFinancials(economy: Economy, row: PropertyFinance): void {
  * eiendom. Inntekter (bookinger), kostnader (utgifter) og verdi/lån/rente
  * (eiendomsfelter) er ekte; eiere og historikk er foreløpig mock.
  */
+export type SelectedFinance = {
+  market_value: number | null;
+  loan_amount: number | null;
+  interest_rate: number | null;
+  monthly_principal: number | null;
+};
+
 export async function getEconomyContext(eiendomId?: string): Promise<{
   properties: PropertyRef[];
   selected: PropertyRef | null;
+  selectedFinance: SelectedFinance | null;
   economy: Economy | null;
 }> {
   const supabase = await createClient();
@@ -314,11 +322,17 @@ export async function getEconomyContext(eiendomId?: string): Promise<{
   const rows = (data ?? []) as PropertyFinance[];
   const properties: PropertyRef[] = rows.map((r) => ({ id: r.id, name: r.name }));
   if (rows.length === 0) {
-    return { properties, selected: null, economy: null };
+    return { properties, selected: null, selectedFinance: null, economy: null };
   }
 
   const selectedRow = rows.find((r) => r.id === eiendomId) ?? rows[0];
   const selected: PropertyRef = { id: selectedRow.id, name: selectedRow.name };
+  const selectedFinance: SelectedFinance = {
+    market_value: selectedRow.market_value,
+    loan_amount: selectedRow.loan_amount,
+    interest_rate: selectedRow.interest_rate,
+    monthly_principal: selectedRow.monthly_principal,
+  };
   const economy = getMockEconomy(selected.id, selected.name);
   applyFinancials(economy, selectedRow);
 
@@ -330,5 +344,5 @@ export async function getEconomyContext(eiendomId?: string): Promise<{
   const realCosts = await computeCosts(supabase, selected.id, economy);
   if (realCosts) economy.costs = realCosts;
 
-  return { properties, selected, economy };
+  return { properties, selected, selectedFinance, economy };
 }
