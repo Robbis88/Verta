@@ -233,6 +233,13 @@ export async function cancelBookingAsGuest(
   if (!res.wasPaid) {
     return { ok: true, message: "Oppholdet er avbestilt." };
   }
+  if (res.refundPending) {
+    return {
+      ok: true,
+      message:
+        "Oppholdet er avbestilt. Refusjonen behandles og kommer på kortet ditt så snart som mulig.",
+    };
+  }
   if (res.refunded > 0) {
     return {
       ok: true,

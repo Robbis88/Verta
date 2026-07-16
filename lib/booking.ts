@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { provisionBookingAccess } from "@/lib/access";
 import { stripe } from "@/lib/stripe";
+import { loggHendelse } from "@/lib/kontrollrom";
 import { seamEnabled, removeAccessCode } from "@/lib/seam";
 import {
   hoursToRemainingDeadline,
@@ -109,7 +110,12 @@ export async function cancelAndRefund(opts: {
   bookingId: string;
   refundFraction: number;
   nonPayment?: boolean;
-}): Promise<{ ok: boolean; refunded: number; wasPaid: boolean }> {
+}): Promise<{
+  ok: boolean;
+  refunded: number;
+  wasPaid: boolean;
+  refundPending: boolean;
+}> {
   const supabase = createAdminClient();
 
   const { data: booking } = await supabase
@@ -120,7 +126,7 @@ export async function cancelAndRefund(opts: {
     .eq("id", opts.bookingId)
     .maybeSingle();
   if (!booking || booking.status === "cancelled") {
-    return { ok: false, refunded: 0, wasPaid: false };
+    return { ok: false, refunded: 0, wasPaid: false, refundPending: false };
   }
 
   // Direct charges ligger på eierens Stripe-konto — refusjon må gjøres der.
@@ -156,24 +162,25 @@ export async function cancelAndRefund(opts: {
       ? Number(booking.remaining_amount ?? 0)
       : 0;
   const paidTotal = mainCharged + remainingCharged;
-  const refundAmount =
+  const intendedRefund =
     wasPaid && fraction > 0 ? Math.round(paidTotal * fraction * 100) / 100 : 0;
 
-  // Marker kansellert (idempotent via status-guard). Refundert-status kun hvis
-  // faktisk refundert; ellers beholdes 'paid' (beløpet er beholdt).
+  // Marker kansellert (idempotent via status-guard). MERK: payment_status settes
+  // IKKE til 'refunded' her — det gjøres først etter at Stripe-refusjonen faktisk
+  // er gjennomført, så databasen og gjesten aldri får beskjed om en refusjon som
+  // ikke skjedde.
   const { data: updated } = await supabase
     .from("bookings")
     .update({
       status: "cancelled",
       access_code: null,
       access_code_id: null,
-      ...(refundAmount > 0 ? { payment_status: "refunded" } : {}),
     })
     .eq("id", booking.id)
     .neq("status", "cancelled")
     .select("id");
   if (!updated || updated.length === 0) {
-    return { ok: false, refunded: 0, wasPaid };
+    return { ok: false, refunded: 0, wasPaid, refundPending: false };
   }
 
   // Trekk tilbake smartlås-kode.
@@ -185,36 +192,72 @@ export async function cancelAndRefund(opts: {
     }
   }
 
-  // Refunder gjesten proporsjonalt fra HVER betaling (depositum + evt. rest),
-  // på eierens konto (direct charge). Full refusjon (fraction=1) tar hele
-  // hver betaling.
-  if (stripe && refundAmount > 0 && ownerAccount) {
-    const charges: { pi: string; amount: number }[] = [
-      { pi: booking.stripe_payment_intent!, amount: mainCharged },
-    ];
-    if (remainingCharged > 0) {
-      charges.push({
-        pi: booking.remaining_payment_intent!,
-        amount: remainingCharged,
-      });
-    }
-    for (const c of charges) {
-      try {
-        await stripe.refunds.create(
-          {
-            payment_intent: c.pi,
-            // Utelat amount ved full refusjon (unngår avrundingsavvik).
-            ...(fraction < 1
-              ? { amount: Math.round(c.amount * fraction * 100) }
-              : {}),
-          },
-          { stripeAccount: ownerAccount },
-        );
-      } catch (err) {
-        console.error("Refusjon feilet for betaling:", c.pi, err);
+  // Refunder gjesten proporsjonalt fra HVER betaling (depositum + evt. rest), på
+  // eierens konto (direct charge). Full refusjon (fraction=1) tar hele beløpet.
+  // Vi teller kun det som FAKTISK ble refundert.
+  let actualRefunded = 0;
+  let refundFailed = false;
+  if (intendedRefund > 0) {
+    if (stripe && ownerAccount) {
+      const charges: { pi: string; amount: number }[] = [
+        { pi: booking.stripe_payment_intent!, amount: mainCharged },
+      ];
+      if (remainingCharged > 0) {
+        charges.push({
+          pi: booking.remaining_payment_intent!,
+          amount: remainingCharged,
+        });
       }
+      for (const c of charges) {
+        const part =
+          fraction < 1 ? Math.round(c.amount * fraction * 100) / 100 : c.amount;
+        try {
+          await stripe.refunds.create(
+            {
+              payment_intent: c.pi,
+              // Utelat amount ved full refusjon (unngår avrundingsavvik).
+              ...(fraction < 1 ? { amount: Math.round(part * 100) } : {}),
+            },
+            { stripeAccount: ownerAccount },
+          );
+          actualRefunded += part;
+        } catch (err) {
+          console.error("Refusjon feilet for betaling:", c.pi, err);
+          refundFailed = true;
+        }
+      }
+    } else {
+      // Mangler Stripe eller eierkonto (f.eks. eier koblet fra) — kan ikke
+      // refundere. Behold beløpet som 'paid' og alarmer for manuell håndtering.
+      refundFailed = true;
     }
   }
+
+  // Sett 'refunded' KUN når hele den tiltenkte refusjonen gikk gjennom.
+  if (actualRefunded > 0 && !refundFailed) {
+    await supabase
+      .from("bookings")
+      .update({ payment_status: "refunded" })
+      .eq("id", booking.id);
+  }
+
+  // Refusjon feilet eller er delvis → logg som kritisk så du kan rydde manuelt.
+  if (refundFailed) {
+    await loggHendelse({
+      type: "system",
+      alvorlighet: "critical",
+      tittel: "Refusjon feilet ved avbestilling",
+      detaljer: {
+        booking_id: booking.id,
+        intendert: intendedRefund,
+        faktisk_refundert: actualRefunded,
+        eierkonto: ownerAccount ?? "mangler",
+      },
+      bruker_ref: booking.guest_email ?? undefined,
+    });
+  }
+
+  const refundAmount = actualRefunded;
 
   // Varsle gjest + eier.
   const { data: property } = await supabase
@@ -242,7 +285,12 @@ export async function cancelAndRefund(opts: {
     nonPayment: opts.nonPayment,
   });
 
-  return { ok: true, refunded: refundAmount, wasPaid };
+  return {
+    ok: true,
+    refunded: refundAmount,
+    wasPaid,
+    refundPending: refundFailed && intendedRefund > 0,
+  };
 }
 
 /**

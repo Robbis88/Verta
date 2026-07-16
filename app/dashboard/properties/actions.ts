@@ -15,6 +15,7 @@ import { PROPERTY_IMAGES_BUCKET } from "@/lib/storage";
 import { slugify } from "@/lib/utils";
 import { logAudit } from "@/lib/audit";
 import { geocodeNorway } from "@/lib/geocode";
+import { refundDestinationCharge } from "@/lib/refunds";
 
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024; // 8 MB
 const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
@@ -562,6 +563,58 @@ export async function addEquipment(formData: FormData): Promise<void> {
     purchased_at: trimOrNull("purchased_at"),
     warranty_until: trimOrNull("warranty_until"),
     notes: trimOrNull("notes"),
+  });
+  revalidatePath(`/dashboard/properties/${propertyId}`);
+}
+
+/**
+ * Eier refunderer en betalt utstyrsleie. Trygg refusjon av destination charge:
+ * pengene hentes tilbake fra eierens Stripe-konto og Vertas 10 % returneres, så
+ * Verta ikke taper. Eierskap sjekkes (eiendommen må tilhøre brukeren).
+ */
+export async function refundRentalOrder(formData: FormData): Promise<void> {
+  const user = await requireUser();
+  const id = String(formData.get("id") ?? "");
+  const propertyId = String(formData.get("property_id") ?? "");
+  if (!id) return;
+
+  const admin = createAdminClient();
+  const { data: order } = await admin
+    .from("rental_orders")
+    .select("id,status,property_id,stripe_payment_intent")
+    .eq("id", id)
+    .maybeSingle();
+  if (!order || order.status !== "paid") return;
+
+  // Eierskap: eiendommen bak ordren må tilhøre innlogget bruker.
+  const { data: property } = await admin
+    .from("properties")
+    .select("user_id")
+    .eq("id", order.property_id)
+    .maybeSingle();
+  if (!property || property.user_id !== user.id) return;
+  if (!order.stripe_payment_intent) {
+    revalidatePath(`/dashboard/properties/${propertyId}`);
+    return;
+  }
+
+  const res = await refundDestinationCharge(order.stripe_payment_intent);
+  if (!res.ok) {
+    revalidatePath(`/dashboard/properties/${propertyId}`);
+    return;
+  }
+
+  await admin
+    .from("rental_orders")
+    .update({ status: "refunded" })
+    .eq("id", id)
+    .eq("status", "paid");
+
+  await logAudit({
+    user_id: user.id,
+    action: "rental_order.refunded",
+    resource_type: "rental_order",
+    resource_id: id,
   });
   revalidatePath(`/dashboard/properties/${propertyId}`);
 }

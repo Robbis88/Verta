@@ -105,9 +105,32 @@ export async function createDirectBooking(
   const serviceFee = quote?.serviceFee ?? 0; // Vertas gebyr (gjesten betaler)
   const guestTotal = quote?.guestTotal ?? null; // det gjesten betaler totalt
 
-  // Forespørsel-modus: opprett en 'requested' booking (ingen datolås, ingen
-  // betaling), samle gjeste-info, og varsle eier + gjest. Eier godkjenner.
-  if (property.booking_mode === "request") {
+  // Hent eier én gang: e-post til varsler + Connect-status for betaling.
+  const { data: owner } = await supabase
+    .from("users")
+    .select("email,stripe_connect_id,payouts_enabled")
+    .eq("id", property.user_id)
+    .single();
+
+  // Kan vi kreve betaling? Eieren må ha ferdig Connect-onboarding og en pris.
+  const canCharge = Boolean(
+    stripe &&
+      stripeEnabled &&
+      owner?.payouts_enabled &&
+      owner?.stripe_connect_id &&
+      total &&
+      total > 0,
+  );
+  const isPaidProperty = Boolean(total && total > 0);
+
+  // Forespørsel opprettes hvis eieren har valgt det, ELLER hvis eiendommen har
+  // pris men eieren ikke kan ta betaling ennå. Det siste er viktig: uten dette
+  // ville en betalt eiendom blitt auto-bekreftet GRATIS (med dørkode) når eier
+  // ikke har koblet Stripe. Da lar vi eieren godkjenne manuelt i stedet.
+  const asRequest =
+    property.booking_mode === "request" || (isPaidProperty && !canCharge);
+
+  if (asRequest) {
     const { data: booking, error: reqErr } = await supabase
       .from("bookings")
       .insert({
@@ -139,12 +162,6 @@ export async function createDirectBooking(
       changes: { source },
     });
 
-    const { data: owner } = await supabase
-      .from("users")
-      .select("email")
-      .eq("id", property.user_id)
-      .single();
-
     await sendRequestNotices({
       ownerEmail: owner?.email ?? null,
       guestEmail: data.guest_email || null,
@@ -160,22 +177,6 @@ export async function createDirectBooking(
 
     return { success: true, requested: true };
   }
-
-  // Kan vi kreve betaling? Eieren må ha ferdig Connect-onboarding og en pris.
-  const { data: owner } = await supabase
-    .from("users")
-    .select("stripe_connect_id,payouts_enabled")
-    .eq("id", property.user_id)
-    .single();
-
-  const canCharge = Boolean(
-    stripe &&
-      stripeEnabled &&
-      owner?.payouts_enabled &&
-      owner?.stripe_connect_id &&
-      total &&
-      total > 0,
-  );
 
   const { data: booking, error } = await supabase
     .from("bookings")
@@ -236,9 +237,9 @@ export async function createDirectBooking(
     return { success: true };
   }
 
-  // Betalings-flyt: Stripe Checkout med destination charge til eieren.
-  // application_fee er Vertas provisjon; resten overføres til eierens konto.
-  // Betalingsmetoder (kort, Klarna) styres av det som er aktivert i Stripe.
+  // Betalings-flyt: direct charge på eierens konto. Gjesten betaler hele beløpet
+  // direkte til eieren (0 % til Verta). Betalingsmetoder (kort, Klarna) styres av
+  // det som er aktivert i Stripe.
   const origin = await siteOrigin();
   const session = await stripe!.checkout.sessions.create({
     mode: "payment",
@@ -262,8 +263,10 @@ export async function createDirectBooking(
     cancel_url: `${origin}/bo/${slug}?avbrutt=1`,
     // Reservasjonen holdes i 30 min; utløper checkouten frigis datoene.
     expires_at: Math.floor(Date.now() / 1000) + 1800,
-    // Direct charge: gjesten betaler direkte på eierens konto (0 % til Verta).
-  }, { stripeAccount: owner!.stripe_connect_id! });
+  }, {
+    idempotencyKey: `booking-${booking.id}`,
+    stripeAccount: owner!.stripe_connect_id!,
+  });
 
   redirect(session.url!);
 }

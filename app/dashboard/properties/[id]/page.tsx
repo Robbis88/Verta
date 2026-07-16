@@ -19,6 +19,7 @@ import {
   deleteRentalItem,
   addEquipment,
   deleteEquipment,
+  refundRentalOrder,
 } from "../actions";
 import { PublicListingEditor } from "@/components/properties/public-listing-editor";
 import { VideoUploader } from "@/components/properties/video-uploader";
@@ -116,6 +117,21 @@ export default async function PropertyDetailPage({
     price: number;
     price_extra_day: number | null;
     quantity: number;
+  }[];
+
+  const { data: paidRentalData } = await supabase
+    .from("rental_orders")
+    .select("id,guest_name,quantity,days,amount,status,created_at")
+    .eq("property_id", id)
+    .in("status", ["paid", "refunded"])
+    .order("created_at", { ascending: false });
+  const rentalOrders = (paidRentalData ?? []) as {
+    id: string;
+    guest_name: string;
+    quantity: number;
+    days: number;
+    amount: number;
+    status: string;
   }[];
 
   const { data: equipmentData } = await supabase
@@ -487,6 +503,48 @@ export default async function PropertyDetailPage({
               Legg til utstyr
             </Button>
           </form>
+
+          {rentalOrders.length > 0 && (
+            <div className="flex flex-col gap-2">
+              <p className="text-xs font-medium text-muted-foreground">
+                Betalte leier
+              </p>
+              <ul className="flex flex-col gap-2">
+                {rentalOrders.map((o) => (
+                  <li
+                    key={o.id}
+                    className="flex items-center justify-between gap-3 rounded-lg border border-hairline p-3"
+                  >
+                    <div className="min-w-0">
+                      <p className="font-medium text-navy">{o.guest_name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {o.quantity} stk · {o.days} døgn ·{" "}
+                        {formatNok(Number(o.amount))}
+                      </p>
+                    </div>
+                    {o.status === "refunded" ? (
+                      <span className="text-xs font-medium text-muted-foreground">
+                        Refundert
+                      </span>
+                    ) : (
+                      <form action={refundRentalOrder}>
+                        <input type="hidden" name="id" value={o.id} />
+                        <input type="hidden" name="property_id" value={p.id} />
+                        <Button
+                          type="submit"
+                          variant="ghost"
+                          size="sm"
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          Refunder
+                        </Button>
+                      </form>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </CardContent>
       </Card>
 

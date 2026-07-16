@@ -9,6 +9,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logAudit } from "@/lib/audit";
 import { stripe, stripeEnabled } from "@/lib/stripe";
+import { refundDestinationCharge } from "@/lib/refunds";
 import { MARKET_FEE_RATE } from "@/lib/constants";
 
 export async function requestCleaner(formData: FormData): Promise<void> {
@@ -162,4 +163,57 @@ export async function payServiceRequest(formData: FormData): Promise<void> {
     cancel_url: `${origin}/dashboard/finn-vaskehjelp`,
   }, { idempotencyKey: `service-${req!.id}` });
   redirect(session.url!);
+}
+
+/**
+ * Eier refunderer et betalt vaskeoppdrag. Trygg refusjon av destination charge:
+ * pengene hentes tilbake fra vaskerens konto, og Vertas gebyr returneres — Verta
+ * taper ingenting. RLS/eierskap sjekkes før refusjon.
+ */
+export async function refundServiceRequest(formData: FormData): Promise<void> {
+  const user = await requireUser();
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+
+  // Eierskap: kun den som bestilte (og betalte) oppdraget kan refundere det.
+  const supabase = await createClient();
+  const { data: req } = await supabase
+    .from("service_requests")
+    .select("id,payment_status,requester_user_id")
+    .eq("id", id)
+    .maybeSingle();
+  if (
+    !req ||
+    req.requester_user_id !== user.id ||
+    req.payment_status !== "paid"
+  ) {
+    redirect("/dashboard/finn-vaskehjelp");
+  }
+
+  // Hent PI via admin (settes av webhooken ved betaling).
+  const admin = createAdminClient();
+  const { data: full } = await admin
+    .from("service_requests")
+    .select("stripe_payment_intent")
+    .eq("id", id)
+    .maybeSingle();
+  const pi = full?.stripe_payment_intent ?? null;
+  if (!pi) redirect("/dashboard/finn-vaskehjelp?feil=refusjon");
+
+  const res = await refundDestinationCharge(pi!);
+  if (!res.ok) redirect("/dashboard/finn-vaskehjelp?feil=refusjon");
+
+  await admin
+    .from("service_requests")
+    .update({ payment_status: "refunded" })
+    .eq("id", id)
+    .eq("payment_status", "paid");
+
+  await logAudit({
+    user_id: user.id,
+    action: "service_request.refunded",
+    resource_type: "service_request",
+    resource_id: id,
+  });
+  redirect("/dashboard/finn-vaskehjelp?refundert=1");
 }

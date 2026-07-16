@@ -164,7 +164,13 @@ export async function POST(request: Request) {
         if (orderId) {
           const { data: updated } = await supabase
             .from("rental_orders")
-            .update({ status: "paid", stripe_session_id: session.id })
+            .update({
+              status: "paid",
+              stripe_session_id: session.id,
+              stripe_payment_intent: session.payment_intent
+                ? String(session.payment_intent)
+                : null,
+            })
             .eq("id", orderId)
             .eq("status", "pending")
             .select(
@@ -214,7 +220,12 @@ export async function POST(request: Request) {
         if (requestId) {
           await supabase
             .from("service_requests")
-            .update({ payment_status: "paid" })
+            .update({
+              payment_status: "paid",
+              stripe_payment_intent: session.payment_intent
+                ? String(session.payment_intent)
+                : null,
+            })
             .eq("id", requestId)
             .eq("payment_status", "unpaid");
         }

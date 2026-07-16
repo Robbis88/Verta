@@ -10,6 +10,7 @@ import {
   cancelRequest,
   reviewCleaner,
   payServiceRequest,
+  refundServiceRequest,
 } from "./actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,10 +38,15 @@ type Cleaner = {
 export default async function FinnVaskehjelpPage({
   searchParams,
 }: {
-  searchParams: Promise<{ property?: string; betalt?: string; feil?: string }>;
+  searchParams: Promise<{
+    property?: string;
+    betalt?: string;
+    feil?: string;
+    refundert?: string;
+  }>;
 }) {
   await requireUser();
-  const { property: propParam, betalt, feil } = await searchParams;
+  const { property: propParam, betalt, feil, refundert } = await searchParams;
   const supabase = await createClient();
 
   const { data: propData } = await supabase
@@ -146,6 +152,18 @@ export default async function FinnVaskehjelpPage({
         <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">
           Vaskeren har ikke koblet utbetaling ennå, så oppdraget kan ikke betales
           gjennom Verta. Be vaskeren koble utbetaling i portalen sin.
+        </p>
+      )}
+      {refundert && (
+        <p className="rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+          Oppdraget er refundert. Beløpet hentes tilbake fra vaskeren, og Vertas
+          gebyr returneres.
+        </p>
+      )}
+      {feil === "refusjon" && (
+        <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-800">
+          Refusjonen kunne ikke gjennomføres. Prøv igjen, eller sjekk oppdraget i
+          Stripe.
         </p>
       )}
 
@@ -322,8 +340,25 @@ export default async function FinnVaskehjelpPage({
                           </span>
                           {r.status === "accepted" &&
                             (r.payment_status === "paid" ? (
-                              <span className="font-medium text-emerald-600">
-                                Betalt ✓
+                              <span className="flex items-center gap-3">
+                                <span className="font-medium text-emerald-600">
+                                  Betalt ✓
+                                </span>
+                                <form action={refundServiceRequest}>
+                                  <input type="hidden" name="id" value={r.id} />
+                                  <Button
+                                    type="submit"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-red-600 hover:text-red-700"
+                                  >
+                                    Refunder
+                                  </Button>
+                                </form>
+                              </span>
+                            ) : r.payment_status === "refunded" ? (
+                              <span className="font-medium text-muted-foreground">
+                                Refundert
                               </span>
                             ) : (
                               <form action={payServiceRequest}>
