@@ -1025,6 +1025,11 @@ export default async function PropertyDetailPage({
           <CardTitle>Bookinger ({activeBookings.length})</CardTitle>
         </CardHeader>
         <CardContent>
+          <p className="mb-3 text-xs text-muted-foreground">
+            Registrer også Airbnb- og Booking-gjester her. Da kan du sende dem
+            gjestelenken (innsjekk-info, sen utsjekk og andre tillegg) — bare
+            trykk «Kopier» ved bookingen og lim inn i meldingen til gjesten.
+          </p>
           {activeBookings.length === 0 ? (
             <p className="text-sm text-muted-foreground">Ingen bookinger ennå.</p>
           ) : (
@@ -1058,14 +1063,17 @@ export default async function PropertyDetailPage({
                     ) : null}
                   </span>
                   {b.status !== "cancelled" && b.guest_token && (
-                    <a
-                      href={`/gjest/${b.guest_token}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs text-muted-foreground underline hover:text-foreground"
-                    >
-                      Gjesteside
-                    </a>
+                    <span className="flex items-center gap-1.5">
+                      <a
+                        href={`/gjest/${b.guest_token}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-muted-foreground underline hover:text-foreground"
+                      >
+                        Gjesteside
+                      </a>
+                      <CopyButton text={`${siteUrl}/gjest/${b.guest_token}`} />
+                    </span>
                   )}
                   {b.status !== "cancelled" && (
                     <a
