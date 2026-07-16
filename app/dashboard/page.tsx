@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 
 import { getCurrentProfile } from "@/lib/auth";
+import { createClient } from "@/lib/supabase/server";
 import { getDashboardMetrics } from "@/lib/analytics";
 import { PLANS, propertyLimit, type Plan } from "@/lib/constants";
 import { formatNok } from "@/lib/utils";
@@ -71,6 +72,27 @@ export default async function DashboardPage() {
   const plan: Plan = profile?.plan ?? "gratis";
   const limit = propertyLimit(plan, profile?.extra_properties_count ?? 0);
 
+  // Åpne forespørsler (booking som venter på eierens godkjenning). RLS scoper
+  // begge spørringene til innlogget eier. Vises rødt og blinkende øverst så
+  // eieren fanger dem opp selv om e-posten ble oversett.
+  const supabase = await createClient();
+  const { data: propRows } = await supabase.from("properties").select("id,name");
+  const propName = new Map(
+    (propRows ?? []).map((p) => [p.id as string, p.name as string]),
+  );
+  const { data: reqRows } = await supabase
+    .from("bookings")
+    .select("id,guest_name,check_in,check_out,property_id")
+    .eq("status", "requested")
+    .order("created_at", { ascending: true });
+  const requests = (reqRows ?? []) as {
+    id: string;
+    guest_name: string;
+    check_in: string;
+    check_out: string;
+    property_id: string;
+  }[];
+
   // Månedstrend på inntekt.
   const monthRevenue = m.byMonth[month] ?? 0;
   const prevRevenue = month > 0 ? m.byMonth[month - 1] : 0;
@@ -104,6 +126,47 @@ export default async function DashboardPage() {
           {PLANS[plan].label} · {m.propertyCount} / {limit} eiendommer
         </span>
       </div>
+
+      {requests.length > 0 && (
+        <div className="rounded-xl border-2 border-red-500 bg-red-50 p-4">
+          <div className="mb-3 flex items-center gap-2">
+            <span className="inline-flex size-2.5 animate-blink rounded-full bg-red-600" />
+            <h2 className="text-sm font-bold text-red-700">
+              {requests.length}{" "}
+              {requests.length === 1
+                ? "forespørsel venter på svar"
+                : "forespørsler venter på svar"}
+            </h2>
+          </div>
+          <ul className="flex flex-col gap-2">
+            {requests.map((r) => (
+              <li key={r.id}>
+                <Link
+                  href={`/dashboard/properties/${r.property_id}`}
+                  className="flex items-center justify-between gap-2 rounded-lg bg-white px-3 py-2 shadow-sm transition hover:bg-red-100/60"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-navy">
+                      {r.guest_name}
+                    </p>
+                    <p className="truncate text-xs text-ink/60">
+                      {propName.get(r.property_id) ?? ""}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-3">
+                    <span className="text-xs text-ink/70">
+                      {formatRange(r.check_in, r.check_out)}
+                    </span>
+                    <span className="rounded-full bg-red-600 px-2.5 py-1 text-[10px] font-semibold text-white">
+                      Svar nå
+                    </span>
+                  </div>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {m.propertyCount === 0 ? (
         <Card>
