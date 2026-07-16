@@ -101,18 +101,29 @@ export async function POST(request: Request) {
   }
 
   const signature = request.headers.get("stripe-signature");
-  const secret = process.env.STRIPE_WEBHOOK_SECRET;
-  if (!signature || !secret) {
+  // To webhook-destinasjoner i Stripe: én for egen konto (abonnement, vask,
+  // utleie) og én for Connected accounts (direktebookinger, skadekrav, eier-
+  // onboarding). De har hver sin secret — vi prøver begge.
+  const secrets = [
+    process.env.STRIPE_WEBHOOK_SECRET,
+    process.env.STRIPE_WEBHOOK_SECRET_CONNECT,
+  ].filter((s): s is string => Boolean(s));
+  if (!signature || secrets.length === 0) {
     return new Response("Mangler signatur", { status: 400 });
   }
 
   const body = await request.text();
-  let event: Stripe.Event;
-  try {
-    event = stripe.webhooks.constructEvent(body, signature, secret);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "ukjent feil";
-    return new Response(`Ugyldig signatur: ${message}`, { status: 400 });
+  let event: Stripe.Event | null = null;
+  for (const secret of secrets) {
+    try {
+      event = stripe.webhooks.constructEvent(body, signature, secret);
+      break;
+    } catch {
+      // prøv neste secret
+    }
+  }
+  if (!event) {
+    return new Response("Ugyldig signatur", { status: 400 });
   }
 
   const supabase = createAdminClient();
