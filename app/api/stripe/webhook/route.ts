@@ -67,26 +67,37 @@ async function syncSubscriptionState(
 
   let plan: string | null = null;
   let extraProperties = 0;
+  let mrrMonthly = 0; // sum av månedlig ekvivalent for alle linjer (år delt på 12)
+  let interval: string | null = null;
   for (const s of subs.data) {
     // Kun aktive/trialende (past_due som nådefrist) teller.
     if (!["active", "trialing", "past_due"].includes(s.status)) continue;
     for (const item of s.items.data) {
       const priceId = item.price.id;
+      const qty = item.quantity ?? 0;
+      const unit = (item.price.unit_amount ?? 0) / 100;
+      const yearly = item.price.recurring?.interval === "year";
+      mrrMonthly += yearly ? (unit * qty) / 12 : unit * qty;
       if (isExtraPropertyPrice(priceId)) {
-        extraProperties += item.quantity ?? 0;
+        extraProperties += qty;
         continue;
       }
       const mapped = planFromPriceId(priceId);
-      if (mapped) plan = mapped;
+      if (mapped) {
+        plan = mapped;
+        interval = yearly ? "year" : "month";
+      }
     }
   }
 
-  // Ingen aktiv hovedplan → gratis og null ekstra (betalingsmuren låser ute).
+  // Ingen aktiv hovedplan → gratis, null ekstra, null MRR (betalingsmuren låser).
   await supabase
     .from("users")
     .update({
       plan: plan ?? "gratis",
       extra_properties_count: plan ? extraProperties : 0,
+      billing_interval: plan ? interval : null,
+      mrr_nok: plan ? Math.round(mrrMonthly) : 0,
     })
     .eq("stripe_customer_id", customerId);
 }

@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
-import { PLANS, EXTRA_PROPERTY_PRICE_NOK, type Plan } from "@/lib/constants";
+import { type Plan } from "@/lib/constants";
 
 /** Admin-tilgang styres av ADMIN_EMAILS (komma-separert liste). */
 export function isAdmin(email: string | null | undefined): boolean {
@@ -61,7 +61,7 @@ export type AdminUser = {
   created_at: string;
 };
 
-type UserRow = { plan: Plan; extra_properties_count: number | null };
+type UserRow = { plan: Plan; mrr_nok: number | null };
 type CommissionRow = { commission_amount: number | null; status: string };
 
 /** Aggregerer plattform-tall på tvers av alle brukere (service role). */
@@ -70,21 +70,19 @@ export async function getAdminMetrics(): Promise<AdminMetrics> {
 
   const { data: usersData } = await supabase
     .from("users")
-    .select("plan,extra_properties_count");
+    .select("plan,mrr_nok");
   const users = (usersData ?? []) as UserRow[];
 
   const byTier: Record<Plan, number> = {
     gratis: 0,
     premium: 0,
   };
+  // MRR = sum av faktisk månedlig ekvivalent (webhooken regner år/12 osv.).
   let mrrNok = 0;
   for (const u of users) {
     const plan = (u.plan ?? "gratis") as Plan;
     byTier[plan] = (byTier[plan] ?? 0) + 1;
-    mrrNok += PLANS[plan]?.priceNok ?? 0;
-    if (plan === "premium") {
-      mrrNok += (u.extra_properties_count ?? 0) * EXTRA_PROPERTY_PRICE_NOK;
-    }
+    mrrNok += Number(u.mrr_nok ?? 0);
   }
 
   const { count: properties } = await supabase

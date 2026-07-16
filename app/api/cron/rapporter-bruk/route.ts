@@ -1,5 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { PLANS, EXTRA_PROPERTY_PRICE_NOK, type Plan } from "@/lib/constants";
+import { type Plan } from "@/lib/constants";
 import { rapporterBruk } from "@/lib/kontrollrom";
 
 /**
@@ -21,7 +21,7 @@ export async function GET(request: Request) {
     const supabase = createAdminClient();
     const { data: users, error } = await supabase
       .from("users")
-      .select("id, email, plan, extra_properties_count");
+      .select("id, email, plan, billing_interval, mrr_nok");
 
     if (error) {
       return Response.json({ feil: `users: ${error.message}` }, { status: 200 });
@@ -31,16 +31,15 @@ export async function GET(request: Request) {
       .map((u) => {
         const plan = (u.plan ?? "gratis") as Plan;
         if (plan === "gratis") return null;
-        let belop = PLANS[plan]?.priceNok ?? 0;
-        if (plan === "premium") {
-          belop += (u.extra_properties_count ?? 0) * EXTRA_PROPERTY_PRICE_NOK;
-        }
+        // mrr_nok er månedlig ekvivalent; rekonstruer faktisk periodebeløp.
+        const mrr = Number(u.mrr_nok ?? 0);
+        const yearly = u.billing_interval === "year";
         return {
           ekstern_ref: u.id as string,
           navn: (u.email as string) ?? "Ukjent",
           epost: (u.email as string) ?? null,
-          belop,
-          intervall: "mnd" as const,
+          belop: yearly ? Math.round(mrr * 12) : Math.round(mrr),
+          intervall: (yearly ? "aar" : "mnd") as "aar" | "mnd",
           status: "active" as const,
         };
       })
