@@ -10,7 +10,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { logAudit } from "@/lib/audit";
 import { stripe, stripeEnabled } from "@/lib/stripe";
 import { refundDestinationCharge } from "@/lib/refunds";
-import { MARKET_FEE_RATE } from "@/lib/constants";
+import { marketFeeOf } from "@/lib/constants";
 
 export async function requestCleaner(formData: FormData): Promise<void> {
   const user = await requireUser();
@@ -21,8 +21,7 @@ export async function requestCleaner(formData: FormData): Promise<void> {
   const message = String(formData.get("message") ?? "").trim();
   const amountRaw = String(formData.get("amount") ?? "").trim();
   const amount = amountRaw ? Number(amountRaw) : null;
-  const vertaFee =
-    amount != null ? Math.round(amount * MARKET_FEE_RATE * 100) / 100 : null;
+  const vertaFee = amount != null ? marketFeeOf(amount) : null;
 
   const supabase = await createClient();
   // RLS sikrer at brukeren eier eiendommen i forespørselen.

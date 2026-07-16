@@ -471,11 +471,11 @@ export default async function PropertyDetailPage({
             />
             <div className="flex flex-col gap-2 sm:flex-row">
               <label className="flex flex-1 flex-col gap-1 text-xs text-muted-foreground">
-                Pris per døgn (kr)
+                Pris per døgn (kr, minst 25)
                 <input
                   name="price"
                   type="number"
-                  min={0}
+                  min={25}
                   step="1"
                   required
                   placeholder="100"

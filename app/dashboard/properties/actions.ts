@@ -7,7 +7,7 @@ import { z } from "zod";
 import { requireUser, getCurrentProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { propertyLimit } from "@/lib/constants";
+import { propertyLimit, MIN_RENTAL_PRICE_NOK } from "@/lib/constants";
 import { propertySchema } from "@/lib/validation";
 import { AMENITY_KEYS, AMENITY_LABELS } from "@/lib/amenities";
 import { generatePropertyListing, suggestReviewReply } from "@/lib/ai";
@@ -505,7 +505,15 @@ export async function addRentalItem(formData: FormData): Promise<void> {
   const price = Number(formData.get("price"));
   const description = String(formData.get("description") ?? "").trim() || null;
   const quantity = Math.max(1, Number(formData.get("quantity")) || 1);
-  if (!propertyId || !name || !Number.isFinite(price) || price < 0) return;
+  // Minstepris så 10 %-modellen alltid dekker Stripe-gebyret (Verta taper ikke).
+  if (
+    !propertyId ||
+    !name ||
+    !Number.isFinite(price) ||
+    price < MIN_RENTAL_PRICE_NOK
+  ) {
+    return;
+  }
 
   // Pris per ekstra døgn (valgfri). Tom → samme pris hvert døgn.
   const extraRaw = String(formData.get("price_extra_day") ?? "").trim();

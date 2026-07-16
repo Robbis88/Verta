@@ -68,5 +68,24 @@ export function commissionRate(source: BookingSource): number {
   return 0; // airbnb/booking importeres — betales ikke via Verta
 }
 
-/** Verta sitt formidlingsgebyr på vaske-oppdrag i markedsplassen. */
+/** Verta sitt formidlingsgebyr på markedsplass-betalinger (vask + utstyrsleie). */
 export const MARKET_FEE_RATE = 0.1;
+
+/**
+ * Minste formidlingsgebyr i kroner. På destination charges betaler Verta
+ * Stripe-gebyret (~1,80 kr fast + ~1,5 %). Uten et gulv taper Verta penger på
+ * små beløp der 10 % ikke dekker Stripe-gebyret. 3 kr gir margin over det faste.
+ */
+export const MIN_MARKET_FEE_NOK = 3;
+
+/** Minste døgnpris på utleie-utstyr, så 10 %-modellen alltid er lønnsom. */
+export const MIN_RENTAL_PRICE_NOK = 25;
+
+/**
+ * Vertas formidlingsgebyr for et markedsbeløp: 10 %, men minst MIN_MARKET_FEE,
+ * og aldri mer enn selve beløpet. Sikrer at Verta aldri går i minus på gebyret.
+ */
+export function marketFeeOf(amount: number): number {
+  const pct = Math.round(amount * MARKET_FEE_RATE * 100) / 100;
+  return Math.min(amount, Math.max(pct, MIN_MARKET_FEE_NOK));
+}

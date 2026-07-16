@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendGuideMessage } from "@/lib/email";
 import { stripe, stripeEnabled } from "@/lib/stripe";
-import { MARKET_FEE_RATE } from "@/lib/constants";
+import { marketFeeOf } from "@/lib/constants";
 
 /** Gjesten sender en melding til utleieren fra guiden (eskalering). */
 export async function contactHost(
@@ -90,7 +90,8 @@ export async function rentItem(
   const perUnit = firstDay + extraDay * (days - 1);
   const unitAmount = Math.round(perUnit * 100); // øre, per stk
   const amount = Math.round(perUnit * quantity * 100) / 100;
-  const fee = Math.round(amount * MARKET_FEE_RATE * 100) / 100;
+  // Minst MIN_MARKET_FEE, så Verta aldri taper på Stripe-gebyret.
+  const fee = marketFeeOf(amount);
 
   const { data: order } = await supabase
     .from("rental_orders")
