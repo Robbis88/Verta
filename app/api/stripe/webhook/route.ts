@@ -7,6 +7,38 @@ import { sendClaimPaid, sendRentalPaid } from "@/lib/email";
 import { loggHendelse } from "@/lib/kontrollrom";
 
 /**
+ * Sikkerhetsnett: en betaling kom inn, men vi fant ingen aktiv booking/ordre å
+ * knytte den til. Vanligste årsaker: Connect-hendelser er ikke skrudd på (så
+ * bekreftelsen kom aldri og holdet utløp), eller gjesten betalte etter at
+ * reservasjonen ble frigitt. Logges som kritisk så pengene kan refunderes/følges
+ * opp manuelt. Godartede webhook-replays (allerede bekreftet) alarmerer IKKE.
+ */
+async function alertOrphanPayment(
+  session: Stripe.Checkout.Session,
+  reason: string,
+): Promise<void> {
+  await loggHendelse({
+    type: "system",
+    alvorlighet: "critical",
+    tittel: "Betaling uten match — sjekk webhook/Connect-oppsett",
+    detaljer: {
+      arsak: reason,
+      session_id: session.id,
+      belop: (session.amount_total ?? 0) / 100,
+      valuta: (session.currency ?? "").toUpperCase(),
+      kind: session.metadata?.kind ?? "ukjent",
+      referanse:
+        session.metadata?.booking_id ??
+        session.metadata?.rental_order_id ??
+        session.metadata?.claim_id ??
+        session.metadata?.request_id ??
+        "ingen",
+      betaling: session.payment_intent ? String(session.payment_intent) : "",
+    },
+  });
+}
+
+/**
  * Stripe webhook. Oppdaterer users.plan og extra_properties_count basert på
  * abonnementsendringer. Bruker admin-klient (service role).
  */
@@ -153,7 +185,18 @@ export async function POST(request: Request) {
                 amount: Number(claim.amount),
               });
             }
+          } else {
+            const { data: existing } = await supabase
+              .from("incident_claims")
+              .select("status")
+              .eq("id", claimId)
+              .maybeSingle();
+            if (!existing || existing.status !== "paid") {
+              await alertOrphanPayment(session, "skadekrav uten match");
+            }
           }
+        } else {
+          await alertOrphanPayment(session, "skadekrav-betaling uten krav-id");
         }
         break;
       }
@@ -209,7 +252,19 @@ export async function POST(request: Request) {
                 guestContact: order.guest_contact,
               });
             }
+          } else {
+            // 0 rader oppdatert: godartet replay (allerede paid) eller mangler.
+            const { data: existing } = await supabase
+              .from("rental_orders")
+              .select("status")
+              .eq("id", orderId)
+              .maybeSingle();
+            if (!existing || existing.status !== "paid") {
+              await alertOrphanPayment(session, "leieordre uten match");
+            }
           }
+        } else {
+          await alertOrphanPayment(session, "leiebetaling uten ordre-id");
         }
         break;
       }
@@ -218,7 +273,7 @@ export async function POST(request: Request) {
       if (session.metadata?.kind === "service") {
         const requestId = session.metadata.request_id;
         if (requestId) {
-          await supabase
+          const { data: paid } = await supabase
             .from("service_requests")
             .update({
               payment_status: "paid",
@@ -227,13 +282,33 @@ export async function POST(request: Request) {
                 : null,
             })
             .eq("id", requestId)
-            .eq("payment_status", "unpaid");
+            .eq("payment_status", "unpaid")
+            .select("id");
+          if (!paid || paid.length === 0) {
+            const { data: existing } = await supabase
+              .from("service_requests")
+              .select("payment_status")
+              .eq("id", requestId)
+              .maybeSingle();
+            if (!existing || existing.payment_status !== "paid") {
+              await alertOrphanPayment(session, "vaskeoppdrag uten match");
+            }
+          }
+        } else {
+          await alertOrphanPayment(session, "vaskebetaling uten oppdrag-id");
         }
         break;
       }
 
       const bookingId = session.metadata?.booking_id;
-      if (!bookingId) break; // abonnement-checkout, ikke en booking
+      if (!bookingId) {
+        // Abonnement-checkout har ingen booking_id (og mode = subscription) —
+        // det er normalt. Men en BETALINGS-sesjon uten referanse er foreldreløs.
+        if (session.mode === "payment") {
+          await alertOrphanPayment(session, "betaling uten kjent referanse");
+        }
+        break;
+      }
       const kind = session.metadata?.kind;
 
       // Restbetaling: marker som betalt (bookingen er allerede bekreftet).
@@ -251,6 +326,18 @@ export async function POST(request: Request) {
           .select("id");
         if (rp && rp.length > 0) {
           await notifyRemainingPaid(bookingId);
+        } else {
+          const { data: b } = await supabase
+            .from("bookings")
+            .select("remaining_paid")
+            .eq("id", bookingId)
+            .maybeSingle();
+          if (!b?.remaining_paid) {
+            await alertOrphanPayment(
+              session,
+              "restbetaling uten aktiv booking",
+            );
+          }
         }
         break;
       }
@@ -274,6 +361,22 @@ export async function POST(request: Request) {
 
       if (updated && updated.length > 0) {
         await finalizeBooking(bookingId);
+      } else {
+        // 0 rader: enten godartet replay (allerede bekreftet) eller foreldreløs
+        // betaling (bookingen er kansellert/frigitt eller mangler) → alarmer.
+        const { data: b } = await supabase
+          .from("bookings")
+          .select("status,payment_status")
+          .eq("id", bookingId)
+          .maybeSingle();
+        if (!b) {
+          await alertOrphanPayment(session, "bookingen finnes ikke");
+        } else if (b.status !== "confirmed") {
+          await alertOrphanPayment(
+            session,
+            `betalt, men bookingen er «${b.status}» (ikke bekreftet)`,
+          );
+        }
       }
       break;
     }
