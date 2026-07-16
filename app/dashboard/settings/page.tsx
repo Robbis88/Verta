@@ -1,7 +1,13 @@
 import Link from "next/link";
 
 import { getCurrentProfile } from "@/lib/auth";
-import { PLANS, type Plan } from "@/lib/constants";
+import {
+  PLANS,
+  EXTRA_PROPERTY_PRICE_NOK,
+  EXTRA_PROPERTY_YEARLY_PRICE_NOK,
+  type Plan,
+} from "@/lib/constants";
+import { formatNok } from "@/lib/utils";
 import { stripeEnabled } from "@/lib/stripe";
 import {
   openBillingPortal,
@@ -79,9 +85,16 @@ export default async function SettingsPage({
               </Button>
             </form>
             {plan === "premium" && (
-              <form action={purchaseExtraProperty}>
-                <Button type="submit">Kjøp ekstra eiendom (+99 kr/mnd)</Button>
-              </form>
+              <div className="flex flex-col items-start gap-1">
+                <form action={purchaseExtraProperty}>
+                  <Button type="submit">Kjøp ekstra eiendom</Button>
+                </form>
+                <p className="text-xs text-muted-foreground">
+                  {formatNok(EXTRA_PROPERTY_PRICE_NOK)}/mnd — eller{" "}
+                  {formatNok(EXTRA_PROPERTY_YEARLY_PRICE_NOK)}/år hvis du har
+                  årsplan.
+                </p>
+              </div>
             )}
           </CardContent>
         </Card>

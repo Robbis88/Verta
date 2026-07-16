@@ -5,7 +5,7 @@ const faqs = [
   },
   {
     q: "Hva koster Verta, og tar dere provisjon?",
-    a: "Én fast pris på 399 kr/mnd (+199 kr/mnd per ekstra eiendom), eller 3 990 kr/år med to måneder gratis. Ingen provisjon på leien — gjesten betaler deg direkte og betaler null plattformgebyr. Du starter med 14 dagers gratis prøve og kan avslutte når som helst.",
+    a: "Én fast pris på 399 kr/mnd, eller 3 990 kr/år med to måneder gratis. Har du flere eiendommer koster hver ekstra 199 kr/mnd (eller 1 990/år). Ingen provisjon på leien — gjesten betaler deg direkte og betaler null plattformgebyr. Du starter med 14 dagers gratis prøve og kan avslutte når som helst.",
   },
   {
     q: "Hvordan fungerer utbetalinger og økonomi?",

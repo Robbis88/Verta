@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
 const FEATURES = [
-  "1 eiendom (+199 kr/mnd per ekstra)",
+  "1 eiendom (+199 kr/mnd, eller 1 990/år, per ekstra)",
   "Bookingside uten gebyr — gjesten betaler deg direkte",
   "Kalender med Airbnb/Booking-synk",
   "AI-gjesteguide som svarer gjestene på alle språk",

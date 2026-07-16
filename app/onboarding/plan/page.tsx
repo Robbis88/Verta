@@ -19,7 +19,7 @@ const tiers = [
   {
     key: "premium" as const,
     blurb:
-      "Alt inkludert: kalender, bookingside uten gebyr, multi-kanal, boost, smartlås, skatt og AI. 1 eiendom (+199 kr/mnd per ekstra).",
+      "Alt inkludert: kalender, bookingside uten gebyr, multi-kanal, boost, smartlås, skatt og AI. 1 eiendom (+199 kr/mnd, eller 1 990/år, per ekstra).",
     highlighted: true,
   },
 ];
