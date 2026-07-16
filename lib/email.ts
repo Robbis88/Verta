@@ -46,6 +46,35 @@ async function send(opts: {
   }
 }
 
+/**
+ * Nyhetsbrev-utsending til én mottaker. Ren tekst konverteres til avsnitt, og en
+ * avmeldingslenke legges alltid i bunn (GDPR/god skikk).
+ */
+export async function sendNewsletterEmail(opts: {
+  to: string;
+  subject: string;
+  bodyText: string;
+  unsubscribeUrl: string;
+}): Promise<boolean> {
+  const esc = (s: string) =>
+    s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const paragraphs = opts.bodyText
+    .split(/\n{2,}/)
+    .map(
+      (para) =>
+        `<p style="font-size:15px;line-height:1.6;margin:0 0 12px;color:#081b33;">${esc(
+          para,
+        ).replace(/\n/g, "<br>")}</p>`,
+    )
+    .join("");
+  const unsub = `<p style="margin:20px 0 0;font-size:12px;color:#4b5563;">Vil du ikke motta nyhetsbrev fra Verta? <a href="${opts.unsubscribeUrl}" style="color:#4b5563;">Meld deg av her</a>.</p>`;
+  return send({
+    to: opts.to,
+    subject: opts.subject,
+    html: layout(opts.subject, paragraphs + unsub),
+  });
+}
+
 /** Norsk datoformat for e-post (f.eks. «5. juni 2026»). */
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("nb-NO", {
