@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { ChevronDown } from "lucide-react";
 
 import type { PropertyFormState } from "@/app/dashboard/properties/actions";
 import { Button } from "@/components/ui/button";
@@ -147,29 +148,52 @@ export function PropertyForm({
         />
       </Field>
 
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-2">
         <Label>Fasiliteter</Label>
-        {AMENITY_CATEGORIES.map((cat) => (
-          <div key={cat.id} className="flex flex-col gap-1.5">
-            <p className="text-xs font-medium text-muted-foreground">
-              {cat.label}
-            </p>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-              {cat.items.map((a) => (
-                <label key={a.key} className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    name="amenities"
-                    value={a.key}
-                    defaultChecked={selectedAmenities.has(a.key)}
-                    className="h-4 w-4"
-                  />
-                  {a.label}
-                </label>
-              ))}
-            </div>
-          </div>
-        ))}
+        <p className="-mt-1 text-xs text-muted-foreground">
+          Trykk på en gruppe for å åpne den. Tallet viser hvor mange du har
+          valgt.
+        </p>
+        {AMENITY_CATEGORIES.map((cat) => {
+          const chosen = cat.items.filter((a) =>
+            selectedAmenities.has(a.key),
+          ).length;
+          return (
+            <details
+              key={cat.id}
+              className="group rounded-lg border border-hairline"
+            >
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2.5 text-sm font-medium text-navy [&::-webkit-details-marker]:hidden">
+                <span className="flex items-center gap-2">
+                  {cat.label}
+                  {chosen > 0 && (
+                    <span className="rounded-full bg-gold/15 px-2 py-0.5 text-xs font-medium text-gold">
+                      {chosen}
+                    </span>
+                  )}
+                </span>
+                <ChevronDown className="size-4 shrink-0 text-muted-foreground transition group-open:rotate-180" />
+              </summary>
+              <div className="grid grid-cols-2 gap-2 border-t border-hairline px-3 py-3 sm:grid-cols-3">
+                {cat.items.map((a) => (
+                  <label
+                    key={a.key}
+                    className="flex items-center gap-2 text-sm"
+                  >
+                    <input
+                      type="checkbox"
+                      name="amenities"
+                      value={a.key}
+                      defaultChecked={selectedAmenities.has(a.key)}
+                      className="h-4 w-4"
+                    />
+                    {a.label}
+                  </label>
+                ))}
+              </div>
+            </details>
+          );
+        })}
       </div>
 
       <div className="grid grid-cols-2 gap-3">
