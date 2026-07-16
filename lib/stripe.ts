@@ -21,6 +21,20 @@ export const PRICE_ID_YEARLY = process.env.STRIPE_PRICE_PREMIUM_YEARLY;
 
 export const EXTRA_PROPERTY_PRICE_ID = process.env.STRIPE_PRICE_EXTRA_PROPERTY;
 
+/** Årlig ekstra-eiendom (1 990/år) — matcher hovedplanens intervall for årskunder. */
+export const EXTRA_PROPERTY_PRICE_ID_YEARLY =
+  process.env.STRIPE_PRICE_EXTRA_PROPERTY_YEARLY;
+
+/** Er en price-ID en ekstra-eiendom (måneds- eller års-varianten)? */
+export function isExtraPropertyPrice(priceId: string | undefined): boolean {
+  if (!priceId) return false;
+  return (
+    priceId === EXTRA_PROPERTY_PRICE_ID ||
+    (!!EXTRA_PROPERTY_PRICE_ID_YEARLY &&
+      priceId === EXTRA_PROPERTY_PRICE_ID_YEARLY)
+  );
+}
+
 /** Finner planen som hører til en Stripe price-ID. */
 export function planFromPriceId(priceId: string | undefined): PaidPlan | null {
   if (!priceId) return null;

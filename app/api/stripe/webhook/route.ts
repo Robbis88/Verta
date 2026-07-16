@@ -1,6 +1,6 @@
 import type Stripe from "stripe";
 
-import { stripe, planFromPriceId, EXTRA_PROPERTY_PRICE_ID } from "@/lib/stripe";
+import { stripe, planFromPriceId, isExtraPropertyPrice } from "@/lib/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { finalizeBooking, notifyRemainingPaid } from "@/lib/booking";
 import { sendClaimPaid, sendRentalPaid } from "@/lib/email";
@@ -49,6 +49,49 @@ async function alertOrphanPayment(
 }
 
 /**
+ * Regner ut brukerens plan + antall ekstra eiendommer på nytt fra ALLE kundens
+ * abonnementer (ikke bare det som endret seg). Robust når ekstra eiendommer er
+ * egne abonnementer: unngår at hoved- og ekstra-abonnement overskriver hverandre.
+ * Ekstra kan være måneds- eller års-varianten.
+ */
+async function syncSubscriptionState(
+  supabase: ReturnType<typeof createAdminClient>,
+  customerId: string,
+): Promise<void> {
+  if (!stripe) return;
+  const subs = await stripe.subscriptions.list({
+    customer: customerId,
+    status: "all",
+    limit: 100,
+  });
+
+  let plan: string | null = null;
+  let extraProperties = 0;
+  for (const s of subs.data) {
+    // Kun aktive/trialende (past_due som nådefrist) teller.
+    if (!["active", "trialing", "past_due"].includes(s.status)) continue;
+    for (const item of s.items.data) {
+      const priceId = item.price.id;
+      if (isExtraPropertyPrice(priceId)) {
+        extraProperties += item.quantity ?? 0;
+        continue;
+      }
+      const mapped = planFromPriceId(priceId);
+      if (mapped) plan = mapped;
+    }
+  }
+
+  // Ingen aktiv hovedplan → gratis og null ekstra (betalingsmuren låser ute).
+  await supabase
+    .from("users")
+    .update({
+      plan: plan ?? "gratis",
+      extra_properties_count: plan ? extraProperties : 0,
+    })
+    .eq("stripe_customer_id", customerId);
+}
+
+/**
  * Stripe webhook. Oppdaterer users.plan og extra_properties_count basert på
  * abonnementsendringer. Bruker admin-klient (service role).
  */
@@ -75,55 +118,13 @@ export async function POST(request: Request) {
   const supabase = createAdminClient();
 
   switch (event.type) {
+    // Alle abonnementsendringer → regn ut plan + ekstra på nytt fra hele kundens
+    // abonnementsbilde (robust mot flere parallelle abonnementer).
     case "customer.subscription.created":
-    case "customer.subscription.updated": {
-      const subscription = event.data.object as Stripe.Subscription;
-      const customerId = String(subscription.customer);
-
-      // Betalingsmur: kun aktive/trialende (og past_due som nådefrist) gir
-      // tilgang. Kansellert/ubetalt/utløpt → tilbake til gratis (låses ute).
-      const harTilgang = ["active", "trialing", "past_due"].includes(
-        subscription.status,
-      );
-      if (!harTilgang) {
-        await supabase
-          .from("users")
-          .update({ plan: "gratis", extra_properties_count: 0 })
-          .eq("stripe_customer_id", customerId);
-        break;
-      }
-
-      // Finn plan fra abonnementets price-IDer.
-      let plan: string | null = null;
-      let extraProperties = 0;
-      for (const item of subscription.items.data) {
-        const priceId = item.price.id;
-        if (priceId === EXTRA_PROPERTY_PRICE_ID) {
-          extraProperties += item.quantity ?? 0;
-          continue;
-        }
-        const mapped = planFromPriceId(priceId);
-        if (mapped) plan = mapped;
-      }
-
-      const update: Record<string, unknown> = {
-        extra_properties_count: extraProperties,
-      };
-      if (plan) update.plan = plan;
-
-      await supabase
-        .from("users")
-        .update(update)
-        .eq("stripe_customer_id", customerId);
-      break;
-    }
-
+    case "customer.subscription.updated":
     case "customer.subscription.deleted": {
       const subscription = event.data.object as Stripe.Subscription;
-      await supabase
-        .from("users")
-        .update({ plan: "gratis", extra_properties_count: 0 })
-        .eq("stripe_customer_id", String(subscription.customer));
+      await syncSubscriptionState(supabase, String(subscription.customer));
       break;
     }
 

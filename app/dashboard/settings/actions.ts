@@ -5,7 +5,12 @@ import { redirect } from "next/navigation";
 
 import { requireUser, getCurrentProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { stripe, stripeEnabled, EXTRA_PROPERTY_PRICE_ID } from "@/lib/stripe";
+import {
+  stripe,
+  stripeEnabled,
+  EXTRA_PROPERTY_PRICE_ID,
+  EXTRA_PROPERTY_PRICE_ID_YEARLY,
+} from "@/lib/stripe";
 
 async function siteOrigin(): Promise<string> {
   return (
@@ -110,7 +115,7 @@ export async function openBillingPortal(): Promise<void> {
   redirect(url);
 }
 
-/** Premium: kjøp en ekstra eiendom (+99 kr/mnd) via Stripe Checkout. */
+/** Premium: kjøp en ekstra eiendom (+199 kr/mnd, eller 1 990/år for årskunder). */
 export async function purchaseExtraProperty(): Promise<void> {
   const user = await requireUser();
   const profile = await getCurrentProfile();
@@ -119,11 +124,33 @@ export async function purchaseExtraProperty(): Promise<void> {
     return;
   }
 
+  // Matcher ekstra-eiendommens intervall til hovedabonnementet: er kunden på
+  // årsplan, brukes års-ekstra (hvis konfigurert), ellers månedlig.
+  let onYearly = false;
+  try {
+    const subs = await stripe.subscriptions.list({
+      customer: customerId,
+      status: "all",
+      limit: 20,
+    });
+    onYearly = subs.data.some(
+      (s) =>
+        ["active", "trialing", "past_due"].includes(s.status) &&
+        s.items.data.some((it) => it.price.recurring?.interval === "year"),
+    );
+  } catch {
+    onYearly = false;
+  }
+  const extraPrice =
+    onYearly && EXTRA_PROPERTY_PRICE_ID_YEARLY
+      ? EXTRA_PROPERTY_PRICE_ID_YEARLY
+      : EXTRA_PROPERTY_PRICE_ID;
+
   const origin = await siteOrigin();
   const session = await stripe.checkout.sessions.create({
     customer: customerId,
     mode: "subscription",
-    line_items: [{ price: EXTRA_PROPERTY_PRICE_ID, quantity: 1 }],
+    line_items: [{ price: extraPrice, quantity: 1 }],
     success_url: `${origin}/dashboard/settings?extra=1`,
     cancel_url: `${origin}/dashboard/settings`,
     metadata: { user_id: user.id, type: "extra_property" },
