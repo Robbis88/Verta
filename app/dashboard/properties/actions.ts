@@ -627,6 +627,61 @@ export async function refundRentalOrder(formData: FormData): Promise<void> {
   revalidatePath(`/dashboard/properties/${propertyId}`);
 }
 
+/** Legger til en tjeneste (pool-rensing, badstamp, brøyting, vask underveis). */
+export async function addService(formData: FormData): Promise<void> {
+  await requireUser();
+  const propertyId = String(formData.get("property_id") ?? "");
+  const name = String(formData.get("name") ?? "").trim();
+  const kind =
+    String(formData.get("kind") ?? "on_demand") === "scheduled"
+      ? "scheduled"
+      : "on_demand";
+  if (!propertyId || !name) return;
+
+  const trimOrNull = (key: string) =>
+    String(formData.get(key) ?? "").trim() || null;
+
+  const supabase = await createClient();
+  await supabase.from("property_services").insert({
+    property_id: propertyId,
+    name,
+    kind,
+    schedule_days: kind === "scheduled" ? trimOrNull("schedule_days") : null,
+    provider_name: trimOrNull("provider_name"),
+    provider_phone: trimOrNull("provider_phone"),
+    provider_email: trimOrNull("provider_email"),
+    note: trimOrNull("note"),
+  });
+  revalidatePath(`/dashboard/properties/${propertyId}`);
+}
+
+/** Fjerner en tjeneste. */
+export async function deleteService(formData: FormData): Promise<void> {
+  await requireUser();
+  const id = String(formData.get("id") ?? "");
+  const propertyId = String(formData.get("property_id") ?? "");
+  if (!id) return;
+  const supabase = await createClient();
+  await supabase.from("property_services").delete().eq("id", id);
+  revalidatePath(`/dashboard/properties/${propertyId}`);
+}
+
+/** Markerer en tjeneste-forespørsel som håndtert eller avslått. */
+export async function setServiceRequestStatus(formData: FormData): Promise<void> {
+  await requireUser();
+  const id = String(formData.get("id") ?? "");
+  const propertyId = String(formData.get("property_id") ?? "");
+  const status =
+    String(formData.get("status") ?? "") === "declined" ? "declined" : "handled";
+  if (!id) return;
+  const supabase = await createClient();
+  await supabase
+    .from("property_service_requests")
+    .update({ status })
+    .eq("id", id);
+  revalidatePath(`/dashboard/properties/${propertyId}`);
+}
+
 /**
  * Setter pris på sen utsjekk / tidlig innsjekk (tomt felt = ikke tilbudt).
  * Gjesten kjøper det på gjestesiden når kalenderen tillater det.

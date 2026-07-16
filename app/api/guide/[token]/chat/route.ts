@@ -97,6 +97,22 @@ export async function POST(
     })
     .join("\n");
 
+  // Tjenester: faste (med tidsplan AI-en kan svare fra) og på bestilling.
+  const { data: svc } = await supabase
+    .from("property_services")
+    .select("name,kind,schedule_days,note")
+    .eq("property_id", p.id)
+    .eq("active", true)
+    .order("created_at");
+  const serviceLines = (svc ?? [])
+    .map((s) => {
+      if (s.kind === "scheduled") {
+        return `- ${s.name} — fast tidsplan: ${s.schedule_days ?? "ukjent"}.${s.note ? ` ${s.note}` : ""}`;
+      }
+      return `- ${s.name} — på bestilling (gjesten trykker «Be om» under Tjenester).${s.note ? ` ${s.note}` : ""}`;
+    })
+    .join("\n");
+
   const system = `Du er den digitale vertskaps-assistenten for utleieboligen "${p.name}"${
     p.address ? ` (${p.address})` : ""
   }. Du hjelper gjesten under oppholdet.
@@ -106,6 +122,7 @@ VIKTIGE REGLER:
 - Vær kort, vennlig og konkret.
 - Bruk KUN fakta under om selve boligen (WiFi, tilkomst, regler osv.). IKKE finn på slike detaljer.
 - UNNTAK for utstyr: For apparatene i «UTSTYR I BOLIGEN» kan du bruke din generelle kunnskap om nettopp det merket/modellen til å forklare praktisk bruk (f.eks. hvordan bytte kilde på en Samsung-TV, starte en vaskemaskin, stille en varmepumpe). Kombiner med eierens notater. Er du usikker på modellen, gi et trygt generelt svar og be dem eventuelt kontakte verten.
+- TJENESTER: Spør gjesten om noe som gjelder en tjeneste under «TJENESTER» (f.eks. «poolen er skitten», «badstampen er kald», «trenger vask»), svar hjelpsomt: har tjenesten fast tidsplan, fortell når den kommer neste gang ut fra dagene som er oppgitt. Er den «på bestilling», be gjesten trykke «Be om» under Tjenester i guiden, så ordner verten det. Ikke lov en konkret dato for på-bestilling-tjenester.
 - Finner du ikke svaret, eller virker noe ikke i praksis, be gjesten vennlig trykke «Kontakt verten» så tar utleieren over.
 
 FAKTA OM BOLIGEN:
@@ -118,7 +135,10 @@ FAKTA OM BOLIGEN:
 - Lokale anbefalinger: ${p.travel_guide ?? "ingen oppgitt"}
 
 UTSTYR I BOLIGEN (merke/modell + eierens notater):
-${equipmentLines || "- ingen registrert"}`;
+${equipmentLines || "- ingen registrert"}
+
+TJENESTER (fast tidsplan eller på bestilling):
+${serviceLines || "- ingen registrert"}`;
 
   const stream = anthropic.messages.stream({
     model: CHAT_MODEL,

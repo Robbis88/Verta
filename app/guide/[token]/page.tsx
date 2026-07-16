@@ -11,7 +11,12 @@ import { GuideChat } from "@/components/guide/guide-chat";
 import { Button } from "@/components/ui/button";
 import { formatNok } from "@/lib/utils";
 import { RentForm } from "@/components/guide/rent-form";
-import { contactHost, rentItem, subscribeFromGuide } from "./actions";
+import {
+  contactHost,
+  rentItem,
+  subscribeFromGuide,
+  requestService,
+} from "./actions";
 
 export const metadata: Metadata = { title: "Gjesteguide — Verta" };
 
@@ -41,10 +46,13 @@ export default async function GuidePage({
     leid?: string;
     leiefeil?: string;
     nyhetsbrev?: string;
+    tjeneste?: string;
+    tjenestefeil?: string;
   }>;
 }) {
   const { token } = await params;
-  const { sendt, leid, leiefeil, nyhetsbrev } = await searchParams;
+  const { sendt, leid, leiefeil, nyhetsbrev, tjeneste, tjenestefeil } =
+    await searchParams;
 
   const supabase = createAdminClient();
   const { data } = await supabase
@@ -82,6 +90,22 @@ export default async function GuidePage({
     url: string;
     description: string | null;
   }[];
+
+  const { data: serviceData } = await supabase
+    .from("property_services")
+    .select("id,name,kind,schedule_days,note")
+    .eq("property_id", g.id)
+    .eq("active", true)
+    .order("created_at");
+  const services = (serviceData ?? []) as {
+    id: string;
+    name: string;
+    kind: string;
+    schedule_days: string | null;
+    note: string | null;
+  }[];
+  const scheduledServices = services.filter((s) => s.kind === "scheduled");
+  const onDemandServices = services.filter((s) => s.kind !== "scheduled");
 
   const [travelGuide, pois] = await Promise.all([
     getTravelGuide({
@@ -173,6 +197,86 @@ export default async function GuidePage({
             {g.lat != null && g.lng != null && (
               <PropertyMap lat={g.lat} lng={g.lng} />
             )}
+          </Section>
+        )}
+
+        {services.length > 0 && (
+          <Section title="Tjenester">
+            {tjeneste && (
+              <p className="text-sm text-emerald-700">
+                Takk! Forespørselen er sendt til verten. Du får svar så snart som
+                mulig. ✅
+              </p>
+            )}
+            {tjenestefeil && (
+              <p className="text-sm text-amber-700">
+                Kunne ikke sende forespørselen. Prøv igjen, eller bruk «Kontakt
+                verten».
+              </p>
+            )}
+
+            {scheduledServices.map((s) => (
+              <div
+                key={s.id}
+                className="border-t border-hairline pt-3 first:border-t-0 first:pt-0"
+              >
+                <p className="font-medium text-navy">{s.name}</p>
+                {s.schedule_days && (
+                  <p className="text-sm text-gold">Fast: {s.schedule_days}</p>
+                )}
+                {s.note && (
+                  <p className="mt-0.5 text-sm text-ink/60">{s.note}</p>
+                )}
+              </div>
+            ))}
+
+            {onDemandServices.map((s) => (
+              <details
+                key={s.id}
+                className="border-t border-hairline pt-3 first:border-t-0 first:pt-0"
+              >
+                <summary className="flex cursor-pointer items-center justify-between gap-2 font-medium text-navy">
+                  <span>{s.name}</span>
+                  <span className="rounded-full bg-gold/15 px-2 py-0.5 text-xs font-normal text-gold">
+                    Be om
+                  </span>
+                </summary>
+                {s.note && (
+                  <p className="mt-1 text-sm text-ink/60">{s.note}</p>
+                )}
+                <form
+                  action={requestService.bind(null, token)}
+                  className="mt-2 flex flex-col gap-2"
+                >
+                  <input type="hidden" name="service_id" value={s.id} />
+                  <input
+                    name="guest_name"
+                    required
+                    placeholder="Ditt navn"
+                    className="h-9 rounded-lg border border-hairline bg-white px-2 text-sm shadow-sm"
+                  />
+                  <input
+                    name="desired_date"
+                    placeholder="Ønsket dato/tid (valgfritt)"
+                    className="h-9 rounded-lg border border-hairline bg-white px-2 text-sm shadow-sm"
+                  />
+                  <input
+                    name="guest_contact"
+                    placeholder="E-post/telefon (valgfritt)"
+                    className="h-9 rounded-lg border border-hairline bg-white px-2 text-sm shadow-sm"
+                  />
+                  <textarea
+                    name="message"
+                    rows={2}
+                    placeholder="Kort beskrivelse (valgfritt)"
+                    className="rounded-lg border border-hairline bg-white px-2 py-1.5 text-sm shadow-sm"
+                  />
+                  <Button type="submit" size="sm" className="self-start">
+                    Send forespørsel
+                  </Button>
+                </form>
+              </details>
+            ))}
           </Section>
         )}
 

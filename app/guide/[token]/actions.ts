@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 
 import { createAdminClient } from "@/lib/supabase/admin";
-import { sendGuideMessage } from "@/lib/email";
+import { sendGuideMessage, sendServiceRequest } from "@/lib/email";
 import { subscribeNewsletter } from "@/lib/newsletter";
 import { stripe, stripeEnabled } from "@/lib/stripe";
 import { marketFeeOf } from "@/lib/constants";
@@ -39,6 +39,71 @@ export async function contactHost(
     });
   }
   redirect(`/guide/${token}?sendt=1`);
+}
+
+/**
+ * Gjesten ber om en på-bestilling-tjeneste (vask underveis, pool-service …).
+ * Oppretter en forespørsel og varsler eier (+ leverandør hvis e-post finnes).
+ */
+export async function requestService(
+  token: string,
+  formData: FormData,
+): Promise<void> {
+  const back = `/guide/${token}?tjenestefeil=1`;
+  const serviceId = String(formData.get("service_id") ?? "");
+  const guestName = String(formData.get("guest_name") ?? "").trim();
+  const guestContact = String(formData.get("guest_contact") ?? "").trim() || null;
+  const desiredDate = String(formData.get("desired_date") ?? "").trim() || null;
+  const message = String(formData.get("message") ?? "").trim() || null;
+  if (!serviceId || !guestName) redirect(back);
+
+  const supabase = createAdminClient();
+  const { data: property } = await supabase
+    .from("properties")
+    .select("id,name,address,user_id")
+    .eq("guide_token", token)
+    .maybeSingle();
+  if (!property) redirect(back);
+
+  const { data: service } = await supabase
+    .from("property_services")
+    .select("id,name,active,property_id,provider_email")
+    .eq("id", serviceId)
+    .maybeSingle();
+  if (!service || !service.active || service.property_id !== property!.id) {
+    redirect(back);
+  }
+
+  await supabase.from("property_service_requests").insert({
+    property_id: property!.id,
+    service_id: service!.id,
+    service_name: service!.name,
+    guest_name: guestName,
+    guest_contact: guestContact,
+    desired_date: desiredDate,
+    message,
+    status: "pending",
+  });
+
+  const { data: owner } = await supabase
+    .from("users")
+    .select("email")
+    .eq("id", property!.user_id)
+    .single();
+
+  await sendServiceRequest({
+    ownerEmail: owner?.email ?? null,
+    providerEmail: service!.provider_email,
+    propertyName: property!.name,
+    address: property!.address,
+    serviceName: service!.name,
+    guestName,
+    guestContact,
+    desiredDate,
+    message,
+  });
+
+  redirect(`/guide/${token}?tjeneste=1`);
 }
 
 /**

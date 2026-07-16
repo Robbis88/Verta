@@ -553,6 +553,55 @@ export async function sendRentalPaid(opts: {
   });
 }
 
+/**
+ * Varsel når en gjest ber om en tjeneste (pool-rensing, vask underveis …).
+ * Sendes til eier alltid, og til leverandøren hvis leverandør-e-post finnes.
+ */
+export async function sendServiceRequest(opts: {
+  ownerEmail: string | null;
+  providerEmail?: string | null;
+  propertyName: string;
+  address?: string | null;
+  serviceName: string;
+  guestName: string;
+  guestContact?: string | null;
+  desiredDate?: string | null;
+  message?: string | null;
+}): Promise<void> {
+  const lines = [
+    `<p style="font-size:15px;line-height:1.6;margin:0 0 8px;">${opts.guestName} ber om <strong>${opts.serviceName}</strong> på <strong>${opts.propertyName}</strong>${opts.address ? ` (${opts.address})` : ""}.</p>`,
+    opts.desiredDate
+      ? `<p style="font-size:14px;color:#4b5563;margin:0;">Ønsket dato: ${opts.desiredDate}</p>`
+      : "",
+    opts.message
+      ? `<p style="font-size:14px;color:#4b5563;margin:6px 0 0;">«${opts.message}»</p>`
+      : "",
+    opts.guestContact
+      ? `<p style="font-size:14px;color:#4b5563;margin:6px 0 0;">Gjestens kontakt: ${opts.guestContact}</p>`
+      : "",
+  ]
+    .filter(Boolean)
+    .join("");
+
+  const subject = `Tjeneste ønsket: ${opts.serviceName} — ${opts.propertyName}`;
+  const tasks: Promise<boolean>[] = [];
+  if (opts.ownerEmail) {
+    tasks.push(
+      send({ to: opts.ownerEmail, subject, html: layout("Tjeneste ønsket 🛎️", lines) }),
+    );
+  }
+  if (opts.providerEmail) {
+    tasks.push(
+      send({
+        to: opts.providerEmail,
+        subject,
+        html: layout("Ny forespørsel 🛎️", lines),
+      }),
+    );
+  }
+  await Promise.allSettled(tasks);
+}
+
 /** Varsel til eier når en gjest har kjøpt sen utsjekk / tidlig innsjekk. */
 export async function sendStayExtraPaid(opts: {
   to: string;

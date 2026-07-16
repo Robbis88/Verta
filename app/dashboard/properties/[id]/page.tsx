@@ -25,6 +25,9 @@ import {
   addLocalLink,
   deleteLocalLink,
   updateStayExtras,
+  addService,
+  deleteService,
+  setServiceRequestStatus,
 } from "../actions";
 import { PublicListingEditor } from "@/components/properties/public-listing-editor";
 import { VideoUploader } from "@/components/properties/video-uploader";
@@ -155,6 +158,41 @@ export default async function PropertyDetailPage({
     notes: string | null;
   }[];
   const todayIso = new Date().toISOString().slice(0, 10);
+
+  const { data: serviceData } = await supabase
+    .from("property_services")
+    .select(
+      "id,name,kind,schedule_days,provider_name,provider_phone,provider_email,note",
+    )
+    .eq("property_id", id)
+    .order("created_at");
+  const services = (serviceData ?? []) as {
+    id: string;
+    name: string;
+    kind: string;
+    schedule_days: string | null;
+    provider_name: string | null;
+    provider_phone: string | null;
+    provider_email: string | null;
+    note: string | null;
+  }[];
+  const serviceById = new Map(services.map((s) => [s.id, s]));
+
+  const { data: serviceReqData } = await supabase
+    .from("property_service_requests")
+    .select("id,service_id,service_name,guest_name,guest_contact,desired_date,message,created_at")
+    .eq("property_id", id)
+    .eq("status", "pending")
+    .order("created_at", { ascending: false });
+  const serviceRequests = (serviceReqData ?? []) as {
+    id: string;
+    service_id: string | null;
+    service_name: string;
+    guest_name: string;
+    guest_contact: string | null;
+    desired_date: string | null;
+    message: string | null;
+  }[];
 
   const { data: contactData } = await supabase
     .from("property_contacts")
@@ -576,6 +614,219 @@ export default async function PropertyDetailPage({
               </ul>
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      {serviceRequests.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Tjeneste-forespørsler</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3 text-sm">
+            <p className="text-muted-foreground">
+              Gjester har bedt om disse tjenestene. Videresend til leverandøren
+              med ett trykk, og marker som håndtert.
+            </p>
+            {serviceRequests.map((r) => {
+              const svc = r.service_id ? serviceById.get(r.service_id) : null;
+              const wa = svc?.provider_phone
+                ? svc.provider_phone.replace(/[^\d]/g, "").replace(/^00/, "")
+                : "";
+              const msg = encodeURIComponent(
+                `Hei! ${r.service_name} ønskes på ${p.name}${
+                  p.address ? `, ${p.address}` : ""
+                }${r.desired_date ? `. Ønsket: ${r.desired_date}` : ""}.`,
+              );
+              return (
+                <div
+                  key={r.id}
+                  className="flex flex-col gap-2 rounded-lg border border-hairline p-3"
+                >
+                  <div>
+                    <p className="font-medium text-navy">
+                      {r.service_name}
+                      <span className="font-normal text-muted-foreground">
+                        {" "}
+                        · {r.guest_name}
+                      </span>
+                    </p>
+                    {r.desired_date && (
+                      <p className="text-xs text-muted-foreground">
+                        Ønsket: {r.desired_date}
+                      </p>
+                    )}
+                    {r.message && (
+                      <p className="text-xs text-ink/60">«{r.message}»</p>
+                    )}
+                    {r.guest_contact && (
+                      <p className="text-xs text-muted-foreground">
+                        Gjest: {r.guest_contact}
+                      </p>
+                    )}
+                  </div>
+                  {svc && (svc.provider_phone || svc.provider_email) && (
+                    <div className="flex flex-wrap gap-2">
+                      {wa && (
+                        <a
+                          href={`https://wa.me/${wa}?text=${msg}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="rounded-md bg-emerald-600 px-3 py-1 text-xs font-medium text-white"
+                        >
+                          WhatsApp {svc.provider_name ?? "leverandør"}
+                        </a>
+                      )}
+                      {svc.provider_phone && (
+                        <a
+                          href={`sms:${svc.provider_phone}?&body=${msg}`}
+                          className="rounded-md border border-hairline px-3 py-1 text-xs font-medium text-navy"
+                        >
+                          SMS
+                        </a>
+                      )}
+                      {svc.provider_email && (
+                        <a
+                          href={`mailto:${svc.provider_email}?subject=${encodeURIComponent(
+                            r.service_name,
+                          )}&body=${msg}`}
+                          className="rounded-md border border-hairline px-3 py-1 text-xs font-medium text-navy"
+                        >
+                          E-post
+                        </a>
+                      )}
+                    </div>
+                  )}
+                  <div className="flex gap-2">
+                    <form action={setServiceRequestStatus}>
+                      <input type="hidden" name="id" value={r.id} />
+                      <input type="hidden" name="property_id" value={p.id} />
+                      <input type="hidden" name="status" value="handled" />
+                      <Button type="submit" size="sm">
+                        Markér håndtert
+                      </Button>
+                    </form>
+                    <form action={setServiceRequestStatus}>
+                      <input type="hidden" name="id" value={r.id} />
+                      <input type="hidden" name="property_id" value={p.id} />
+                      <input type="hidden" name="status" value="declined" />
+                      <Button type="submit" size="sm" variant="outline">
+                        Avslå
+                      </Button>
+                    </form>
+                  </div>
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
+      )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Tjenester</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4 text-sm">
+          <p className="text-muted-foreground">
+            Pool-rensing, badstamp, brøyting, vask underveis … Faste tjenester får
+            AI-en til å svare gjestene med tidsplanen. På-bestilling-tjenester lar
+            gjesten be om hjelp — du videresender til leverandøren med ett trykk.
+          </p>
+
+          {services.length > 0 && (
+            <ul className="flex flex-col gap-2">
+              {services.map((s) => (
+                <li
+                  key={s.id}
+                  className="flex items-start justify-between gap-3 rounded-lg border border-hairline p-3"
+                >
+                  <div className="min-w-0">
+                    <p className="font-medium text-navy">
+                      {s.name}
+                      <span className="ml-2 rounded-full bg-cloud px-2 py-0.5 text-xs font-normal text-navy">
+                        {s.kind === "scheduled" ? "Fast" : "På bestilling"}
+                      </span>
+                    </p>
+                    {s.kind === "scheduled" && s.schedule_days && (
+                      <p className="text-xs text-gold">{s.schedule_days}</p>
+                    )}
+                    {(s.provider_name || s.provider_phone) && (
+                      <p className="text-xs text-muted-foreground">
+                        {[s.provider_name, s.provider_phone]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </p>
+                    )}
+                  </div>
+                  <form action={deleteService}>
+                    <input type="hidden" name="id" value={s.id} />
+                    <input type="hidden" name="property_id" value={p.id} />
+                    <Button
+                      type="submit"
+                      variant="ghost"
+                      size="sm"
+                      className="text-red-600 hover:text-red-700"
+                    >
+                      Fjern
+                    </Button>
+                  </form>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <form
+            action={addService}
+            className="flex flex-col gap-3 rounded-lg border border-hairline p-3"
+          >
+            <input type="hidden" name="property_id" value={p.id} />
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <input
+                name="name"
+                required
+                placeholder="Navn (Pool-rensing)"
+                className="h-10 flex-1 rounded-lg border border-hairline bg-white px-3 text-sm shadow-sm"
+              />
+              <select
+                name="kind"
+                defaultValue="on_demand"
+                className="h-10 rounded-lg border border-hairline bg-white px-3 text-sm shadow-sm sm:w-44"
+              >
+                <option value="on_demand">På bestilling</option>
+                <option value="scheduled">Fast tidsplan</option>
+              </select>
+            </div>
+            <input
+              name="schedule_days"
+              placeholder="Faste dager (Onsdag, Fredag) — kun for fast"
+              className="h-10 rounded-lg border border-hairline bg-white px-3 text-sm shadow-sm"
+            />
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <input
+                name="provider_name"
+                placeholder="Leverandør (navn)"
+                className="h-10 flex-1 rounded-lg border border-hairline bg-white px-3 text-sm shadow-sm"
+              />
+              <input
+                name="provider_phone"
+                placeholder="Telefon (+47 …)"
+                className="h-10 flex-1 rounded-lg border border-hairline bg-white px-3 text-sm shadow-sm"
+              />
+            </div>
+            <input
+              name="provider_email"
+              type="email"
+              placeholder="Leverandør e-post (auto-varsel ved forespørsel)"
+              className="h-10 rounded-lg border border-hairline bg-white px-3 text-sm shadow-sm"
+            />
+            <input
+              name="note"
+              placeholder="Notat vist til gjest (valgfritt)"
+              className="h-10 rounded-lg border border-hairline bg-white px-3 text-sm shadow-sm"
+            />
+            <Button type="submit" size="sm" className="self-start">
+              Legg til tjeneste
+            </Button>
+          </form>
         </CardContent>
       </Card>
 
