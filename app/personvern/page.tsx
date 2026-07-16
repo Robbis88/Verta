@@ -80,6 +80,7 @@ export default function PersonvernPage() {
         . Overføringer utenfor EØS er sikret med EUs standardavtaler (SCC).
       </p>
 
+      {/* JURIDISK: strukturelt utkast — bør gjennomgås av jurist før publisering. */}
       <H2>Kunstig intelligens (AI)</H2>
       <p>
         Verta bruker AI til enkelte funksjoner — blant annet chat-assistenten
@@ -89,6 +90,18 @@ export default function PersonvernPage() {
         under EUs standardavtaler (SCC). Anthropic bruker ikke dataene til å trene
         modeller. Chat-samtaler lagres ikke hos Verta. Vi oppfordrer deg til ikke å
         skrive inn sensitive personopplysninger i chat-assistenten.
+      </p>
+      <p>
+        <strong>Gjesteguide med AI-assistent:</strong> Utleiere kan dele en digital
+        gjesteguide med en AI-assistent som svarer gjestene på deres eget språk.
+        For å svare sendes opplysninger om boligen (f.eks. WiFi, praktisk
+        informasjon og lokale tips) og gjestens spørsmål til Anthropic, på samme
+        vilkår som over. Guiden krever ingen innlogging, og vi lagrer{" "}
+        <strong>ikke innholdet</strong> i samtalene — kun anonyme tellere per bolig
+        for å hindre misbruk. Utleieren er ansvarlig for informasjonen som legges
+        inn i guiden. Gjester bør ikke skrive inn sensitive personopplysninger i
+        assistenten; trenger de hjelp med noe personlig, kan de bruke «Kontakt
+        verten».
       </p>
 
       <H2>Dine rettigheter</H2>
