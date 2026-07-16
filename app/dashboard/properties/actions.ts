@@ -627,6 +627,68 @@ export async function refundRentalOrder(formData: FormData): Promise<void> {
   revalidatePath(`/dashboard/properties/${propertyId}`);
 }
 
+/** Legger til en fast kontakt (snekker, brøyting, vaktmester …) på en bolig. */
+export async function addContact(formData: FormData): Promise<void> {
+  await requireUser();
+  const propertyId = String(formData.get("property_id") ?? "");
+  const name = String(formData.get("name") ?? "").trim();
+  if (!propertyId || !name) return;
+
+  const trimOrNull = (key: string) =>
+    String(formData.get(key) ?? "").trim() || null;
+
+  const supabase = await createClient();
+  await supabase.from("property_contacts").insert({
+    property_id: propertyId,
+    name,
+    role: trimOrNull("role"),
+    phone: trimOrNull("phone"),
+    email: trimOrNull("email"),
+    notes: trimOrNull("notes"),
+  });
+  revalidatePath(`/dashboard/properties/${propertyId}`);
+}
+
+/** Fjerner en fast kontakt. */
+export async function deleteContact(formData: FormData): Promise<void> {
+  await requireUser();
+  const id = String(formData.get("id") ?? "");
+  const propertyId = String(formData.get("property_id") ?? "");
+  if (!id) return;
+  const supabase = await createClient();
+  await supabase.from("property_contacts").delete().eq("id", id);
+  revalidatePath(`/dashboard/properties/${propertyId}`);
+}
+
+/** Legger til en lokal lenke (matvarelevering, lokale tjenester) for guiden. */
+export async function addLocalLink(formData: FormData): Promise<void> {
+  await requireUser();
+  const propertyId = String(formData.get("property_id") ?? "");
+  const title = String(formData.get("title") ?? "").trim();
+  let url = String(formData.get("url") ?? "").trim();
+  if (!propertyId || !title || !url) return;
+  // Tåler at eier limer inn uten protokoll.
+  if (!/^https?:\/\//i.test(url)) url = `https://${url}`;
+
+  const description = String(formData.get("description") ?? "").trim() || null;
+  const supabase = await createClient();
+  await supabase
+    .from("local_links")
+    .insert({ property_id: propertyId, title, url, description });
+  revalidatePath(`/dashboard/properties/${propertyId}`);
+}
+
+/** Fjerner en lokal lenke. */
+export async function deleteLocalLink(formData: FormData): Promise<void> {
+  await requireUser();
+  const id = String(formData.get("id") ?? "");
+  const propertyId = String(formData.get("property_id") ?? "");
+  if (!id) return;
+  const supabase = await createClient();
+  await supabase.from("local_links").delete().eq("id", id);
+  revalidatePath(`/dashboard/properties/${propertyId}`);
+}
+
 /** Fjerner et registrert apparat/utstyr fra boligen. */
 export async function deleteEquipment(formData: FormData): Promise<void> {
   await requireUser();

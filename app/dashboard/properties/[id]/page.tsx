@@ -20,6 +20,10 @@ import {
   addEquipment,
   deleteEquipment,
   refundRentalOrder,
+  addContact,
+  deleteContact,
+  addLocalLink,
+  deleteLocalLink,
 } from "../actions";
 import { PublicListingEditor } from "@/components/properties/public-listing-editor";
 import { VideoUploader } from "@/components/properties/video-uploader";
@@ -150,6 +154,32 @@ export default async function PropertyDetailPage({
     notes: string | null;
   }[];
   const todayIso = new Date().toISOString().slice(0, 10);
+
+  const { data: contactData } = await supabase
+    .from("property_contacts")
+    .select("id,name,role,phone,email,notes")
+    .eq("property_id", id)
+    .order("created_at");
+  const contacts = (contactData ?? []) as {
+    id: string;
+    name: string;
+    role: string | null;
+    phone: string | null;
+    email: string | null;
+    notes: string | null;
+  }[];
+
+  const { data: linkData } = await supabase
+    .from("local_links")
+    .select("id,title,url,description")
+    .eq("property_id", id)
+    .order("created_at");
+  const localLinks = (linkData ?? []) as {
+    id: string;
+    title: string;
+    url: string;
+    description: string | null;
+  }[];
 
   await getCurrentProfile();
 
@@ -545,6 +575,224 @@ export default async function PropertyDetailPage({
               </ul>
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Faste kontakter</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4 text-sm">
+          <p className="text-muted-foreground">
+            Dine faste folk på hytta — snekker, rørlegger, vaktmester, brøyting.
+            Samlet ett sted med ett-trykks ring, SMS, e-post eller WhatsApp. Kun
+            synlig for deg.
+          </p>
+
+          {contacts.length > 0 && (
+            <ul className="flex flex-col gap-2">
+              {contacts.map((c) => {
+                const wa = c.phone
+                  ? c.phone.replace(/[^\d]/g, "").replace(/^00/, "")
+                  : "";
+                return (
+                  <li
+                    key={c.id}
+                    className="flex flex-col gap-2 rounded-lg border border-hairline p-3"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-medium text-navy">
+                          {c.name}
+                          {c.role && (
+                            <span className="font-normal text-muted-foreground">
+                              {" "}
+                              · {c.role}
+                            </span>
+                          )}
+                        </p>
+                        {c.notes && (
+                          <p className="text-xs text-ink/60">{c.notes}</p>
+                        )}
+                      </div>
+                      <form action={deleteContact}>
+                        <input type="hidden" name="id" value={c.id} />
+                        <input type="hidden" name="property_id" value={p.id} />
+                        <Button
+                          type="submit"
+                          variant="ghost"
+                          size="sm"
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          Fjern
+                        </Button>
+                      </form>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {c.phone && (
+                        <a
+                          href={`tel:${c.phone}`}
+                          className="rounded-md bg-navy px-3 py-1 text-xs font-medium text-white"
+                        >
+                          Ring
+                        </a>
+                      )}
+                      {c.phone && (
+                        <a
+                          href={`sms:${c.phone}`}
+                          className="rounded-md border border-hairline px-3 py-1 text-xs font-medium text-navy"
+                        >
+                          SMS
+                        </a>
+                      )}
+                      {wa && (
+                        <a
+                          href={`https://wa.me/${wa}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="rounded-md border border-hairline px-3 py-1 text-xs font-medium text-emerald-700"
+                        >
+                          WhatsApp
+                        </a>
+                      )}
+                      {c.email && (
+                        <a
+                          href={`mailto:${c.email}`}
+                          className="rounded-md border border-hairline px-3 py-1 text-xs font-medium text-navy"
+                        >
+                          E-post
+                        </a>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+
+          <form
+            action={addContact}
+            className="flex flex-col gap-3 rounded-lg border border-hairline p-3"
+          >
+            <input type="hidden" name="property_id" value={p.id} />
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <input
+                name="name"
+                required
+                placeholder="Navn (Ola Hansen)"
+                className="h-10 flex-1 rounded-lg border border-hairline bg-white px-3 text-sm shadow-sm"
+              />
+              <input
+                name="role"
+                placeholder="Rolle (Brøyting)"
+                className="h-10 flex-1 rounded-lg border border-hairline bg-white px-3 text-sm shadow-sm"
+              />
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <input
+                name="phone"
+                placeholder="Telefon (+47 …)"
+                className="h-10 flex-1 rounded-lg border border-hairline bg-white px-3 text-sm shadow-sm"
+              />
+              <input
+                name="email"
+                type="email"
+                placeholder="E-post (valgfritt)"
+                className="h-10 flex-1 rounded-lg border border-hairline bg-white px-3 text-sm shadow-sm"
+              />
+            </div>
+            <input
+              name="notes"
+              placeholder="Notat (f.eks. «Ring før 20:00»)"
+              className="h-10 rounded-lg border border-hairline bg-white px-3 text-sm shadow-sm"
+            />
+            <p className="text-xs text-muted-foreground">
+              For WhatsApp: skriv nummeret med landskode (+47), så virker
+              WhatsApp-knappen.
+            </p>
+            <Button type="submit" size="sm" className="self-start">
+              Legg til kontakt
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Lokale lenker</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4 text-sm">
+          <p className="text-muted-foreground">
+            Lenker til lokale tjenester som vises i gjesteguiden — f.eks.
+            matvarelevering, nærbutikk eller lokal utleie. Praktisk for
+            gjestene, mindre spørsmål til deg.
+          </p>
+
+          {localLinks.length > 0 && (
+            <ul className="flex flex-col gap-2">
+              {localLinks.map((l) => (
+                <li
+                  key={l.id}
+                  className="flex items-center justify-between gap-3 rounded-lg border border-hairline p-3"
+                >
+                  <div className="min-w-0">
+                    <a
+                      href={l.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="truncate font-medium text-navy underline"
+                    >
+                      {l.title}
+                    </a>
+                    {l.description && (
+                      <p className="truncate text-xs text-muted-foreground">
+                        {l.description}
+                      </p>
+                    )}
+                  </div>
+                  <form action={deleteLocalLink}>
+                    <input type="hidden" name="id" value={l.id} />
+                    <input type="hidden" name="property_id" value={p.id} />
+                    <Button
+                      type="submit"
+                      variant="ghost"
+                      size="sm"
+                      className="text-red-600 hover:text-red-700"
+                    >
+                      Fjern
+                    </Button>
+                  </form>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <form
+            action={addLocalLink}
+            className="flex flex-col gap-3 rounded-lg border border-hairline p-3"
+          >
+            <input type="hidden" name="property_id" value={p.id} />
+            <input
+              name="title"
+              required
+              placeholder="Tittel (Meny hjemlevering)"
+              className="h-10 rounded-lg border border-hairline bg-white px-3 text-sm shadow-sm"
+            />
+            <input
+              name="url"
+              required
+              placeholder="Lenke (meny.no)"
+              className="h-10 rounded-lg border border-hairline bg-white px-3 text-sm shadow-sm"
+            />
+            <input
+              name="description"
+              placeholder="Kort beskrivelse (valgfritt)"
+              className="h-10 rounded-lg border border-hairline bg-white px-3 text-sm shadow-sm"
+            />
+            <Button type="submit" size="sm" className="self-start">
+              Legg til lenke
+            </Button>
+          </form>
         </CardContent>
       </Card>
 

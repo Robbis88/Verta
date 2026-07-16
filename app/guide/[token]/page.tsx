@@ -66,6 +66,18 @@ export default async function GuidePage({
     price_extra_day: number | null;
   }[];
 
+  const { data: linkData } = await supabase
+    .from("local_links")
+    .select("id,title,url,description")
+    .eq("property_id", g.id)
+    .order("created_at");
+  const localLinks = (linkData ?? []) as {
+    id: string;
+    title: string;
+    url: string;
+    description: string | null;
+  }[];
+
   const [travelGuide, pois] = await Promise.all([
     getTravelGuide({
       id: g.id,
@@ -156,6 +168,41 @@ export default async function GuidePage({
             {g.lat != null && g.lng != null && (
               <PropertyMap lat={g.lat} lng={g.lng} />
             )}
+          </Section>
+        )}
+
+        {localLinks.length > 0 && (
+          <Section title="Lokalt & levering">
+            <div className="flex flex-col gap-2">
+              {localLinks.map((l) => (
+                <a
+                  key={l.id}
+                  href={l.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-between gap-3 rounded-lg border border-hairline px-3 py-2.5 transition hover:border-gold/50"
+                >
+                  <span className="min-w-0">
+                    <span className="block truncate font-medium text-navy">
+                      {l.title}
+                    </span>
+                    {l.description && (
+                      <span className="block truncate text-xs text-ink/60">
+                        {l.description}
+                      </span>
+                    )}
+                  </span>
+                  <span className="shrink-0 text-gold">→</span>
+                </a>
+              ))}
+            </div>
+            {/* JURIDISK: praktisk ansvarsfraskrivelse — bør gjennomgås av jurist. */}
+            <p className="mt-3 text-xs text-ink/50">
+              Bestiller du levering (f.eks. matvarer), husk at varer kan bli satt
+              igjen ved døren dersom du ikke er der ved leveringen — f.eks. ved
+              forsinket fly, buss eller tog. Verten og Verta har ikke ansvar for
+              varer som blir stående. Levering skjer på eget ansvar.
+            </p>
           </Section>
         )}
 
