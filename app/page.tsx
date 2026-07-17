@@ -1,5 +1,6 @@
 import { Navbar } from "@/components/landing/Navbar";
 import { Hero } from "@/components/landing/Hero";
+import { PainPoints } from "@/components/landing/PainPoints";
 import { FeatureGrid } from "@/components/landing/FeatureGrid";
 import { VideoSection } from "@/components/landing/VideoSection";
 import { ProductScreens } from "@/components/landing/ProductScreens";
@@ -18,6 +19,7 @@ export default function Home() {
     <>
       <Navbar />
       <Hero />
+      <PainPoints />
       <FeatureGrid />
 
       <VideoSection
