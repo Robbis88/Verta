@@ -64,7 +64,7 @@ export function Hero() {
           <div className="pointer-events-none absolute -inset-6 rounded-[2.5rem] bg-gold/10 blur-3xl" />
           <div className="relative overflow-hidden rounded-2xl border border-white/10 shadow-2xl ring-1 ring-white/5">
             <LazyVideo
-              src="/videos/hero-1.mp4"
+              src="/videos/hero.mp4"
               className="aspect-video w-full object-cover"
             />
           </div>
