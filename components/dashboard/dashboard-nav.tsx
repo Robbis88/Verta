@@ -20,7 +20,8 @@ export function DashboardNav({
   const [open, setOpen] = useState<string | null>(null);
   const ref = useRef<HTMLDivElement>(null);
 
-  // Lukk nedtrekk ved navigasjon eller klikk utenfor.
+  // Lukk nedtrekk ved navigasjon eller klikk utenfor. Bevisst sync til route.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setOpen(null), [pathname]);
   useEffect(() => {
     function onClick(e: MouseEvent) {
@@ -44,10 +45,7 @@ export function DashboardNav({
     },
     {
       label: "Marked",
-      items: [
-        { href: "/dashboard/prising", label: "Prising" },
-        { href: "/dashboard/boosts", label: "Boost" },
-      ],
+      items: [{ href: "/dashboard/prising", label: "Prising" }],
     },
     {
       label: "Økonomi",

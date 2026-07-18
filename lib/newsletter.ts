@@ -14,13 +14,15 @@ export async function subscribeNewsletter(opts: {
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return false;
   try {
     const supabase = createAdminClient();
+    // MERK: setter IKKE unsubscribed_at her. En anonym påmelding skal aldri
+    // kunne gjenaktivere en e-post som har meldt seg av (GDPR/opt-out).
+    // Eksisterende avmelding beholdes; kun consent/navn/kilde oppdateres.
     await supabase.from("newsletter_subscribers").upsert(
       {
         email,
         name: opts.name?.trim() || null,
         source: opts.source,
         consent_at: new Date().toISOString(),
-        unsubscribed_at: null,
       },
       { onConflict: "email" },
     );

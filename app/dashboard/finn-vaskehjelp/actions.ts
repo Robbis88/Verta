@@ -205,11 +205,16 @@ export async function refundServiceRequest(formData: FormData): Promise<void> {
   const res = await refundDestinationCharge(pi!);
   if (!res.ok) redirect("/dashboard/finn-vaskehjelp?feil=refusjon");
 
-  await admin
+  const { error: updErr } = await admin
     .from("service_requests")
     .update({ payment_status: "refunded" })
     .eq("id", id)
     .eq("payment_status", "paid");
+  if (updErr) {
+    // Stripe-refusjonen gikk gjennom, men DB-statusen ble ikke oppdatert — logg
+    // så inntekt/status ikke blir stille inkonsistent.
+    console.error("Kunne ikke markere vaskeoppdrag refundert:", updErr);
+  }
 
   await logAudit({
     user_id: user.id,

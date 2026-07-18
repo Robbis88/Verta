@@ -42,14 +42,30 @@ export async function sendNewsletter(formData: FormData): Promise<void> {
   }
 
   const supabase = createAdminClient();
+
+  // Idempotens: samme nyhetsbrev (emne) sendt de siste 5 min → ikke send igjen
+  // (dobbeltklikk/retry sender ikke hele lista på nytt).
+  const fiveMinAgo = new Date(Date.now() - 5 * 60_000).toISOString();
+  const { data: recent } = await supabase
+    .from("newsletter_campaigns")
+    .select("id")
+    .eq("subject", subject)
+    .gte("created_at", fiveMinAgo)
+    .limit(1);
+  if (recent && recent.length > 0) {
+    redirect("/admin/nyhetsbrev?alt=1");
+  }
+
   const { data } = await supabase
     .from("newsletter_subscribers")
     .select("email,unsubscribe_token")
     .is("unsubscribed_at", null);
   const subs = (data ?? []) as { email: string; unsubscribe_token: string }[];
 
+  // Pacing under Resends rate-grense (~2 req/s): små bølger med litt mellomrom.
+  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
   let sent = 0;
-  const batchSize = 20;
+  const batchSize = 2;
   for (let i = 0; i < subs.length; i += batchSize) {
     const batch = subs.slice(i, i + batchSize);
     const results = await Promise.allSettled(
@@ -63,6 +79,7 @@ export async function sendNewsletter(formData: FormData): Promise<void> {
       ),
     );
     sent += results.filter((r) => r.status === "fulfilled" && r.value).length;
+    if (i + batchSize < subs.length) await sleep(1100);
   }
 
   await supabase.from("newsletter_campaigns").insert({

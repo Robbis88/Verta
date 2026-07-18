@@ -8,7 +8,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { bookingSchema } from "@/lib/validation";
 import { logAudit } from "@/lib/audit";
 import { stripe, stripeEnabled } from "@/lib/stripe";
-import type { BookingSource } from "@/lib/constants";
+import { propertyLimit, type BookingSource } from "@/lib/constants";
 import { finalizeBooking } from "@/lib/booking";
 import { sendRequestNotices } from "@/lib/email";
 import { quoteBookingTotal, type Quote } from "@/lib/pricing";
@@ -105,21 +105,36 @@ export async function createDirectBooking(
   const serviceFee = quote?.serviceFee ?? 0; // Vertas gebyr (gjesten betaler)
   const guestTotal = quote?.guestTotal ?? null; // det gjesten betaler totalt
 
-  // Hent eier én gang: e-post til varsler + Connect-status + plan for betaling.
+  // Hent eier én gang: e-post + Connect-status + plan + antall ekstra.
   const { data: owner } = await supabase
     .from("users")
-    .select("email,stripe_connect_id,payouts_enabled,plan")
+    .select("email,stripe_connect_id,payouts_enabled,plan,extra_properties_count")
     .eq("id", property.user_id)
     .single();
 
-  // Kan vi kreve betaling? Eieren må ha AKTIVT abonnement (plan=premium), ferdig
-  // Connect-onboarding og en pris. Uten aktivt abonnement (oppsagt/gratis) skal
-  // eiendommen ikke kunne ta imot betalte bookinger — da faller den til
-  // forespørsel, så en oppsagt eier ikke driver tjenesten videre uten å betale.
+  // Er denne eiendommen dekket av et aktivt abonnement innenfor grensen?
+  // Oppsagt (gratis) eier → nei. Premium-eier som har sagt opp ekstra-plasser →
+  // kun de eldste (innenfor grensen) er dekket. Ellers faller bookingen til
+  // forespørsel (ingen betaling), så ingen driver tjenesten uten å betale.
+  let withinPlan = false;
+  if (owner?.plan === "premium") {
+    const limit = propertyLimit(
+      "premium",
+      owner.extra_properties_count ?? 0,
+    );
+    const { data: owned } = await supabase
+      .from("properties")
+      .select("id")
+      .eq("user_id", property.user_id)
+      .order("created_at", { ascending: true })
+      .limit(limit);
+    withinPlan = (owned ?? []).some((p) => p.id === property.id);
+  }
+
   const canCharge = Boolean(
     stripe &&
       stripeEnabled &&
-      owner?.plan === "premium" &&
+      withinPlan &&
       owner?.payouts_enabled &&
       owner?.stripe_connect_id &&
       total &&

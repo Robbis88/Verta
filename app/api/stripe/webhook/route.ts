@@ -1,6 +1,7 @@
 import type Stripe from "stripe";
 
 import { stripe, planFromPriceId, isExtraPropertyPrice } from "@/lib/stripe";
+import { propertyLimit, type Plan } from "@/lib/constants";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { finalizeBooking, notifyRemainingPaid } from "@/lib/booking";
 import { sendClaimPaid, sendRentalPaid, sendStayExtraPaid } from "@/lib/email";
@@ -77,7 +78,10 @@ async function syncSubscriptionState(
       const qty = item.quantity ?? 0;
       const unit = (item.price.unit_amount ?? 0) / 100;
       const yearly = item.price.recurring?.interval === "year";
-      mrrMonthly += yearly ? (unit * qty) / 12 : unit * qty;
+      // MRR = faktisk betalende. Trials teller IKKE (ingen betaling ennå).
+      if (s.status !== "trialing") {
+        mrrMonthly += yearly ? (unit * qty) / 12 : unit * qty;
+      }
       if (isExtraPropertyPrice(priceId)) {
         extraProperties += qty;
         continue;
@@ -100,6 +104,26 @@ async function syncSubscriptionState(
       mrr_nok: plan ? Math.round(mrrMonthly) : 0,
     })
     .eq("stripe_customer_id", customerId);
+
+  // Håndhev eiendomsgrensen: av-list eiendommer utover ny grense (f.eks. etter
+  // at ekstra-abonnementer er sagt opp). Beholder de eldste innenfor grensen.
+  const { data: u } = await supabase
+    .from("users")
+    .select("id")
+    .eq("stripe_customer_id", customerId)
+    .maybeSingle();
+  if (u?.id) {
+    const limit = plan ? propertyLimit(plan as Plan, extraProperties) : 0;
+    const { data: props } = await supabase
+      .from("properties")
+      .select("id")
+      .eq("user_id", u.id)
+      .order("created_at", { ascending: true });
+    const over = (props ?? []).slice(limit).map((p) => p.id as string);
+    if (over.length > 0) {
+      await supabase.from("properties").update({ listed: false }).in("id", over);
+    }
+  }
 }
 
 /**

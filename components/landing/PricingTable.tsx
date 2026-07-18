@@ -8,7 +8,7 @@ const FEATURES = [
   "Kalender med Airbnb/Booking-synk",
   "AI-gjesteguide som svarer gjestene på alle språk",
   "Utleie av utstyr til gjestene (sykler, ski, kajakk)",
-  "Multi-kanal + boost-annonsering",
+  "Del boligen enkelt på dine egne kanaler",
   "Smartlås — Nuki, Igloohome & Salto",
   "Skatt-rapport + eiendomsøkonomi",
   "AI: annonsetekst, prising og assistent",
