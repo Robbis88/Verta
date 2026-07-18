@@ -8,6 +8,7 @@ import { VideoSection } from "@/components/landing/VideoSection";
 import { ProductScreens } from "@/components/landing/ProductScreens";
 import { Insights } from "@/components/landing/Insights";
 import { ExploreStays } from "@/components/landing/ExploreStays";
+import { SelfRunning } from "@/components/landing/SelfRunning";
 import { Integrations } from "@/components/landing/Integrations";
 import { ControlShowcase } from "@/components/landing/ControlShowcase";
 import { Testimonials } from "@/components/landing/Testimonials";
@@ -40,20 +41,7 @@ export default function Home() {
       <Insights />
       <ExploreStays />
 
-      <VideoSection
-        src="/videos/hero-3.mp4"
-        eyebrow="For gjestene"
-        title="En bedre opplevelse for gjestene"
-        text="Sømløs booking, automatisk innsjekk og smartlås — som gir flere 5-stjerners anmeldelser."
-        bullets={[
-          "Booking",
-          "Automatisk innsjekk",
-          "Smartlås",
-          "Gjestekommunikasjon",
-          "5-stjerners",
-        ]}
-        tone="dark"
-      />
+      <SelfRunning />
 
       <Integrations />
       <ControlShowcase />
