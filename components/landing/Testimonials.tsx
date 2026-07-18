@@ -27,11 +27,14 @@ const cases = [
 
 export function Testimonials() {
   return (
-    <section className="bg-white px-6 py-24">
+    <section className="bg-white px-6 py-24 md:py-28">
       <div className="mx-auto max-w-6xl">
-        <div className="mx-auto mb-16 max-w-2xl text-center">
-          <h2 className="text-3xl font-bold tracking-tight text-navy md:text-4xl">
-            Eiere og forvaltere som har fått kontroll
+        <div className="mx-auto mb-14 max-w-2xl text-center">
+          <p className="text-sm font-semibold tracking-wide text-gold">
+            For eiere som deg
+          </p>
+          <h2 className="mt-3 text-balance text-3xl font-bold leading-[1.1] tracking-tight text-navy md:text-5xl">
+            Laget for norske hytter — og folkene som eier dem.
           </h2>
         </div>
 
@@ -60,8 +63,21 @@ export function Testimonials() {
           ))}
         </div>
 
+        {/* Ekte tillitspunkter (ikke oppdiktede kundetall) */}
+        <div className="mt-14 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-sm font-medium text-navy">
+          <span>🇳🇴 Laget i Norge</span>
+          <span className="text-hairline">·</span>
+          <span>0 % på leien</span>
+          <span className="text-hairline">·</span>
+          <span>Ingen binding</span>
+          <span className="text-hairline">·</span>
+          <span>14 dager gratis</span>
+          <span className="text-hairline">·</span>
+          <span>Norsk support</span>
+        </div>
+
         <p className="mt-8 text-center text-xs text-ink/40">
-          Illustrerende eksempler.
+          Sitatene er illustrerende eksempler.
         </p>
       </div>
     </section>

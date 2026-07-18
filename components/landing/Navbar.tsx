@@ -8,9 +8,9 @@ export function Navbar() {
           Verta
         </Link>
         <div className="hidden items-center gap-7 text-sm text-white/70 md:flex">
-          <a href="#funksjoner" className="hover:text-white">Funksjoner</a>
-          <a href="#innsikt" className="hover:text-white">Innsikt</a>
-          <a href="#integrasjoner" className="hover:text-white">Integrasjoner</a>
+          <a href="#slik-funker-det" className="hover:text-white">
+            Slik funker det
+          </a>
           <a href="#priser" className="hover:text-white">Priser</a>
           <a href="#faq" className="hover:text-white">FAQ</a>
         </div>
@@ -21,12 +21,12 @@ export function Navbar() {
           >
             Logg inn
           </Link>
-          <a
-            href="mailto:hei@verta.no?subject=Book%20demo%20av%20Verta"
+          <Link
+            href="/registrer"
             className="rounded-lg bg-gold px-4 py-2 text-sm font-semibold text-navy transition hover:bg-gold/90"
           >
-            Book demo
-          </a>
+            Kom i gang
+          </Link>
         </div>
       </nav>
     </header>

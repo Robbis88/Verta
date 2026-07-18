@@ -41,7 +41,7 @@ export function Hero() {
               </span>
             </Link>
             <a
-              href="#funksjoner"
+              href="#slik-funker-det"
               className="rounded-xl border border-white/20 bg-white/5 px-7 py-4 text-center text-base font-semibold text-white backdrop-blur transition duration-200 hover:bg-white/10"
             >
               Se hvordan det funker
