@@ -31,3 +31,24 @@ export async function resolveAlert(formData: FormData): Promise<void> {
 
   revalidatePath("/dashboard");
 }
+
+/**
+ * Markerer at gjestelenken er sendt til gjesten, så påminnelsen på dashbordet
+ * forsvinner. RLS scoper til eierens egne bookinger.
+ */
+export async function markGuestLinkSent(formData: FormData): Promise<void> {
+  await requireUser();
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+
+  const supabase = await createClient();
+  await supabase
+    .from("bookings")
+    .update({
+      guest_link_sent: true,
+      guest_link_sent_at: new Date().toISOString(),
+    })
+    .eq("id", id);
+
+  revalidatePath("/dashboard");
+}

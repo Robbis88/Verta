@@ -12,7 +12,8 @@ import { isAdmin } from "@/lib/admin";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getDashboardMetrics } from "@/lib/analytics";
-import { resolveAlert } from "./alert-actions";
+import { resolveAlert, markGuestLinkSent } from "./alert-actions";
+import { CopyButton } from "@/components/shared/copy-button";
 import { PLANS, propertyLimit, type Plan } from "@/lib/constants";
 import { formatNok } from "@/lib/utils";
 import { KpiCard, MonthChart, PanelCard } from "@/components/dashboard/overview-ui";
@@ -94,6 +95,29 @@ export default async function DashboardPage() {
     check_in: string;
     check_out: string;
     property_id: string;
+  }[];
+
+  // Bookinger der gjestelenken ennå ikke er markert som sendt. Gjelder kommende/
+  // pågående opphold med gjestetoken (også Airbnb/Booking eieren registrerer
+  // selv). En gyllen påminnelse nudger eieren til å sende lenken.
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://verta.no";
+  const { data: unsentRows } = await supabase
+    .from("bookings")
+    .select("id,guest_name,check_in,check_out,property_id,guest_token,source")
+    .eq("guest_link_sent", false)
+    .not("guest_token", "is", null)
+    .not("status", "in", "(cancelled,requested)")
+    .gte("check_out", todayStr)
+    .order("check_in", { ascending: true });
+  const unsentLinks = (unsentRows ?? []) as {
+    id: string;
+    guest_name: string;
+    check_in: string;
+    check_out: string;
+    property_id: string;
+    guest_token: string;
+    source: string;
   }[];
 
   // Uløste kritiske varsler (refusjons-svikt, foreldreløse betalinger). Admin
@@ -225,6 +249,59 @@ export default async function DashboardPage() {
                     </span>
                   </div>
                 </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {unsentLinks.length > 0 && (
+        <div className="rounded-xl border-2 border-gold bg-gold/10 p-4">
+          <div className="mb-1 flex items-center gap-2">
+            <Sparkles className="size-4 text-gold" />
+            <h2 className="text-sm font-bold text-navy">
+              {unsentLinks.length}{" "}
+              {unsentLinks.length === 1 ? "booking mangler" : "bookinger mangler"}{" "}
+              gjestelenke
+            </h2>
+          </div>
+          <p className="mb-3 text-xs text-ink/60">
+            Send oppholdslenken til gjesten (innsjekk, WiFi, dørkode og tillegg).
+            Kopier og lim inn i meldingen — også til Airbnb/Booking-gjester.
+          </p>
+          <ul className="flex flex-col gap-2">
+            {unsentLinks.map((b) => (
+              <li
+                key={b.id}
+                className="flex items-center justify-between gap-2 rounded-lg bg-white px-3 py-2 shadow-sm"
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium text-navy">
+                    {b.guest_name}
+                  </p>
+                  <p className="truncate text-xs text-ink/60">
+                    {propName.get(b.property_id) ?? ""} ·{" "}
+                    {SOURCE_LABELS[b.source] ?? b.source} ·{" "}
+                    {formatRange(b.check_in, b.check_out)}
+                  </p>
+                </div>
+                <div className="flex shrink-0 items-center gap-1">
+                  <CopyButton
+                    label="Kopier melding"
+                    text={`Hei${b.guest_name ? " " + b.guest_name : ""}! Her er din digitale gjesteside for oppholdet — innsjekk, WiFi, dørkode og alt du trenger på ett sted:\n${siteUrl}/gjest/${b.guest_token}\n\nHi! Here's your digital guest page with check-in info, WiFi and everything for your stay:\n${siteUrl}/gjest/${b.guest_token}`}
+                  />
+                  <form action={markGuestLinkSent}>
+                    <input type="hidden" name="id" value={b.id} />
+                    <Button
+                      type="submit"
+                      variant="ghost"
+                      size="sm"
+                      className="shrink-0 text-emerald-700 hover:text-emerald-800"
+                    >
+                      Marker som sendt ✓
+                    </Button>
+                  </form>
+                </div>
               </li>
             ))}
           </ul>

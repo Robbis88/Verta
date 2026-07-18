@@ -1324,6 +1324,10 @@ export default async function PropertyDetailPage({
                         Gjesteside
                       </a>
                       <CopyButton text={`${siteUrl}/gjest/${b.guest_token}`} />
+                      <CopyButton
+                        label="Kopier melding"
+                        text={`Hei${b.guest_name ? " " + b.guest_name : ""}! Her er din digitale gjesteside for oppholdet — innsjekk, WiFi, dørkode og alt du trenger på ett sted:\n${siteUrl}/gjest/${b.guest_token}\n\nHi! Here's your digital guest page with check-in info, WiFi and everything for your stay:\n${siteUrl}/gjest/${b.guest_token}`}
+                      />
                     </span>
                   )}
                   {b.status !== "cancelled" && (
