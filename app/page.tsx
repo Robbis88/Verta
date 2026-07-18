@@ -2,6 +2,7 @@ import { Navbar } from "@/components/landing/Navbar";
 import { Hero } from "@/components/landing/Hero";
 import { PainPoints } from "@/components/landing/PainPoints";
 import { BeforeAfter } from "@/components/landing/BeforeAfter";
+import { MoneyStory } from "@/components/landing/MoneyStory";
 import { FeatureGrid } from "@/components/landing/FeatureGrid";
 import { VideoSection } from "@/components/landing/VideoSection";
 import { ProductScreens } from "@/components/landing/ProductScreens";
@@ -23,6 +24,7 @@ export default function Home() {
       <Hero />
       <PainPoints />
       <BeforeAfter />
+      <MoneyStory />
       <FeatureGrid />
 
       <VideoSection
