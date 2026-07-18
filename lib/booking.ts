@@ -170,7 +170,7 @@ export async function cancelAndRefund(opts: {
   // IKKE til 'refunded' her — det gjøres først etter at Stripe-refusjonen faktisk
   // er gjennomført, så databasen og gjesten aldri får beskjed om en refusjon som
   // ikke skjedde.
-  const { data: updated } = await supabase
+  const claim = supabase
     .from("bookings")
     .update({
       status: "cancelled",
@@ -178,8 +178,12 @@ export async function cancelAndRefund(opts: {
       access_code_id: null,
     })
     .eq("id", booking.id)
-    .neq("status", "cancelled")
-    .select("id");
+    .neq("status", "cancelled");
+  // Auto-kansellering ved ubetalt rest (nonPayment): krev at resten fortsatt er
+  // UBETALT. Betaler gjesten i samme øyeblikk cron kjører, avbrytes ikke
+  // bookingen (unngår at gjesten mister hele beløpet i et race).
+  if (opts.nonPayment) claim.eq("remaining_paid", false);
+  const { data: updated } = await claim.select("id");
   if (!updated || updated.length === 0) {
     return { ok: false, refunded: 0, wasPaid, refundPending: false };
   }

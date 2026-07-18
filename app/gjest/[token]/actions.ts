@@ -97,8 +97,21 @@ export async function payDeposit(token: string): Promise<void> {
   }
   const origin = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
+  // Sesjonen skal ikke være betalbar lenger enn selve holdet — ellers kan
+  // datoene frigis (release-holds) mens gjesten fortsatt kan betale, og
+  // betalingen blir foreldreløs. Klemt til Stripes tillatte [30 min, 24 t].
+  const nowSec = Math.floor(Date.now() / 1000);
+  const holdSec = booking!.hold_expires_at
+    ? Math.floor(new Date(booking!.hold_expires_at).getTime() / 1000)
+    : nowSec + 24 * 3600;
+  const expiresAt = Math.max(
+    nowSec + 1800,
+    Math.min(holdSec, nowSec + 24 * 3600),
+  );
+
   const session = await stripe.checkout.sessions.create({
     mode: "payment",
+    payment_method_types: ["card"],
     locale: "nb",
     line_items: [
       {
@@ -115,6 +128,7 @@ export async function payDeposit(token: string): Promise<void> {
     metadata: { booking_id: booking.id, kind: "deposit" },
     success_url: `${origin}/gjest/${token}?betalt=1`,
     cancel_url: `${origin}/gjest/${token}`,
+    expires_at: expiresAt,
   }, {
     idempotencyKey: `deposit-${booking!.id}`,
     stripeAccount: owner.stripe_connect_id,
@@ -171,6 +185,7 @@ export async function payRemaining(token: string): Promise<void> {
 
   const session = await stripe.checkout.sessions.create({
     mode: "payment",
+    payment_method_types: ["card"],
     locale: "nb",
     line_items: [
       {
@@ -254,6 +269,7 @@ export async function payStayExtra(
   const session = await stripe.checkout.sessions.create(
     {
       mode: "payment",
+      payment_method_types: ["card"],
       locale: "nb",
       line_items: [
         {

@@ -1,6 +1,7 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import type { NextRequest } from "next/server";
 import { anthropic, CHAT_MODEL } from "@/lib/anthropic";
+import { sanitizeChat } from "@/lib/chat-guard";
 
 const LANDING_SYSTEM = `Du er «Vera», Verta sin vennlige assistent. Verta er en norsk SaaS for utleieforvaltning av hytter, leiligheter og Airbnb-utleie.
 
@@ -29,18 +30,20 @@ export async function POST(request: NextRequest) {
     context?: "landing" | "portal";
   };
 
-  if (!Array.isArray(messages)) {
-    return Response.json({ error: "messages må være en liste" }, { status: 400 });
+  // Input-vern mot kostnadsmisbruk (åpent endepunkt): kap antall meldinger +
+  // samlet tekstlengde over ALLE meldinger, avvis ikke-tekst.
+  const guard = sanitizeChat(messages);
+  if (!guard.ok) {
+    return Response.json({ error: guard.error }, { status: guard.status });
   }
 
   const system = context === "portal" ? PORTAL_SYSTEM : LANDING_SYSTEM;
-  const trimmed = messages.slice(-12);
 
   const stream = anthropic.messages.stream({
     model: CHAT_MODEL,
     max_tokens: 1024,
     system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
-    messages: trimmed,
+    messages: guard.messages,
   });
 
   const encoder = new TextEncoder();

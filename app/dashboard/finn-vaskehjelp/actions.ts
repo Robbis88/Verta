@@ -131,7 +131,9 @@ export async function payServiceRequest(formData: FormData): Promise<void> {
     redirect("/dashboard/finn-vaskehjelp?feil=vasker");
   }
 
-  const fee = Number(req!.verta_fee ?? 0);
+  // Regn gebyret på nytt server-side (ikke stol på lagret verta_fee, som en eier
+  // kan manipulere via direkte API-kall). Alltid 10 % (min 3 kr) av beløpet.
+  const fee = marketFeeOf(amount);
   const origin =
     (await headers()).get("origin") ??
     process.env.NEXT_PUBLIC_SITE_URL ??
@@ -139,6 +141,7 @@ export async function payServiceRequest(formData: FormData): Promise<void> {
 
   const session = await stripe.checkout.sessions.create({
     mode: "payment",
+    payment_method_types: ["card"],
     locale: "nb",
     line_items: [
       {

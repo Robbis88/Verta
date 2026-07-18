@@ -52,8 +52,10 @@ export function hoursToRemainingDeadline(
   checkInISO: string,
   nowMs: number = Date.now(),
 ): number {
+  // Fristen gjelder til SLUTTEN av forfallsdatoen («senest» den dagen), ikke
+  // kl. 00:00 — ellers kanselleres en gjest som betaler på oppgitt fristdag.
   const deadline = new Date(
-    `${remainingDueDate(checkInISO)}T00:00:00Z`,
+    `${remainingDueDate(checkInISO)}T23:59:59Z`,
   ).getTime();
   return (deadline - nowMs) / 3_600_000;
 }

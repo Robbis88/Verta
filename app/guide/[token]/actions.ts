@@ -196,6 +196,7 @@ export async function rentItem(
   const origin = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
   const session = await stripe.checkout.sessions.create({
     mode: "payment",
+    payment_method_types: ["card"],
     locale: "nb",
     line_items: [
       {

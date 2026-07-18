@@ -348,9 +348,25 @@ export async function POST(request: Request) {
             .from("bookings")
             .update({ [col]: true })
             .eq("id", bId)
+            .eq("status", "confirmed")
             .eq(col, false)
             .select("id,property_id,guest_name");
           const row = updated?.[0];
+          if (!row) {
+            // 0 rader: godartet replay (allerede satt) eller foreldreløs
+            // betaling (kansellert/feil booking) → alarmer.
+            const { data: b } = await supabase
+              .from("bookings")
+              .select(col)
+              .eq("id", bId)
+              .maybeSingle();
+            const alreadyPaid = b
+              ? (b as Record<string, unknown>)[col] === true
+              : false;
+            if (!alreadyPaid) {
+              await alertOrphanPayment(session, "stay_extra uten match");
+            }
+          }
           if (row) {
             const { data: property } = await supabase
               .from("properties")
@@ -405,11 +421,14 @@ export async function POST(request: Request) {
               : null,
           })
           .eq("id", bookingId)
+          .eq("status", "confirmed")
           .eq("remaining_paid", false)
           .select("id");
         if (rp && rp.length > 0) {
           await notifyRemainingPaid(bookingId);
         } else {
+          // 0 rader: godartet replay (allerede betalt) eller foreldreløs
+          // betaling (bookingen er kansellert/mangler) → alarmer.
           const { data: b } = await supabase
             .from("bookings")
             .select("remaining_paid")

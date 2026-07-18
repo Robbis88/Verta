@@ -105,17 +105,21 @@ export async function createDirectBooking(
   const serviceFee = quote?.serviceFee ?? 0; // Vertas gebyr (gjesten betaler)
   const guestTotal = quote?.guestTotal ?? null; // det gjesten betaler totalt
 
-  // Hent eier én gang: e-post til varsler + Connect-status for betaling.
+  // Hent eier én gang: e-post til varsler + Connect-status + plan for betaling.
   const { data: owner } = await supabase
     .from("users")
-    .select("email,stripe_connect_id,payouts_enabled")
+    .select("email,stripe_connect_id,payouts_enabled,plan")
     .eq("id", property.user_id)
     .single();
 
-  // Kan vi kreve betaling? Eieren må ha ferdig Connect-onboarding og en pris.
+  // Kan vi kreve betaling? Eieren må ha AKTIVT abonnement (plan=premium), ferdig
+  // Connect-onboarding og en pris. Uten aktivt abonnement (oppsagt/gratis) skal
+  // eiendommen ikke kunne ta imot betalte bookinger — da faller den til
+  // forespørsel, så en oppsagt eier ikke driver tjenesten videre uten å betale.
   const canCharge = Boolean(
     stripe &&
       stripeEnabled &&
+      owner?.plan === "premium" &&
       owner?.payouts_enabled &&
       owner?.stripe_connect_id &&
       total &&
@@ -243,6 +247,7 @@ export async function createDirectBooking(
   const origin = await siteOrigin();
   const session = await stripe!.checkout.sessions.create({
     mode: "payment",
+    payment_method_types: ["card"],
     locale: "nb",
     line_items: [
       {

@@ -165,7 +165,12 @@ export async function payBoost(formData: FormData): Promise<void> {
     redirect(url);
   }
 
-  // Dev-fallback: marker som godkjent uten betaling.
+  // Dev-fallback: KUN utenfor produksjon. I produksjon (uten Vipps) må boost
+  // ALDRI godkjennes gratis — den blir stående 'pending' til betaling finnes.
+  if (process.env.NODE_ENV === "production") {
+    redirect(`/dashboard/boosts/${id}?betaling=utilgjengelig`);
+  }
+
   const { error } = await supabase
     .from("boosts")
     .update({ status: "approved", approved_at: new Date().toISOString() })

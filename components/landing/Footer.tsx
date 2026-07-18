@@ -1,16 +1,15 @@
 import Link from "next/link";
 
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { FooterSignup } from "./footer-signup";
 
 const columns = [
   {
     heading: "Verta",
     links: [
       { label: "Finn hytter", href: "/hytter" },
-      { label: "Om oss", href: "#" },
-      { label: "Kontakt", href: "#" },
-      { label: "Blogg", href: "#" },
+      { label: "Slik funker det", href: "/#slik-funker-det" },
+      { label: "Priser", href: "/#priser" },
+      { label: "Kom i gang", href: "/registrer" },
     ],
   },
   {
@@ -25,9 +24,9 @@ const columns = [
   {
     heading: "Support",
     links: [
-      { label: "Hjelp", href: "#" },
-      { label: "FAQ", href: "#" },
-      { label: "Chat", href: "#" },
+      { label: "FAQ", href: "/#faq" },
+      { label: "Kontakt", href: "mailto:hei@verta.no" },
+      { label: "Logg inn", href: "/login" },
     ],
   },
 ];
@@ -57,22 +56,7 @@ export function Footer() {
 
           <div>
             <h3 className="mb-4 font-semibold">Nytt fra Verta</h3>
-            <div className="flex flex-col gap-2">
-              <Input
-                type="email"
-                placeholder="din@epost.no"
-                className="border-white/20 bg-white/5 text-white placeholder:text-white/50"
-              />
-              <Button
-                type="button"
-                className="h-auto rounded-lg bg-gold py-2 font-semibold text-navy hover:bg-gold/90"
-              >
-                Abonner
-              </Button>
-              <p className="text-xs text-white/50">
-                Vi sender 1 e-post per måned.
-              </p>
-            </div>
+            <FooterSignup />
           </div>
         </div>
       </div>

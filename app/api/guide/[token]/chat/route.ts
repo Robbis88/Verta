@@ -1,15 +1,14 @@
-import type Anthropic from "@anthropic-ai/sdk";
 import type { NextRequest } from "next/server";
 
 import { anthropic, CHAT_MODEL } from "@/lib/anthropic";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AMENITY_LABELS } from "@/lib/amenities";
+import { sanitizeChat } from "@/lib/chat-guard";
 
 // Tak per guide-token: nok for en ekte gjest, stopper spam. Beskytter mot at
 // én gjest kjører opp Anthropic-kostnaden på den åpne (innloggingsfrie) chatten.
 const MAX_PER_MINUTE = 8;
 const MAX_PER_DAY = 120;
-const MAX_INPUT_CHARS = 2000;
 
 /**
  * AI-concierge for en delbar gjesteguide. Svarer gjesten KUN fra boligens fakta,
@@ -20,23 +19,16 @@ export async function POST(
   { params }: { params: Promise<{ token: string }> },
 ) {
   const { token } = await params;
-  const { messages } = (await request.json()) as {
-    messages: Anthropic.MessageParam[];
-  };
-  if (!Array.isArray(messages)) {
-    return Response.json({ error: "messages må være en liste" }, { status: 400 });
-  }
+  const payload = (await request.json()) as { messages: unknown };
 
-  // Avvis urimelig lange meldinger (billig DoS-vern + kostnadstak).
-  const lastUser = [...messages].reverse().find((m) => m.role === "user");
-  const lastText =
-    typeof lastUser?.content === "string" ? lastUser.content : "";
-  if (lastText.length > MAX_INPUT_CHARS) {
-    return Response.json(
-      { error: "Meldingen er for lang. Del den gjerne opp." },
-      { status: 413 },
-    );
+  // Input-vern: kap antall meldinger + samlet tekstlengde over ALLE meldinger
+  // som faktisk sendes (ikke bare siste), avvis ikke-tekst. Dette lukker
+  // omgåelsen der en stor tidligere melding slapp forbi lengdesjekken.
+  const guard = sanitizeChat(payload.messages);
+  if (!guard.ok) {
+    return Response.json({ error: guard.error }, { status: guard.status });
   }
+  const messages = guard.messages;
 
   const supabase = createAdminClient();
 
@@ -146,7 +138,7 @@ ${serviceLines || "- ingen registrert"}`;
     system: [
       { type: "text", text: system, cache_control: { type: "ephemeral" } },
     ],
-    messages: messages.slice(-12),
+    messages,
   });
 
   const encoder = new TextEncoder();

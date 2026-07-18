@@ -117,6 +117,7 @@ export async function choosePlan(formData: FormData): Promise<void> {
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       mode: "subscription",
+      payment_method_types: ["card"],
       // Tving norsk Checkout uansett nettleserspråk (ellers faller Stripe til auto).
       locale: "nb",
       line_items: [{ price: priceId, quantity: 1 }],

@@ -150,6 +150,7 @@ export async function purchaseExtraProperty(): Promise<void> {
   const session = await stripe.checkout.sessions.create({
     customer: customerId,
     mode: "subscription",
+    payment_method_types: ["card"],
     line_items: [{ price: extraPrice, quantity: 1 }],
     success_url: `${origin}/dashboard/settings?extra=1`,
     cancel_url: `${origin}/dashboard/settings`,
