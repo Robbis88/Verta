@@ -65,7 +65,7 @@ begin
     (pid,'Elsykkel (sommer)','Fatbike med god rekkevidde',250,150,2);
 
   -- Utstyrs-liste (AI forklarer bruken).
-  insert into public.house_equipment (property_id,name,category,location,brand,model,note) values
+  insert into public.house_equipment (property_id,name,category,location,brand,model,notes) values
     (pid,'TV i stuen','TV','Stue','Samsung','UE55TU8000','Fjernkontroll i skuffen. Strømming på HDMI 1.'),
     (pid,'Varmepumpe','Klima','Stue','Mitsubishi','MSZ-LN35','Fjernkontroll på veggen. «Heat» + 22°C.'),
     (pid,'Vaskemaskin','Vaskemaskin','Vaskerom','Bosch','WAU28T90','Program 3 = normal 40°C.'),
