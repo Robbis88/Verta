@@ -12,8 +12,8 @@ import { isAdmin } from "@/lib/admin";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getDashboardMetrics } from "@/lib/analytics";
-import { resolveAlert, markGuestLinkSent } from "./alert-actions";
-import { CopyButton } from "@/components/shared/copy-button";
+import { resolveAlert } from "./alert-actions";
+import { SendGuestLinkButton } from "@/components/dashboard/send-guest-link-button";
 import { PLANS, propertyLimit, type Plan } from "@/lib/constants";
 import { formatNok } from "@/lib/utils";
 import { KpiCard, MonthChart, PanelCard } from "@/components/dashboard/overview-ui";
@@ -286,21 +286,10 @@ export default async function DashboardPage() {
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
-                  <CopyButton
-                    label="Kopier melding"
-                    text={`Hei${b.guest_name ? " " + b.guest_name : ""}! Her er din digitale gjesteside for oppholdet — innsjekk, WiFi, dørkode og alt du trenger på ett sted:\n${siteUrl}/gjest/${b.guest_token}\n\nHi! Here's your digital guest page with check-in info, WiFi and everything for your stay:\n${siteUrl}/gjest/${b.guest_token}`}
+                  <SendGuestLinkButton
+                    bookingId={b.id}
+                    message={`Hei${b.guest_name ? " " + b.guest_name : ""}! Her er din digitale gjesteside for oppholdet — innsjekk, WiFi, dørkode og alt du trenger på ett sted:\n${siteUrl}/gjest/${b.guest_token}\n\nHi! Here's your digital guest page with check-in info, WiFi and everything for your stay:\n${siteUrl}/gjest/${b.guest_token}`}
                   />
-                  <form action={markGuestLinkSent}>
-                    <input type="hidden" name="id" value={b.id} />
-                    <Button
-                      type="submit"
-                      variant="ghost"
-                      size="sm"
-                      className="shrink-0 text-emerald-700 hover:text-emerald-800"
-                    >
-                      Marker som sendt ✓
-                    </Button>
-                  </form>
                 </div>
               </li>
             ))}
