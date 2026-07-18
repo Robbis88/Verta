@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 
 import { requireUser, getCurrentProfile } from "@/lib/auth";
 import { isAdmin } from "@/lib/admin";
@@ -30,6 +31,9 @@ export async function resolveAlert(formData: FormData): Promise<void> {
   }
 
   revalidatePath("/dashboard");
+  // redirect tvinger en fersk render — revalidatePath alene oppdaterer ikke
+  // router-cachen for den siden vi allerede står på.
+  redirect("/dashboard");
 }
 
 /**
@@ -51,4 +55,5 @@ export async function markGuestLinkSent(formData: FormData): Promise<void> {
     .eq("id", id);
 
   revalidatePath("/dashboard");
+  redirect("/dashboard");
 }
