@@ -14,6 +14,8 @@ import { formatNok } from "@/lib/utils";
 import { getTravelGuide } from "@/lib/listing";
 import { Button } from "@/components/ui/button";
 import { GuestCancel } from "@/components/booking/guest-cancel";
+import { GuideChat } from "@/components/guide/guide-chat";
+import { Sparkles } from "lucide-react";
 import {
   cancelBookingAsGuest,
   payDeposit,
@@ -52,6 +54,8 @@ type GuestProperty = {
   travel_guide: string | null;
   late_checkout_price: number | null;
   early_checkin_price: number | null;
+  guide_token: string | null;
+  check_in_time: string | null;
 };
 
 async function getStay(token: string) {
@@ -69,7 +73,7 @@ async function getStay(token: string) {
   const { data: property } = await supabase
     .from("properties")
     .select(
-      "id,name,address,access_info,wifi_name,wifi_password,house_rules,checkout_info,travel_guide,late_checkout_price,early_checkin_price",
+      "id,name,address,access_info,wifi_name,wifi_password,house_rules,checkout_info,travel_guide,late_checkout_price,early_checkin_price,guide_token,check_in_time",
     )
     .eq("id", b.property_id)
     .single();
@@ -136,6 +140,17 @@ export default async function GuestPage({
   const todayStr = new Date().toISOString().slice(0, 10);
   const stayOver = booking.check_out <= todayStr;
   const beforeCheckIn = todayStr < booking.check_in;
+
+  // Dørkode sladdes utenfor oppholdet: vises fra 30 min før innsjekk (innsjekks-
+  // tid, standard 16:00) til slutten av utsjekksdagen. Ellers «••••».
+  const [ciH, ciM] = (property.check_in_time ?? "16:00").split(":").map(Number);
+  const revealFrom =
+    new Date(`${booking.check_in}T00:00:00Z`).getTime() +
+    ((ciH || 16) * 60 + (ciM || 0)) * 60_000 -
+    30 * 60_000;
+  const revealTo = new Date(`${booking.check_out}T23:59:59Z`).getTime();
+  const nowMs = new Date().getTime();
+  const accessVisible = nowMs >= revealFrom && nowMs <= revealTo;
 
   // Sen utsjekk / tidlig innsjekk som betalt tillegg — kun når eier tilbyr det,
   // kalenderen er ledig, og det ikke alt er kjøpt / tidsvinduet ikke er forbi.
@@ -354,20 +369,33 @@ export default async function GuestPage({
 
         {accessText && (
           <Section title="Slik kommer du inn">
-            {booking.access_code ? (
-              <>
-                <p className="text-3xl font-bold tracking-[0.3em] text-navy">
-                  {booking.access_code}
-                </p>
-                <p className="mt-1 text-sm text-ink">
-                  Tast koden på smartlåsen. Den virker kun i løpet av oppholdet.
-                </p>
-              </>
-            ) : (
-              <p className="whitespace-pre-line text-sm leading-relaxed text-ink">
-                {accessText}
+            {property.access_info && (
+              <p className="mb-3 whitespace-pre-line text-sm leading-relaxed text-ink">
+                {property.access_info}
               </p>
             )}
+            {booking.access_code &&
+              (accessVisible ? (
+                <>
+                  <p className="text-3xl font-bold tracking-[0.3em] text-navy">
+                    {booking.access_code}
+                  </p>
+                  <p className="mt-1 text-sm text-ink">
+                    Tast koden på smartlåsen. Den virker kun i løpet av
+                    oppholdet.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-3xl font-bold tracking-[0.3em] text-ink/30 select-none">
+                    ••••
+                  </p>
+                  <p className="mt-1 text-sm text-ink/60">
+                    Dørkoden vises her fra 30 minutter før innsjekk, og er synlig
+                    ut oppholdet.
+                  </p>
+                </>
+              ))}
           </Section>
         )}
 
@@ -407,6 +435,19 @@ export default async function GuestPage({
               Generert av AI som inspirasjon — dobbeltsjekk gjerne åpningstider
               og detaljer.
             </p>
+          </Section>
+        )}
+
+        {property.guide_token && (
+          <Section title="Spør om alt">
+            <div className="mb-3 flex items-start gap-2 text-sm text-ink">
+              <Sparkles className="mt-0.5 size-4 shrink-0 text-gold" />
+              <p>
+                Lurer du på noe om hytta eller området? Spør assistenten — den
+                svarer på ditt språk, døgnet rundt.
+              </p>
+            </div>
+            <GuideChat token={property.guide_token} />
           </Section>
         )}
 
