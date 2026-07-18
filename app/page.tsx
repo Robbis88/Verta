@@ -8,6 +8,7 @@ import { ProductScreens } from "@/components/landing/ProductScreens";
 import { Insights } from "@/components/landing/Insights";
 import { ExploreStays } from "@/components/landing/ExploreStays";
 import { Integrations } from "@/components/landing/Integrations";
+import { ControlShowcase } from "@/components/landing/ControlShowcase";
 import { Testimonials } from "@/components/landing/Testimonials";
 import { PricingTable } from "@/components/landing/PricingTable";
 import { Faq } from "@/components/landing/Faq";
@@ -53,24 +54,10 @@ export default function Home() {
       />
 
       <Integrations />
+      <ControlShowcase />
       <Testimonials />
       <PricingTable />
       <Faq />
-
-      <VideoSection
-        src="/videos/hero-4.mp4"
-        eyebrow="For eiere og forvaltere"
-        title="Full kontroll for eiere og forvaltere"
-        text="Eierportal, rapporter, inntekter, vedlikehold og utbetalinger — alltid oppdatert."
-        bullets={[
-          "Eierportal",
-          "Rapporter",
-          "Inntekter",
-          "Vedlikehold",
-          "Utbetalinger",
-        ]}
-        tone="light"
-      />
 
       <FinalCta />
       <Footer />
