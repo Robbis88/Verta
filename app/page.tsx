@@ -4,14 +4,9 @@ import { PainPoints } from "@/components/landing/PainPoints";
 import { BeforeAfter } from "@/components/landing/BeforeAfter";
 import { MoneyStory } from "@/components/landing/MoneyStory";
 import { HowItWorks } from "@/components/landing/HowItWorks";
-import { FeatureGrid } from "@/components/landing/FeatureGrid";
-import { VideoSection } from "@/components/landing/VideoSection";
-import { ProductScreens } from "@/components/landing/ProductScreens";
-import { Insights } from "@/components/landing/Insights";
-import { ExploreStays } from "@/components/landing/ExploreStays";
 import { SelfRunning } from "@/components/landing/SelfRunning";
-import { Integrations } from "@/components/landing/Integrations";
 import { ControlShowcase } from "@/components/landing/ControlShowcase";
+import { Integrations } from "@/components/landing/Integrations";
 import { Testimonials } from "@/components/landing/Testimonials";
 import { PricingTable } from "@/components/landing/PricingTable";
 import { Faq } from "@/components/landing/Faq";
@@ -19,6 +14,11 @@ import { FinalCta } from "@/components/landing/FinalCta";
 import { Footer } from "@/components/landing/Footer";
 import { ChatWidget } from "@/components/chat/chat-widget";
 
+/**
+ * Landingssiden — historiedrevet CRO-flyt (se LANDING.md):
+ * Løfte → Fienden → Vendepunkt → Penger → Slik funker det → Går av seg selv →
+ * Full kontroll → Bevis → Pris → FAQ → Siste CTA.
+ */
 export default function Home() {
   return (
     <>
@@ -28,29 +28,12 @@ export default function Home() {
       <BeforeAfter />
       <MoneyStory />
       <HowItWorks />
-      <FeatureGrid />
-
-      <VideoSection
-        src="/videos/hero-2.mp4"
-        eyebrow="Problemet vi løser"
-        title="Fra kaos til kontroll"
-        text="Airbnb, Booking.com, regneark, SMS og e-post — samlet i ett dashboard."
-        bullets={["Airbnb", "Booking.com", "Excel", "SMS", "E-post"]}
-        tone="dark"
-      />
-
-      <ProductScreens />
-      <Insights />
-      <ExploreStays />
-
       <SelfRunning />
-
-      <Integrations />
       <ControlShowcase />
+      <Integrations />
       <Testimonials />
       <PricingTable />
       <Faq />
-
       <FinalCta />
       <Footer />
       <ChatWidget context="landing" />
