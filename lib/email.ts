@@ -643,8 +643,8 @@ export async function sendStayExtraPaid(opts: {
     <p style="font-size:15px;line-height:1.6;margin:0;">
       ${opts.guestName} har kjøpt <strong>${opts.label.toLowerCase()}</strong> på
       <strong>${opts.propertyName}</strong> for
-      <strong>${formatNok(opts.amount)}</strong> (går rett til deg). Husk å ta
-      hensyn til det ved rengjøring/klargjøring.
+      <strong>${formatNok(opts.amount)}</strong> (utbetales til deg minus 10 %
+      formidlingsgebyr). Husk å ta hensyn til det ved rengjøring/klargjøring.
     </p>`;
   return send({
     to: opts.to,

@@ -7,6 +7,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { cancelAndRefund } from "@/lib/booking";
 import { refundFractionForCheckIn } from "@/lib/cancellation";
 import { stripe, stripeEnabled } from "@/lib/stripe";
+import { marketFeeOf } from "@/lib/constants";
 
 export type GuestCancelResult = { ok: boolean; message: string };
 
@@ -265,6 +266,9 @@ export async function payStayExtra(
   }
 
   const label = kind === "late_checkout" ? "Sen utsjekk" : "Tidlig innsjekk";
+  // Ekstra inntjening (ikke selve leien) → destination charge: Verta beholder
+  // 10 % (minst 3 kr), resten til eierens konto. Samme modell som utstyrsleie.
+  const fee = marketFeeOf(price);
   const origin = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
   const session = await stripe.checkout.sessions.create(
     {
@@ -282,6 +286,8 @@ export async function payStayExtra(
         },
       ],
       payment_intent_data: {
+        application_fee_amount: Math.round(fee * 100),
+        transfer_data: { destination: owner.stripe_connect_id },
         metadata: { booking_id: booking!.id, kind: "stay_extra", extra_kind: kind },
       },
       customer_email: booking!.guest_email || undefined,
@@ -289,10 +295,7 @@ export async function payStayExtra(
       success_url: `${origin}/gjest/${token}?ekstra=1`,
       cancel_url: `${origin}/gjest/${token}`,
     },
-    {
-      idempotencyKey: `stayextra-${kind}-${booking!.id}`,
-      stripeAccount: owner.stripe_connect_id,
-    },
+    { idempotencyKey: `stayextra-${kind}-${booking!.id}` },
   );
 
   redirect(session.url!);
