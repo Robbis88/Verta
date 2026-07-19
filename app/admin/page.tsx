@@ -30,6 +30,12 @@ export default async function AdminPage() {
         </div>
         <div className="flex items-center gap-4">
           <Link
+            href="/admin/inntekt"
+            className="text-sm text-gold-light hover:text-gold"
+          >
+            Inntekt
+          </Link>
+          <Link
             href="/admin/kanaler"
             className="text-sm text-gold-light hover:text-gold"
           >
