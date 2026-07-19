@@ -5,11 +5,32 @@ import { Send } from "lucide-react";
 
 type Msg = { role: "user" | "assistant"; content: string };
 
+type ChatLabels = {
+  empty: string;
+  placeholder: string;
+  rateLimit: string;
+  error: string;
+};
+
+const DEFAULT_LABELS: ChatLabels = {
+  empty:
+    "Spør om hva som helst — WiFi, hvordan ting funker, tips i området. Svar kommer på ditt språk.",
+  placeholder: "Skriv et spørsmål…",
+  rateLimit: "For mange meldinger akkurat nå. Prøv igjen om litt.",
+  error: "Beklager, jeg fikk ikke svart nå. Prøv «Kontakt verten» under.",
+};
+
 /**
  * AI-concierge for gjesteguiden. Streamer svar fra /api/guide/[token]/chat,
- * på gjestens eget språk.
+ * på gjestens eget språk. UI-tekstene kan oversettes via `labels`.
  */
-export function GuideChat({ token }: { token: string }) {
+export function GuideChat({
+  token,
+  labels = DEFAULT_LABELS,
+}: {
+  token: string;
+  labels?: ChatLabels;
+}) {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
@@ -41,9 +62,7 @@ export function GuideChat({ token }: { token: string }) {
           const copy = [...m];
           copy[copy.length - 1] = {
             role: "assistant",
-            content:
-              data?.error ??
-              "For mange meldinger akkurat nå. Prøv igjen om litt.",
+            content: data?.error ?? labels.rateLimit,
           };
           return copy;
         });
@@ -70,8 +89,7 @@ export function GuideChat({ token }: { token: string }) {
         const copy = [...m];
         copy[copy.length - 1] = {
           role: "assistant",
-          content:
-            "Beklager, jeg fikk ikke svart nå. Prøv «Kontakt verten» under.",
+          content: labels.error,
         };
         return copy;
       });
@@ -86,10 +104,7 @@ export function GuideChat({ token }: { token: string }) {
         className="flex max-h-80 min-h-40 flex-col gap-3 overflow-y-auto p-4"
       >
         {messages.length === 0 ? (
-          <p className="text-sm text-ink/50">
-            Spør om hva som helst — WiFi, hvordan ting funker, tips i området.
-            Svar kommer på ditt språk.
-          </p>
+          <p className="text-sm text-ink/50">{labels.empty}</p>
         ) : (
           messages.map((m, i) => (
             <div
@@ -115,7 +130,7 @@ export function GuideChat({ token }: { token: string }) {
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Skriv et spørsmål…"
+          placeholder={labels.placeholder}
           className="h-10 flex-1 bg-transparent px-2 text-sm focus:outline-none"
         />
         <button
