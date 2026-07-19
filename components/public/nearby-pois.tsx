@@ -23,7 +23,13 @@ function formatDistance(m: number): string {
 }
 
 /** Nærliggende steder gruppert etter kategori, med ikon og avstand. */
-export function NearbyPois({ pois }: { pois: Poi[] }) {
+export function NearbyPois({
+  pois,
+  catLabels,
+}: {
+  pois: Poi[];
+  catLabels?: Record<string, string>;
+}) {
   if (pois.length === 0) return null;
 
   const groups = CAT_ORDER.map((cat) => ({
@@ -39,7 +45,7 @@ export function NearbyPois({ pois }: { pois: Poi[] }) {
           <div key={cat}>
             <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-navy">
               <Icon className="h-4 w-4 text-gold" />
-              {cat}
+              {catLabels?.[cat] ?? cat}
             </div>
             <ul className="flex flex-col gap-1.5 text-sm">
               {items.map((p, i) => (

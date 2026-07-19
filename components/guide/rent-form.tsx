@@ -12,16 +12,39 @@ type Item = {
   priceExtraDay: number | null;
 };
 
+type RentLabels = {
+  days: string;
+  quantity: string;
+  name: string;
+  contact: string;
+  total: string;
+  submit: string;
+  currencySuffix: string;
+};
+
+const DEFAULT_LABELS: RentLabels = {
+  days: "Antall døgn",
+  quantity: "Antall stk",
+  name: "Ditt navn",
+  contact: "E-post eller telefon (valgfritt)",
+  total: "Totalt:",
+  submit: "Lei og betal",
+  currencySuffix: "",
+};
+
 /**
  * Gjestens leieskjema med live totalpris. Første døgn = price, hvert ekstra
  * døgn = priceExtraDay (eller price hvis ikke satt), ganget med antall stk.
+ * UI-tekstene kan oversettes via `labels`.
  */
 export function RentForm({
   item,
   action,
+  labels = DEFAULT_LABELS,
 }: {
   item: Item;
   action: (formData: FormData) => void;
+  labels?: RentLabels;
 }) {
   const [days, setDays] = useState(1);
   const [quantity, setQuantity] = useState(1);
@@ -35,7 +58,7 @@ export function RentForm({
       <input type="hidden" name="item_id" value={item.id} />
       <div className="flex gap-2">
         <label className="flex flex-1 flex-col gap-1 text-xs text-ink/60">
-          Antall døgn
+          {labels.days}
           <input
             name="days"
             type="number"
@@ -46,7 +69,7 @@ export function RentForm({
           />
         </label>
         <label className="flex flex-1 flex-col gap-1 text-xs text-ink/60">
-          Antall stk
+          {labels.quantity}
           <input
             name="quantity"
             type="number"
@@ -62,20 +85,21 @@ export function RentForm({
       <input
         name="guest_name"
         required
-        placeholder="Ditt navn"
+        placeholder={labels.name}
         className="h-9 rounded-lg border border-hairline bg-white px-2 text-sm shadow-sm"
       />
       <input
         name="guest_contact"
-        placeholder="E-post eller telefon (valgfritt)"
+        placeholder={labels.contact}
         className="h-9 rounded-lg border border-hairline bg-white px-2 text-sm shadow-sm"
       />
       <div className="flex items-center justify-between pt-1">
         <span className="text-sm font-semibold text-navy">
-          Totalt: {formatNok(total)}
+          {labels.total} {formatNok(total)}
+          {labels.currencySuffix}
         </span>
         <Button type="submit" size="sm">
-          Lei og betal
+          {labels.submit}
         </Button>
       </div>
     </form>

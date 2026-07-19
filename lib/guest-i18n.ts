@@ -1,8 +1,11 @@
 /**
- * Oversettelse av de FASTE etikettene på gjestesiden (norsk, engelsk, tysk).
- * Eierens fritekst (husregler, tilkomst osv.) oversettes separat med AI i
- * lib/translate.ts. AI-konsierjen svarer allerede på gjestens eget språk.
+ * Oversettelse av de FASTE etikettene på gjeste- og guide-siden (norsk,
+ * engelsk, tysk). Eierens fritekst (husregler, tilkomst osv.) oversettes
+ * separat med AI i lib/translate.ts. AI-konsierjen svarer allerede på gjestens
+ * eget språk.
  */
+
+import { formatNok } from "@/lib/utils";
 
 export const GUEST_LANGS = ["nb", "en", "de"] as const;
 export type GuestLang = (typeof GUEST_LANGS)[number];
@@ -350,6 +353,166 @@ const S: Record<string, Record<GuestLang, string>> = {
     en: "Sorry, I couldn't answer just now. Try “Contact host” below.",
     de: "Entschuldigung, ich konnte gerade nicht antworten. Versuchen Sie unten „Gastgeber kontaktieren“.",
   },
+
+  // === Guide-siden ===
+  guideEyebrow: { nb: "Gjesteguide", en: "Guest guide", de: "Gästeführer" },
+  guideAsk: {
+    nb: "Spør om hva som helst",
+    en: "Ask anything",
+    de: "Fragen Sie alles",
+  },
+  howItWorks: {
+    nb: "Slik funker det",
+    en: "How things work",
+    de: "So funktioniert's",
+  },
+  tipsArea: {
+    nb: "Tips i området",
+    en: "Tips nearby",
+    de: "Tipps in der Umgebung",
+  },
+  nearby: { nb: "I nærheten", en: "Nearby", de: "In der Nähe" },
+  services: { nb: "Tjenester", en: "Services", de: "Services" },
+  serviceSent: {
+    nb: "Takk! Forespørselen er sendt til verten. Du får svar så snart som mulig. ✅",
+    en: "Thanks! Your request has been sent to the host. You'll hear back as soon as possible. ✅",
+    de: "Danke! Ihre Anfrage wurde an den Gastgeber gesendet. Sie erhalten so schnell wie möglich eine Antwort. ✅",
+  },
+  serviceError: {
+    nb: "Kunne ikke sende forespørselen. Prøv igjen, eller bruk «Kontakt verten».",
+    en: "Couldn't send the request. Please try again, or use “Contact host”.",
+    de: "Anfrage konnte nicht gesendet werden. Bitte erneut versuchen oder „Gastgeber kontaktieren“.",
+  },
+  scheduledPrefix: { nb: "Fast:", en: "Scheduled:", de: "Fest:" },
+  requestBadge: { nb: "Be om", en: "Request", de: "Anfragen" },
+  yourName: { nb: "Ditt navn", en: "Your name", de: "Ihr Name" },
+  desiredDate: {
+    nb: "Ønsket dato/tid (valgfritt)",
+    en: "Preferred date/time (optional)",
+    de: "Wunschtermin (optional)",
+  },
+  contactOptional: {
+    nb: "E-post/telefon (valgfritt)",
+    en: "Email/phone (optional)",
+    de: "E-Mail/Telefon (optional)",
+  },
+  shortDesc: {
+    nb: "Kort beskrivelse (valgfritt)",
+    en: "Short description (optional)",
+    de: "Kurze Beschreibung (optional)",
+  },
+  sendRequest: {
+    nb: "Send forespørsel",
+    en: "Send request",
+    de: "Anfrage senden",
+  },
+  localDelivery: {
+    nb: "Lokalt & levering",
+    en: "Local & delivery",
+    de: "Lokal & Lieferung",
+  },
+  deliveryDisclaimer: {
+    nb: "Bestiller du levering (f.eks. matvarer), husk at varer kan bli satt igjen ved døren dersom du ikke er der ved leveringen — f.eks. ved forsinket fly, buss eller tog. Verten og Verta har ikke ansvar for varer som blir stående. Levering skjer på eget ansvar.",
+    en: "If you order delivery (e.g. groceries), note that items may be left at the door if you're not there at delivery — for example due to a delayed flight, bus or train. The host and Verta are not responsible for items left unattended. Delivery is at your own risk.",
+    de: "Wenn Sie eine Lieferung bestellen (z. B. Lebensmittel), beachten Sie, dass die Ware an der Tür abgestellt werden kann, falls Sie bei der Lieferung nicht da sind — etwa bei verspätetem Flug, Bus oder Zug. Gastgeber und Verta haften nicht für abgestellte Ware. Die Lieferung erfolgt auf eigenes Risiko.",
+  },
+  rentEquipment: {
+    nb: "Lei utstyr",
+    en: "Rent equipment",
+    de: "Ausrüstung mieten",
+  },
+  rentSuccess: {
+    nb: "Takk! Utstyret er leid. Verten er varslet. 🎉",
+    en: "Thanks! The equipment is rented. The host has been notified. 🎉",
+    de: "Danke! Die Ausrüstung ist gemietet. Der Gastgeber wurde benachrichtigt. 🎉",
+  },
+  rentError: {
+    nb: "Beklager, leien kunne ikke fullføres. Prøv igjen, eller kontakt verten.",
+    en: "Sorry, the rental couldn't be completed. Please try again, or contact the host.",
+    de: "Entschuldigung, die Miete konnte nicht abgeschlossen werden. Bitte erneut versuchen oder den Gastgeber kontaktieren.",
+  },
+  perNight: { nb: "/døgn", en: "/night", de: "/Nacht" },
+  perExtraDay: {
+    nb: "per ekstra døgn",
+    en: "per extra night",
+    de: "pro zusätzliche Nacht",
+  },
+  numDays: { nb: "Antall døgn", en: "Nights", de: "Nächte" },
+  numQty: { nb: "Antall stk", en: "Quantity", de: "Anzahl" },
+  rentContactOptional: {
+    nb: "E-post eller telefon (valgfritt)",
+    en: "Email or phone (optional)",
+    de: "E-Mail oder Telefon (optional)",
+  },
+  totalLabel: { nb: "Totalt:", en: "Total:", de: "Gesamt:" },
+  rentAndPay: { nb: "Lei og betal", en: "Rent and pay", de: "Mieten und zahlen" },
+  contactHostTitle: {
+    nb: "Kontakt verten",
+    en: "Contact host",
+    de: "Gastgeber kontaktieren",
+  },
+  contactSent: {
+    nb: "Meldingen er sendt til verten. Du får svar så snart som mulig. ✅",
+    en: "Your message has been sent to the host. You'll hear back as soon as possible. ✅",
+    de: "Ihre Nachricht wurde an den Gastgeber gesendet. Sie erhalten so schnell wie möglich eine Antwort. ✅",
+  },
+  contactPrompt: {
+    nb: "Får du ikke hjelp av assistenten over? Send verten en melding.",
+    en: "Not getting help from the assistant above? Send the host a message.",
+    de: "Der Assistent oben konnte nicht helfen? Senden Sie dem Gastgeber eine Nachricht.",
+  },
+  contactMsgPlaceholder: {
+    nb: "F.eks: Varmepumpen virker ikke selv om jeg har prøvd alt.",
+    en: "E.g.: The heat pump isn't working even though I've tried everything.",
+    de: "z. B.: Die Wärmepumpe funktioniert nicht, obwohl ich alles versucht habe.",
+  },
+  contactReplyPlaceholder: {
+    nb: "Din e-post eller telefon (så verten kan svare)",
+    en: "Your email or phone (so the host can reply)",
+    de: "Ihre E-Mail oder Telefon (damit der Gastgeber antworten kann)",
+  },
+  sendToHost: {
+    nb: "Send til verten",
+    en: "Send to host",
+    de: "An Gastgeber senden",
+  },
+  stayUpdated: {
+    nb: "Hold deg oppdatert",
+    en: "Stay updated",
+    de: "Bleiben Sie informiert",
+  },
+  newsletterThanks: {
+    nb: "Takk! Du er meldt på. Du kan melde deg av når som helst via lenken i e-posten. ✅",
+    en: "Thanks! You're subscribed. You can unsubscribe anytime via the link in the email. ✅",
+    de: "Danke! Sie sind angemeldet. Sie können sich jederzeit über den Link in der E-Mail abmelden. ✅",
+  },
+  newsletterPrompt: {
+    nb: "Få tips og tilbud fra Verta på e-post. Meld deg av når som helst.",
+    en: "Get tips and offers from Verta by email. Unsubscribe anytime.",
+    de: "Erhalten Sie Tipps und Angebote von Verta per E-Mail. Jederzeit abbestellbar.",
+  },
+  namePlaceholder: {
+    nb: "Navn (valgfritt)",
+    en: "Name (optional)",
+    de: "Name (optional)",
+  },
+  emailPlaceholder: {
+    nb: "Din e-post",
+    en: "Your email",
+    de: "Ihre E-Mail",
+  },
+  newsletterConsent: {
+    nb: "Ja, Verta kan sende meg nyhetsbrev på e-post. Jeg kan melde meg av når som helst.",
+    en: "Yes, Verta may send me newsletters by email. I can unsubscribe anytime.",
+    de: "Ja, Verta darf mir Newsletter per E-Mail senden. Ich kann mich jederzeit abmelden.",
+  },
+  subscribe: { nb: "Meld meg på", en: "Subscribe", de: "Anmelden" },
+
+  // POI-kategorier (nærliggende steder)
+  poiGrocery: { nb: "Dagligvare", en: "Groceries", de: "Lebensmittel" },
+  poiDining: { nb: "Servering", en: "Dining", de: "Gastronomie" },
+  poiCharging: { nb: "Lading", en: "Charging", de: "Laden" },
+  poiView: { nb: "Utsikt", en: "Views", de: "Aussicht" },
 };
 
 export type GuestT = (key: string, vars?: Record<string, string>) => string;
@@ -365,4 +528,18 @@ export function guestT(lang: GuestLang): GuestT {
     }
     return s;
   };
+}
+
+/**
+ * Beløp i norsk format (alltid NOK — det er valutaen kortet belastes i).
+ * For ikke-norske språk legges «(NOK)» til så «kr» ikke forvirrer.
+ */
+export function formatMoneyLang(amount: number, lang: GuestLang): string {
+  const s = formatNok(amount);
+  return lang === "nb" ? s : `${s} (NOK)`;
+}
+
+/** Bare valuta-suffikset («» for norsk, « (NOK)» ellers) — for live-beregning i klient. */
+export function nokSuffix(lang: GuestLang): string {
+  return lang === "nb" ? "" : " (NOK)";
 }

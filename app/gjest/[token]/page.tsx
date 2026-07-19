@@ -9,11 +9,11 @@ import {
   isPast,
   remainingDueDate,
 } from "@/lib/cancellation";
-import { formatNok } from "@/lib/utils";
 import { getTravelGuide } from "@/lib/listing";
 import {
   resolveGuestLang,
   guestT,
+  formatMoneyLang,
   GUEST_LOCALE,
   type GuestLang,
 } from "@/lib/guest-i18n";
@@ -154,6 +154,7 @@ export default async function GuestPage({
   const lang = await resolveLang(langParam);
   const locale = GUEST_LOCALE[lang];
   const t = guestT(lang);
+  const money = (n: number) => formatMoneyLang(n, lang);
   const date = (iso: string) => formatDate(iso, locale);
 
   const { booking, property, reviewed, lateCheckoutFree, earlyCheckinFree } =
@@ -248,13 +249,13 @@ export default async function GuestPage({
             <Row label={t("checkIn")} value={date(booking.check_in)} />
             <Row label={t("checkOut")} value={date(booking.check_out)} />
             {fullUpfront ? (
-              <Row label={t("toPayNow")} value={formatNok(deposit)} />
+              <Row label={t("toPayNow")} value={money(deposit)} />
             ) : (
               <>
-                <Row label={t("depositNow")} value={formatNok(deposit)} />
+                <Row label={t("depositNow")} value={money(deposit)} />
                 <Row
                   label={t("restBeforeCheckin")}
-                  value={formatNok(remaining)}
+                  value={money(remaining)}
                 />
               </>
             )}
@@ -268,14 +269,14 @@ export default async function GuestPage({
               <form action={payDeposit.bind(null, token)}>
                 <Button type="submit" size="lg">
                   {fullUpfront
-                    ? `${t("payAndLock")} ${formatNok(deposit)}`
-                    : `${t("payDeposit")} ${formatNok(deposit)}`}
+                    ? `${t("payAndLock")} ${money(deposit)}`
+                    : `${t("payDeposit")} ${money(deposit)}`}
                 </Button>
               </form>
               <p className="text-center text-xs text-ink/60">
                 {fullUpfront
                   ? t("payWithin24Full")
-                  : t("payWithin24Rest", { amount: formatNok(remaining) })}
+                  : t("payWithin24Rest", { amount: money(remaining) })}
               </p>
             </div>
           )}
@@ -316,7 +317,7 @@ export default async function GuestPage({
       ? t("refundFull")
       : fraction === 0.5
         ? t("refund50", {
-            amount: formatNok(Number(booking.amount_total ?? 0) * 0.5),
+            amount: money(Number(booking.amount_total ?? 0) * 0.5),
           })
         : t("refundNone");
   const policyLines = [
@@ -347,14 +348,14 @@ export default async function GuestPage({
           <Section title={t("remainingBalance")}>
             <p className="text-sm text-ink">
               {t("remainingInfo", {
-                amount: formatNok(Number(booking.remaining_amount ?? 0)),
+                amount: money(Number(booking.remaining_amount ?? 0)),
                 date: date(remainingDueDate(booking.check_in)),
               })}
             </p>
             <form action={payRemaining.bind(null, token)} className="mt-2">
               <Button type="submit">
                 {t("payRemaining")}{" "}
-                {formatNok(Number(booking.remaining_amount ?? 0))}
+                {money(Number(booking.remaining_amount ?? 0))}
               </Button>
             </form>
             <p className="mt-2 text-xs text-ink/60">{t("remainingPolicy")}</p>
@@ -373,7 +374,7 @@ export default async function GuestPage({
                 <span className="text-sm text-ink">{t("lateCheckout")}</span>
                 <form action={payStayExtra.bind(null, token, "late_checkout")}>
                   <Button type="submit" size="sm">
-                    {t("order")} {formatNok(Number(property.late_checkout_price))}
+                    {t("order")} {money(Number(property.late_checkout_price))}
                   </Button>
                 </form>
               </div>
@@ -385,7 +386,7 @@ export default async function GuestPage({
                 <span className="text-sm text-ink">{t("earlyCheckin")}</span>
                 <form action={payStayExtra.bind(null, token, "early_checkin")}>
                   <Button type="submit" size="sm">
-                    {t("order")} {formatNok(Number(property.early_checkin_price))}
+                    {t("order")} {money(Number(property.early_checkin_price))}
                   </Button>
                 </form>
               </div>
