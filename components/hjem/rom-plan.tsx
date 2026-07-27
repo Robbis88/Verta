@@ -27,6 +27,20 @@ const I_PLANEN: SoneId[] = [
 ];
 const I_SKUFFEN: SoneId[] = ["nokler", "historikk", "folk", "skader"];
 
+/** Skuffer som har en større side bak seg — vises som et fremhevet kort øverst. */
+const UTVEI: Partial<Record<SoneId, { href: string; tittel: string; hva: string }>> = {
+  historikk: {
+    href: "/hjem/historie",
+    tittel: "Les hele historien →",
+    hva: "Alt huset har vært gjennom, år for år — klar til å skrives ut og gis til en kjøper.",
+  },
+  folk: {
+    href: "/hjem/folk",
+    tittel: "Se hele besetningen →",
+    hva: "Alle som passer huset, med hva de har på seg nå og ett trykk for å nå dem.",
+  },
+};
+
 export function RomPlan({
   boligNavn,
   boligAntall,
@@ -173,6 +187,8 @@ function Rommet({
 }
 
 function SoneArk({ sone, onLukk }: { sone: Sone; onLukk: () => void }) {
+  const utvei = UTVEI[sone.id];
+
   useEffect(() => {
     const esc = (e: KeyboardEvent) => {
       if (e.key === "Escape") onLukk();
@@ -204,13 +220,10 @@ function SoneArk({ sone, onLukk }: { sone: Sone; onLukk: () => void }) {
           </button>
         </header>
 
-        {sone.id === "historikk" && (
-          <Link href="/hjem/historie" className="vh-ark-utvei">
-            <span className="vh-ark-utvei-tittel">Les hele historien →</span>
-            <span className="vh-ark-utvei-hva">
-              Alt huset har vært gjennom, år for år — klar til å skrives ut og gis
-              til en kjøper.
-            </span>
+        {utvei && (
+          <Link href={utvei.href} className="vh-ark-utvei">
+            <span className="vh-ark-utvei-tittel">{utvei.tittel}</span>
+            <span className="vh-ark-utvei-hva">{utvei.hva}</span>
           </Link>
         )}
 

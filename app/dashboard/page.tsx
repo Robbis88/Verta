@@ -1,11 +1,5 @@
 import Link from "next/link";
-import {
-  Wallet,
-  Percent,
-  CalendarClock,
-  TrendingUp,
-  Sparkles,
-} from "lucide-react";
+import { Sparkles } from "lucide-react";
 
 import { getCurrentProfile } from "@/lib/auth";
 import { isAdmin } from "@/lib/admin";
@@ -16,7 +10,7 @@ import { resolveAlert } from "./alert-actions";
 import { SendGuestLinkButton } from "@/components/dashboard/send-guest-link-button";
 import { PLANS, propertyLimit, type Plan } from "@/lib/constants";
 import { formatNok } from "@/lib/utils";
-import { KpiCard, MonthChart, PanelCard } from "@/components/dashboard/overview-ui";
+import { MonthChart, PanelCard, TallRad } from "@/components/dashboard/overview-ui";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -171,31 +165,32 @@ export default async function DashboardPage() {
         </span>
       </div>
 
-      {criticalAlerts.length > 0 && (
-        <div className="rounded-xl border-2 border-red-600 bg-red-100 p-4">
-          <div className="mb-3 flex items-center gap-2">
-            <span className="inline-flex size-2.5 animate-blink rounded-full bg-red-700" />
-            <h2 className="text-sm font-bold text-red-800">
-              {criticalAlerts.length} kritisk
-              {criticalAlerts.length === 1 ? "" : "e"} varsel
-              {criticalAlerts.length === 1 ? "" : "er"} — betaling/refusjon
-            </h2>
-          </div>
-          <ul className="flex flex-col gap-2">
+      {(criticalAlerts.length > 0 ||
+        requests.length > 0 ||
+        unsentLinks.length > 0) && (
+        <section className="rounded-2xl border border-hairline bg-white p-5 shadow-[0_8px_30px_rgba(8,27,51,0.06)]">
+          <h2 className="text-sm font-semibold text-navy">Trenger deg</h2>
+          <p className="mt-0.5 text-xs text-ink/50">
+            Alt som venter, samlet. Resten av siden er bare tall.
+          </p>
+          <ul className="mt-3 flex flex-col divide-y divide-hairline">
             {criticalAlerts.map((a) => (
               <li
                 key={a.id}
-                className="flex items-center justify-between gap-2 rounded-lg bg-white px-3 py-2 shadow-sm"
+                className="flex items-center justify-between gap-3 py-3"
               >
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-navy">
-                    {a.title}
-                  </p>
-                  <p className="text-xs text-ink/60">
-                    {a.kind === "refund_failed"
-                      ? "Refusjon feilet — gjesten er ikke tilbakebetalt"
-                      : "Betaling mottatt uten match — sjekk Stripe/Connect"}
-                  </p>
+                <div className="flex min-w-0 items-start gap-3">
+                  <span className="mt-1.5 size-2 shrink-0 rounded-full bg-red-600" />
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-navy">
+                      {a.title}
+                    </p>
+                    <p className="text-xs text-ink/60">
+                      {a.kind === "refund_failed"
+                        ? "Refusjon feilet — gjesten er ikke tilbakebetalt"
+                        : "Betaling mottatt uten match — sjekk Stripe/Connect"}
+                    </p>
+                  </div>
                 </div>
                 <form action={resolveAlert}>
                   <input type="hidden" name="id" value={a.id} />
@@ -203,98 +198,78 @@ export default async function DashboardPage() {
                     type="submit"
                     variant="ghost"
                     size="sm"
-                    className="shrink-0 text-red-700 hover:text-red-800"
+                    className="shrink-0 text-ink/60 hover:text-navy"
                   >
-                    Marker som løst
+                    Marker løst
                   </Button>
                 </form>
               </li>
             ))}
-          </ul>
-        </div>
-      )}
 
-      {requests.length > 0 && (
-        <div className="rounded-xl border-2 border-red-500 bg-red-50 p-4">
-          <div className="mb-3 flex items-center gap-2">
-            <span className="inline-flex size-2.5 animate-blink rounded-full bg-red-600" />
-            <h2 className="text-sm font-bold text-red-700">
-              {requests.length}{" "}
-              {requests.length === 1
-                ? "forespørsel venter på svar"
-                : "forespørsler venter på svar"}
-            </h2>
-          </div>
-          <ul className="flex flex-col gap-2">
             {requests.map((r) => (
-              <li key={r.id}>
-                <Link
-                  href={`/dashboard/properties/${r.property_id}`}
-                  className="flex items-center justify-between gap-2 rounded-lg bg-white px-3 py-2 shadow-sm transition hover:bg-red-100/60"
-                >
+              <li
+                key={r.id}
+                className="flex items-center justify-between gap-3 py-3"
+              >
+                <div className="flex min-w-0 items-start gap-3">
+                  <span className="mt-1.5 size-2 shrink-0 rounded-full bg-gold" />
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium text-navy">
-                      {r.guest_name}
+                      {r.guest_name} har spurt om å få bo hos deg
                     </p>
                     <p className="truncate text-xs text-ink/60">
-                      {propName.get(r.property_id) ?? ""}
+                      {propName.get(r.property_id) ?? ""} ·{" "}
+                      {formatRange(r.check_in, r.check_out)}
                     </p>
                   </div>
-                  <div className="flex shrink-0 items-center gap-3">
-                    <span className="text-xs text-ink/70">
-                      {formatRange(r.check_in, r.check_out)}
-                    </span>
-                    <span className="rounded-full bg-red-600 px-2.5 py-1 text-[10px] font-semibold text-white">
-                      Svar nå
-                    </span>
-                  </div>
+                </div>
+                <Link
+                  href={`/hjem/opphold/${r.id}`}
+                  className="shrink-0 text-xs font-medium text-gold hover:underline"
+                >
+                  Svar →
                 </Link>
               </li>
             ))}
-          </ul>
-        </div>
-      )}
 
-      {unsentLinks.length > 0 && (
-        <div className="rounded-xl border-2 border-gold bg-gold/10 p-4">
-          <div className="mb-1 flex items-center gap-2">
-            <Sparkles className="size-4 text-gold" />
-            <h2 className="text-sm font-bold text-navy">
-              {unsentLinks.length}{" "}
-              {unsentLinks.length === 1 ? "booking mangler" : "bookinger mangler"}{" "}
-              gjestelenke
-            </h2>
-          </div>
-          <p className="mb-3 text-xs text-ink/60">
-            Send oppholdslenken til gjesten (innsjekk, WiFi, dørkode og tillegg).
-            Kopier og lim inn i meldingen — også til Airbnb/Booking-gjester.
-          </p>
-          <ul className="flex flex-col gap-2">
             {unsentLinks.map((b) => (
               <li
                 key={b.id}
-                className="flex items-center justify-between gap-2 rounded-lg bg-white px-3 py-2 shadow-sm"
+                className="flex items-center justify-between gap-3 py-3"
               >
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-navy">
-                    {b.guest_name}
-                  </p>
-                  <p className="truncate text-xs text-ink/60">
-                    {propName.get(b.property_id) ?? ""} ·{" "}
-                    {SOURCE_LABELS[b.source] ?? b.source} ·{" "}
-                    {formatRange(b.check_in, b.check_out)}
-                  </p>
+                <div className="flex min-w-0 items-start gap-3">
+                  <span className="mt-1.5 size-2 shrink-0 rounded-full bg-ink/25" />
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-navy">
+                      {b.guest_name} har ikke fått gjestelenken
+                    </p>
+                    <p className="truncate text-xs text-ink/60">
+                      {propName.get(b.property_id) ?? ""} ·{" "}
+                      {SOURCE_LABELS[b.source] ?? b.source} ·{" "}
+                      {formatRange(b.check_in, b.check_out)}
+                    </p>
+                  </div>
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
                   <SendGuestLinkButton
                     bookingId={b.id}
-                    message={`Hei${b.guest_name ? " " + b.guest_name : ""}! Her er din digitale gjesteside for oppholdet — innsjekk, WiFi, dørkode og alt du trenger på ett sted:\n${siteUrl}/gjest/${b.guest_token}\n\nHi! Here's your digital guest page with check-in info, WiFi and everything for your stay:\n${siteUrl}/gjest/${b.guest_token}`}
+                    message={`Hei${b.guest_name ? " " + b.guest_name : ""}! Her er din digitale gjesteside for oppholdet — innsjekk, WiFi, dørkode og alt du trenger på ett sted:
+${siteUrl}/gjest/${b.guest_token}
+
+Hi! Here's your digital guest page with check-in info, WiFi and everything for your stay:
+${siteUrl}/gjest/${b.guest_token}`}
                   />
+                  <Link
+                    href={`/hjem/opphold/${b.id}`}
+                    className="text-xs font-medium text-gold hover:underline"
+                  >
+                    Åpne
+                  </Link>
                 </div>
               </li>
             ))}
           </ul>
-        </div>
+        </section>
       )}
 
       {m.propertyCount === 0 ? (
@@ -313,37 +288,41 @@ export default async function DashboardPage() {
         </Card>
       ) : (
         <>
-          {/* KPI-er — merkefarget, med trend */}
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <KpiCard
-              label="Inntekt mnd"
-              value={formatNok(monthRevenue)}
-              icon={Wallet}
-              trend={revTrend != null ? `${revTrend >= 0 ? "+" : ""}${revTrend} % mot forrige mnd` : undefined}
-              trendTone={revTrend != null && revTrend < 0 ? "down" : "up"}
-            />
-            <KpiCard
-              label="Beleggsgrad"
-              value={`${occThis} %`}
-              icon={Percent}
-              trend={occTrend != null ? `${occTrend >= 0 ? "+" : ""}${occTrend} pp mot forrige mnd` : undefined}
-              trendTone={occTrend != null && occTrend < 0 ? "down" : "up"}
-            />
-            <KpiCard
-              label="Kommende"
-              value={`${m.upcomingCount}`}
-              icon={CalendarClock}
-              trend="bookinger"
-              trendTone="muted"
-            />
-            <KpiCard
-              label="Inntekt i år"
-              value={formatNok(m.totalRevenue)}
-              icon={TrendingUp}
-              trend="hittil i år"
-              trendTone="muted"
-            />
-          </div>
+          {/* Tallene — én flate, ikke fire bokser */}
+          <TallRad
+            tall={[
+              {
+                label: "Inntekt mnd",
+                value: formatNok(monthRevenue),
+                trend:
+                  revTrend != null
+                    ? `${revTrend >= 0 ? "+" : ""}${revTrend} % mot forrige mnd`
+                    : undefined,
+                trendTone: revTrend != null && revTrend < 0 ? "down" : "up",
+              },
+              {
+                label: "Beleggsgrad",
+                value: `${occThis} %`,
+                trend:
+                  occTrend != null
+                    ? `${occTrend >= 0 ? "+" : ""}${occTrend} pp mot forrige mnd`
+                    : undefined,
+                trendTone: occTrend != null && occTrend < 0 ? "down" : "up",
+              },
+              {
+                label: "Kommende",
+                value: `${m.upcomingCount}`,
+                trend: "bookinger",
+                trendTone: "muted",
+              },
+              {
+                label: "Inntekt i år",
+                value: formatNok(m.totalRevenue),
+                trend: "hittil i år",
+                trendTone: "muted",
+              },
+            ]}
+          />
 
           {/* Inntektsgraf */}
           <PanelCard
@@ -377,10 +356,11 @@ export default async function DashboardPage() {
               ) : (
                 <ul className="flex flex-col gap-3">
                   {m.upcoming.map((b, i) => (
-                    <li
-                      key={i}
-                      className="flex items-center justify-between gap-2"
-                    >
+                    <li key={b.id ?? i}>
+                      <Link
+                        href={`/hjem/opphold/${b.id}`}
+                        className="-mx-2 flex items-center justify-between gap-2 rounded-lg px-2 py-1 transition hover:bg-cloud"
+                      >
                       <div className="min-w-0">
                         <p className="truncate text-sm font-medium text-navy">
                           {b.guestName}
@@ -396,7 +376,8 @@ export default async function DashboardPage() {
                         <span className="rounded-full bg-cloud px-2 py-0.5 text-[10px] font-medium text-navy">
                           {SOURCE_LABELS[b.source] ?? b.source}
                         </span>
-                      </div>
+                        </div>
+                      </Link>
                     </li>
                   ))}
                 </ul>

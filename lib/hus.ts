@@ -1375,3 +1375,227 @@ export async function loadOpphold(
     })),
   };
 }
+
+// ---------------------------------------------------------------------------
+// BESETNINGEN — menneskene som passer huset
+// ---------------------------------------------------------------------------
+
+export type Person = {
+  id: string;
+  navn: string;
+  /** «Vasker», «Rørlegger», «Co-host», «Brøyting» … */
+  rolle: string;
+  slag: "vasker" | "handverker" | "kontakt" | "cohost";
+  telefon: string | null;
+  epost: string | null;
+  /** Token-portal for vaskere og håndverkere (ingen innlogging). */
+  portal: string | null;
+  /** Hva de har på seg akkurat nå. */
+  oppgaver: number;
+  /** Ventende invitasjon (co-host som ikke har takket ja). */
+  venter: boolean;
+};
+
+export type Ledig = {
+  id: string;
+  slag: "vask" | "sak";
+  tittel: string;
+  nar: string | null;
+  bolig: string | null;
+};
+
+export type Besetning = {
+  folk: Person[];
+  /** Arbeid som ikke har fått noen ennå. */
+  ledig: Ledig[];
+  /** Vaskerne, til hurtigtildeling. */
+  vaskere: { id: string; navn: string }[];
+};
+
+/**
+ * Alle som passer huset, samlet ett sted: vaskere, håndverkere, faste kontakter
+ * og co-hosts — med hva de har på seg nå og ett trykk for å nå dem. Under ligger
+ * arbeidet som ennå ikke har fått noen.
+ *
+ * Kun lesing. Tildeling skjer via den eksisterende assignTask-handlingen.
+ */
+export async function loadBesetning(
+  supabase: SupabaseServer,
+): Promise<Besetning> {
+  const idag = isoDate(new Date());
+
+  async function trygg<T>(q: PromiseLike<{ data: unknown }>): Promise<T[]> {
+    try {
+      const { data } = await q;
+      return (data ?? []) as T[];
+    } catch {
+      return [];
+    }
+  }
+
+  const [vaskere, handverkere, kontakter, team, vaskOppgaver, saker, boliger] =
+    await Promise.all([
+      trygg<{
+        id: string;
+        name: string;
+        phone: string | null;
+        email: string | null;
+        access_token: string;
+      }>(
+        supabase
+          .from("cleaners")
+          .select("id,name,phone,email,access_token")
+          .order("name"),
+      ),
+      trygg<{
+        id: string;
+        name: string;
+        trade: string | null;
+        phone: string | null;
+        email: string | null;
+        access_token: string;
+      }>(
+        supabase
+          .from("contractors")
+          .select("id,name,trade,phone,email,access_token")
+          .order("name"),
+      ),
+      trygg<{
+        id: string;
+        name: string;
+        role: string | null;
+        phone: string | null;
+        email: string | null;
+      }>(
+        supabase
+          .from("property_contacts")
+          .select("id,name,role,phone,email")
+          .eq("active", true)
+          .order("created_at"),
+      ),
+      trygg<{ id: string; member_email: string; accepted_at: string | null }>(
+        supabase
+          .from("team_members")
+          .select("id,member_email,accepted_at")
+          .order("created_at"),
+      ),
+      trygg<{
+        id: string;
+        task_date: string;
+        status: string;
+        cleaner_id: string | null;
+        property_id: string;
+      }>(
+        supabase
+          .from("cleaning_tasks")
+          .select("id,task_date,status,cleaner_id,property_id")
+          .neq("status", "completed")
+          .gte("task_date", addDays(idag, -30))
+          .order("task_date"),
+      ),
+      trygg<{
+        id: string;
+        title: string;
+        status: string;
+        contractor_id: string | null;
+        property_id: string;
+      }>(
+        supabase
+          .from("maintenance_requests")
+          .select("id,title,status,contractor_id,property_id")
+          .in("status", ["open", "in_progress"])
+          .order("created_at", { ascending: false }),
+      ),
+      trygg<{ id: string; name: string }>(
+        supabase.from("properties").select("id,name"),
+      ),
+    ]);
+
+  const boligNavn = new Map(boliger.map((b) => [b.id, b.name]));
+
+  const tellVask = new Map<string, number>();
+  for (const t of vaskOppgaver) {
+    if (t.cleaner_id) tellVask.set(t.cleaner_id, (tellVask.get(t.cleaner_id) ?? 0) + 1);
+  }
+  const tellSak = new Map<string, number>();
+  for (const s of saker) {
+    if (s.contractor_id)
+      tellSak.set(s.contractor_id, (tellSak.get(s.contractor_id) ?? 0) + 1);
+  }
+
+  const folk: Person[] = [
+    ...vaskere.map((c) => ({
+      id: c.id,
+      navn: c.name,
+      rolle: "Vasker",
+      slag: "vasker" as const,
+      telefon: c.phone,
+      epost: c.email,
+      portal: `/vasker/${c.access_token}`,
+      oppgaver: tellVask.get(c.id) ?? 0,
+      venter: false,
+    })),
+    ...handverkere.map((c) => ({
+      id: c.id,
+      navn: c.name,
+      rolle: c.trade
+        ? c.trade.charAt(0).toUpperCase() + c.trade.slice(1)
+        : "Håndverker",
+      slag: "handverker" as const,
+      telefon: c.phone,
+      epost: c.email,
+      portal: `/handverker/${c.access_token}`,
+      oppgaver: tellSak.get(c.id) ?? 0,
+      venter: false,
+    })),
+    ...kontakter.map((c) => ({
+      id: c.id,
+      navn: c.name,
+      rolle: c.role ?? "Fast kontakt",
+      slag: "kontakt" as const,
+      telefon: c.phone,
+      epost: c.email,
+      portal: null,
+      oppgaver: 0,
+      venter: false,
+    })),
+    ...team.map((t) => ({
+      id: t.id,
+      navn: t.member_email.split("@")[0],
+      rolle: "Co-host",
+      slag: "cohost" as const,
+      telefon: null,
+      epost: t.member_email,
+      portal: null,
+      oppgaver: 0,
+      venter: !t.accepted_at,
+    })),
+  ];
+
+  const ledig: Ledig[] = [
+    ...vaskOppgaver
+      .filter((t) => !t.cleaner_id)
+      .map((t) => ({
+        id: t.id,
+        slag: "vask" as const,
+        tittel: "Vask",
+        nar: t.task_date,
+        bolig: boligNavn.get(t.property_id) ?? null,
+      })),
+    ...saker
+      .filter((s) => !s.contractor_id)
+      .map((s) => ({
+        id: s.id,
+        slag: "sak" as const,
+        tittel: s.title,
+        nar: null,
+        bolig: boligNavn.get(s.property_id) ?? null,
+      })),
+  ];
+
+  return {
+    folk,
+    ledig,
+    vaskere: vaskere.map((c) => ({ id: c.id, navn: c.name })),
+  };
+}

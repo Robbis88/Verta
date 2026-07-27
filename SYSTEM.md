@@ -89,7 +89,7 @@ ble tvert imot nåbare fra menyen for første gang.
 Den rolige inngangen ligger på **`/hjem`** (se §5b). Meny-grupper:
 
 ### Topp
-- **Oversikt** (`/dashboard`) — KPI-er (inntekt mnd, beleggsgrad, kommende, inntekt i år), inntektsgraf (12 mnd), kommende bookinger, oppgaver, bookinger per kilde. **Røde varsler øverst**: åpne bookingforespørsler (blinkende) og kritiske penge-hendelser (refusjons-svikt / foreldreløse betalinger).
+- **Oversikt** (`/dashboard`) — tallenes side. Øverst ÉN rolig «Trenger deg»-liste som samler kritiske penge-hendelser (refusjons-svikt / foreldreløse betalinger), åpne bookingforespørsler og usendte gjestelenker — hver med sin egen handling, og med lenke inn til `/hjem/opphold/[id]`. Erstattet tre skrikende bannere (rødt, blinkende) uten å fjerne noe. Deretter én rolig tallrad (`TallRad`: inntekt mnd, beleggsgrad, kommende, inntekt i år) i stedet for fire KPI-bokser, inntektsgraf (12 mnd), kommende bookinger (rader lenker til oppholdssiden), oppgaver og bookinger per kilde. `KpiCard` er uendret og brukes fortsatt av Utgifter, Skatt og Provisjon.
 - **Eiendommer** (`/dashboard/properties`, `[id]`, `new`) — hjertet i systemet (se §6).
 - **Eiendomsøkonomi** (`/dashboard/okonomi`) — verdi/lån/egenkapital/belåningsgrad/kontantstrøm, redigeres her; undersider: `inntekter`, `kostnader`, `eierskap` (medeiere + oppgjør), `historikk` (hendelseslogg), `bankrapport`.
 
@@ -145,6 +145,13 @@ Hele navigasjonen er fire ord:
   regnestykket i klartekst.
 - **`/hjem/ord`** — Vera i fullskjerm mot eksisterende `/api/chat` (`portal`).
 - **`/hjem/alt`** — hele modul-listen, gruppert og søkbar (`lib/nav-items.ts`).
+- **`/hjem/folk`** — besetningen (`loadBesetning`): vaskere, håndverkere, faste
+  kontakter og co-hosts som ansikter, med hva de har på seg nå og ett trykk for
+  å ringe/WhatsApp/e-post eller åpne token-portalen deres. Øverst står arbeidet
+  som ikke har fått noen — der tildeler du vask ved å **trykke på et ansikt**
+  (bevisst trykk, ikke dra-og-slipp: virker på telefon og med tastatur). Går
+  gjennom eksisterende `assignTask`, som nå tar valgfritt `next` for revalidering.
+  Nås fra Folk-skuffen i Rom.
 - **`/hjem/opphold/[id]`** — ett opphold som ÉN tråd (`loadOpphold`): gjesten,
   pengene (total, gebyr, depositum, restbeløp, tidlig innsjekk / sen utsjekk),
   tilkomsten (adgangskode + gjestelenke med kopier→bekreft-sendt), samtalen
