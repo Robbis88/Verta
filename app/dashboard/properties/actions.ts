@@ -803,3 +803,54 @@ export async function deleteProperty(formData: FormData): Promise<void> {
   revalidatePath("/dashboard/properties");
   redirect("/dashboard/properties");
 }
+
+/** Legger til en nøkkel i knippet (sql/064). */
+export async function addKey(formData: FormData): Promise<void> {
+  await requireUser();
+  const propertyId = String(formData.get("property_id") ?? "");
+  const label = String(formData.get("label") ?? "").trim();
+  if (!propertyId || !label) return;
+
+  const keyType = String(formData.get("key_type") ?? "fysisk");
+  const copies = Number(formData.get("copies") ?? 1);
+  const trimOrNull = (key: string) =>
+    String(formData.get(key) ?? "").trim() || null;
+
+  const supabase = await createClient();
+  await supabase.from("property_keys").insert({
+    property_id: propertyId,
+    label,
+    key_type: keyType,
+    copies: Number.isFinite(copies) && copies > 0 ? Math.floor(copies) : 1,
+    holder: trimOrNull("holder"),
+    notes: trimOrNull("notes"),
+  });
+  revalidatePath(`/dashboard/properties/${propertyId}`);
+}
+
+/**
+ * Oppdaterer hvem som har nøkkelen NÅ. Dette er den ene tingen som endrer seg
+ * ofte, så den har sitt eget lille skjema per nøkkel.
+ */
+export async function updateKeyHolder(formData: FormData): Promise<void> {
+  await requireUser();
+  const id = String(formData.get("id") ?? "");
+  const propertyId = String(formData.get("property_id") ?? "");
+  if (!id) return;
+  const holder = String(formData.get("holder") ?? "").trim() || null;
+
+  const supabase = await createClient();
+  await supabase.from("property_keys").update({ holder }).eq("id", id);
+  revalidatePath(`/dashboard/properties/${propertyId}`);
+}
+
+/** Fjerner en nøkkel fra knippet. */
+export async function deleteKey(formData: FormData): Promise<void> {
+  await requireUser();
+  const id = String(formData.get("id") ?? "");
+  const propertyId = String(formData.get("property_id") ?? "");
+  if (!id) return;
+  const supabase = await createClient();
+  await supabase.from("property_keys").delete().eq("id", id);
+  revalidatePath(`/dashboard/properties/${propertyId}`);
+}

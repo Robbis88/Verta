@@ -42,5 +42,5 @@ export async function acceptInvite(formData: FormData): Promise<void> {
     severity: "security",
   });
 
-  redirect("/dashboard");
+  redirect("/hjem");
 }

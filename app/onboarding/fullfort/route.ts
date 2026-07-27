@@ -17,7 +17,7 @@ export async function GET(request: Request) {
   const sessionId = url.searchParams.get("session_id");
 
   if (!stripe || !sessionId) {
-    return NextResponse.redirect(`${origin}/dashboard`);
+    return NextResponse.redirect(`${origin}/hjem`);
   }
 
   const user = await requireUser();
@@ -33,7 +33,7 @@ export async function GET(request: Request) {
 
   // Sesjonen må tilhøre den innloggede brukeren.
   if (session.metadata?.user_id !== user.id) {
-    return NextResponse.redirect(`${origin}/dashboard`);
+    return NextResponse.redirect(`${origin}/hjem`);
   }
 
   // Finn planen fra abonnementets price — kun hvis abonnementet er aktivt/trial.
@@ -53,7 +53,7 @@ export async function GET(request: Request) {
   if (plan) {
     const supabase = await createClient();
     await supabase.from("users").update({ plan }).eq("id", user.id);
-    return NextResponse.redirect(`${origin}/dashboard?welcome=1`);
+    return NextResponse.redirect(`${origin}/hjem`);
   }
 
   // Betaling ikke bekreftet (f.eks. avbrutt) — send tilbake til planvalg.

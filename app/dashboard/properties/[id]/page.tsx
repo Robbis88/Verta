@@ -22,6 +22,9 @@ import {
   refundRentalOrder,
   addContact,
   deleteContact,
+  addKey,
+  updateKeyHolder,
+  deleteKey,
   addLocalLink,
   deleteLocalLink,
   updateStayExtras,
@@ -68,6 +71,15 @@ type SmartLock = {
   status: string;
   device_id: string;
   provider: string;
+};
+
+const KEY_TYPE_LABELS: Record<string, string> = {
+  fysisk: "Fysisk nøkkel",
+  nokkelboks: "Nøkkelboks",
+  kort: "Kort",
+  brikke: "Brikke",
+  kode: "Kode",
+  annet: "Annet",
 };
 
 export default async function PropertyDetailPage({
@@ -206,6 +218,23 @@ export default async function PropertyDetailPage({
     phone: string | null;
     email: string | null;
     notes: string | null;
+  }[];
+
+  // Nøkkelknippet (sql/064). Tåler at migrasjonen ikke er kjørt ennå — da er
+  // lista tom og kortet forklarer hva som mangler.
+  const { data: keyData } = await supabase
+    .from("property_keys")
+    .select("id,label,key_type,copies,holder,notes,updated_at")
+    .eq("property_id", id)
+    .order("created_at");
+  const keys = (keyData ?? []) as {
+    id: string;
+    label: string;
+    key_type: string;
+    copies: number;
+    holder: string | null;
+    notes: string | null;
+    updated_at: string;
   }[];
 
   const { data: linkData } = await supabase
@@ -826,6 +855,129 @@ export default async function PropertyDetailPage({
             <Button type="submit" size="sm" className="self-start">
               Legg til tjeneste
             </Button>
+          </form>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Nøkkelknippet</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4 text-sm">
+          <p className="text-muted-foreground">
+            Hvem har hvilken nøkkel akkurat nå? Nøkler vandrer — til vaskeren, til
+            naboen, til håndverkeren — og det er alltid den ene du ikke finner.
+            Her står det. Kun synlig for deg.
+          </p>
+
+          {keys.length > 0 && (
+            <ul className="flex flex-col gap-2">
+              {keys.map((k) => (
+                <li
+                  key={k.id}
+                  className="flex flex-col gap-2 rounded-lg border border-hairline p-3"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-medium text-navy">
+                        {k.label}
+                        <span className="font-normal text-muted-foreground">
+                          {" "}
+                          · {KEY_TYPE_LABELS[k.key_type] ?? k.key_type}
+                          {k.copies > 1 && ` · ${k.copies} stk`}
+                        </span>
+                      </p>
+                      <p
+                        className={
+                          k.holder
+                            ? "text-xs text-ink/70"
+                            : "text-xs font-medium text-amber-700"
+                        }
+                      >
+                        {k.holder
+                          ? `Hos ${k.holder}`
+                          : "Ingen vet hvor denne er"}
+                      </p>
+                      {k.notes && <p className="text-xs text-ink/50">{k.notes}</p>}
+                    </div>
+                    <form action={deleteKey}>
+                      <input type="hidden" name="id" value={k.id} />
+                      <input type="hidden" name="property_id" value={p.id} />
+                      <Button
+                        type="submit"
+                        variant="ghost"
+                        size="sm"
+                        className="text-red-600 hover:text-red-700"
+                      >
+                        Fjern
+                      </Button>
+                    </form>
+                  </div>
+
+                  <form action={updateKeyHolder} className="flex gap-2">
+                    <input type="hidden" name="id" value={k.id} />
+                    <input type="hidden" name="property_id" value={p.id} />
+                    <input
+                      name="holder"
+                      defaultValue={k.holder ?? ""}
+                      placeholder="Hvem har den nå? (Maria, nøkkelboks, naboen)"
+                      className="h-9 flex-1 rounded-lg border border-hairline bg-white px-3 text-sm shadow-sm"
+                    />
+                    <Button type="submit" variant="outline" size="sm">
+                      Flytt
+                    </Button>
+                  </form>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <form
+            action={addKey}
+            className="flex flex-col gap-3 rounded-lg border border-hairline p-3"
+          >
+            <input type="hidden" name="property_id" value={p.id} />
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <input
+                name="label"
+                required
+                placeholder="Nøkkel (Hovednøkkel, Bod, Reserve)"
+                className="h-10 flex-1 rounded-lg border border-hairline bg-white px-3 text-sm shadow-sm"
+              />
+              <select
+                name="key_type"
+                defaultValue="fysisk"
+                className="h-10 rounded-lg border border-hairline bg-white px-3 text-sm shadow-sm"
+              >
+                <option value="fysisk">Fysisk nøkkel</option>
+                <option value="nokkelboks">Nøkkelboks</option>
+                <option value="kort">Kort</option>
+                <option value="brikke">Brikke</option>
+                <option value="kode">Kode</option>
+                <option value="annet">Annet</option>
+              </select>
+              <input
+                name="copies"
+                type="number"
+                min={1}
+                defaultValue={1}
+                aria-label="Antall"
+                className="h-10 w-20 rounded-lg border border-hairline bg-white px-3 text-sm shadow-sm"
+              />
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <input
+                name="holder"
+                placeholder="Hvem har den nå?"
+                className="h-10 flex-1 rounded-lg border border-hairline bg-white px-3 text-sm shadow-sm"
+              />
+              <input
+                name="notes"
+                placeholder="Notat (valgfritt)"
+                className="h-10 flex-1 rounded-lg border border-hairline bg-white px-3 text-sm shadow-sm"
+              />
+              <Button type="submit">Legg til</Button>
+            </div>
           </form>
         </CardContent>
       </Card>

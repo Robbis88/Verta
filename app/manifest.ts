@@ -6,7 +6,7 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: "Verta",
     description:
       "Full kontroll over dine utleieeiendommer — kalender, bookinger, smartlås og skatt.",
-    start_url: "/dashboard",
+    start_url: "/hjem",
     display: "standalone",
     background_color: "#081b33",
     theme_color: "#081b33",

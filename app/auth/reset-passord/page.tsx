@@ -40,7 +40,7 @@ export default function ResetPasswordPage() {
       return;
     }
     setDone(true);
-    setTimeout(() => router.push("/dashboard"), 1200);
+    setTimeout(() => router.push("/hjem"), 1200);
   }
 
   return (

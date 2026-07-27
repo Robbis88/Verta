@@ -152,6 +152,18 @@ Hele navigasjonen er fire ord:
   tekst) fordi siden er ment å skrives ut og gis til en kjøper. Nås fra
   Historikk-skuffen i Rom.
 
+**Nøkkelknippet** (`sql/064_property_keys.sql` — **må kjøres i Supabase**):
+`property_keys` med etikett, type, antall, og «hvem har den nå». Kort på
+eiendomssiden (legg til / flytt holder / fjern, `addKey` · `updateKeyHolder` ·
+`deleteKey`) og egen skuff i Rom. En nøkkel uten holder lyser — det er nettopp
+den du ikke finner. Koden tåler at migrasjonen ikke er kjørt: da er skuffen tom.
+
+**Innloggingen lander i huset.** Alle veier inn peker nå på `/hjem`: passord-
+innlogging (`app/login/actions.ts`), magic link/OAuth-callback, passord-reset,
+fullført onboarding, Stripe-retur (`/onboarding/fullfort`), aksept av co-host-
+invitasjon, og PWA-ens `start_url`. Nye brukere uten eiendom går fortsatt til
+`/onboarding` først, og betalingsmuren gjelder som før.
+
 Startsiden har **levende lys**: `data-lys` settes etter montering fra brukerens
 faktiske årstid og klokkeslett (vinternatt dyp og blå, sommerformiddag høy og
 gyllen). Skrives rett på elementet via ref, ikke via state, så server og

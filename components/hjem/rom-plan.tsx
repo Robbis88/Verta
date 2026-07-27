@@ -25,7 +25,7 @@ const I_PLANEN: SoneId[] = [
   "adgang",
   "lager",
 ];
-const I_SKUFFEN: SoneId[] = ["historikk", "folk", "skader"];
+const I_SKUFFEN: SoneId[] = ["nokler", "historikk", "folk", "skader"];
 
 export function RomPlan({
   boligNavn,
@@ -305,7 +305,7 @@ function RomStil() {
   display:grid;place-items:center;border-radius:999px;font-size:11px;font-weight:600;
   background:#d8a66a;color:#04111f}
 
-.vh-skuffer{max-width:880px;margin:10px auto 0;display:grid;gap:10px;grid-template-columns:repeat(3,1fr)}
+.vh-skuffer{max-width:880px;margin:10px auto 0;display:grid;gap:10px;grid-template-columns:repeat(4,1fr)}
 .vh-skuff{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:15px 18px;
   border-radius:14px;cursor:pointer;color:inherit;font:inherit;text-align:left;
   background:rgba(245,247,250,.035);border:1px solid rgba(216,166,106,.13);
