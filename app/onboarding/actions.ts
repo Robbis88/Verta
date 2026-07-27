@@ -142,5 +142,5 @@ export async function choosePlan(formData: FormData): Promise<void> {
     resource_id: user.id,
     changes: { plan: tier },
   });
-  redirect("/dashboard?welcome=1");
+  redirect("/hjem");
 }

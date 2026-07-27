@@ -32,7 +32,7 @@ export async function signInWithPassword(
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) return { error: "Feil e-post eller passord", email };
 
-  redirect("/dashboard");
+  redirect("/hjem");
 }
 
 /** Registrering med e-post + passord. */

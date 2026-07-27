@@ -52,6 +52,7 @@ export type SoneId =
   | "teknikk"
   | "adgang"
   | "lager"
+  | "nokler"
   | "historikk"
   | "folk"
   | "skader";
@@ -131,6 +132,11 @@ const SONE_META: Record<SoneId, { navn: string; hva: string; href: string }> = {
     hva: "Forbruksvarer gjestene bruker opp.",
     href: "/dashboard/lager",
   },
+  nokler: {
+    navn: "Nøkler",
+    hva: "Hvem som har hvilken nøkkel akkurat nå.",
+    href: "/dashboard/properties",
+  },
   historikk: {
     navn: "Historikk",
     hva: "Alt som har skjedd med boligen, år for år.",
@@ -157,6 +163,7 @@ const REKKEFOLGE: SoneId[] = [
   "teknikk",
   "adgang",
   "lager",
+  "nokler",
   "historikk",
   "folk",
   "skader",
@@ -315,6 +322,36 @@ export async function loadHusplan(
     }
   } catch {
     /* ignorer */
+  }
+
+  // Nøkkelknippet (sql/064). Uten kjørt migrasjon er skuffen bare tom.
+  try {
+    const { data } = await medBolig(
+      supabase
+        .from("property_keys")
+        .select("id,label,key_type,copies,holder,property_id"),
+      propertyId,
+    ).order("created_at");
+    for (const k of (data ?? []) as {
+      id: string;
+      label: string;
+      key_type: string;
+      copies: number;
+      holder: string | null;
+      property_id: string;
+    }[]) {
+      legg("nokler", {
+        id: `pk-${k.id}`,
+        navn: k.label,
+        detalj: k.holder
+          ? `hos ${k.holder}${k.copies > 1 ? ` · ${k.copies} stk` : ""}`
+          : "ingen vet hvor denne er",
+        varsel: !k.holder,
+        href: `/dashboard/properties/${k.property_id}`,
+      });
+    }
+  } catch {
+    /* migrasjonen er ikke kjørt ennå */
   }
 
   // Historikken — husets dagbok: kjøp, oppussing, vedlikehold, verdi.

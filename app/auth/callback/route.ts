@@ -30,7 +30,7 @@ async function sendWelcomeOnce(userId: string, email: string): Promise<void> {
 
 /**
  * Tar imot magic-link / OAuth-redirect, veksler koden inn i en sesjon (PKCE)
- * og sender brukeren videre til dashbordet.
+ * og sender brukeren videre til huset (/hjem).
  */
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
@@ -52,7 +52,7 @@ export async function GET(request: Request) {
       const { count } = await supabase
         .from("properties")
         .select("*", { count: "exact", head: true });
-      const destination = count ? "/dashboard" : "/onboarding";
+      const destination = count ? "/hjem" : "/onboarding";
       return NextResponse.redirect(`${origin}${destination}`);
     }
   }
