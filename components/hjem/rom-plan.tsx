@@ -204,6 +204,16 @@ function SoneArk({ sone, onLukk }: { sone: Sone; onLukk: () => void }) {
           </button>
         </header>
 
+        {sone.id === "historikk" && (
+          <Link href="/hjem/historie" className="vh-ark-utvei">
+            <span className="vh-ark-utvei-tittel">Les hele historien →</span>
+            <span className="vh-ark-utvei-hva">
+              Alt huset har vært gjennom, år for år — klar til å skrives ut og gis
+              til en kjøper.
+            </span>
+          </Link>
+        )}
+
         {sone.ting.length === 0 ? (
           <div className="vh-ark-tom">
             <p className="vh-ark-tom-stor">Ingenting er registrert her ennå.</p>
@@ -335,6 +345,13 @@ function RomStil() {
   background:rgba(245,247,250,.05);border:1px solid rgba(216,166,106,.18);color:#93a3b8;
   transition:color .4s,border-color .4s}
 .vh-ark-lukk:hover{color:#f5f7fa;border-color:rgba(216,166,106,.44)}
+
+.vh-ark-utvei{display:block;margin-top:20px;padding:16px 18px;border-radius:14px;text-decoration:none;
+  background:linear-gradient(180deg,rgba(216,166,106,.14),rgba(216,166,106,.06));
+  border:1px solid rgba(216,166,106,.3);transition:border-color .4s,transform .4s}
+.vh-ark-utvei:hover{border-color:rgba(216,166,106,.6);transform:translateY(-2px)}
+.vh-ark-utvei-tittel{display:block;font-size:15px;font-weight:600;color:#f2c38b}
+.vh-ark-utvei-hva{display:block;margin-top:5px;font-size:13px;line-height:1.5;color:#93a3b8}
 
 .vh-ting{list-style:none;margin:8px 0 0;padding:0}
 .vh-ting-rad{border-bottom:1px solid rgba(245,247,250,.06)}

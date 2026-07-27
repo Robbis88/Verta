@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import type { HusetNa } from "@/lib/hus";
 
@@ -24,6 +24,28 @@ function hilsen(): string {
   return "God kveld";
 }
 
+/**
+ * Husets lys følger virkeligheten: årstiden og klokkeslettet ditt. Vinternatt
+ * er dyp og blå, sommerformiddag er høy og gyllen. Ren presentasjon — men det
+ * er dette som gjør at skjermen føles levende og ikke som et bilde.
+ */
+function lysNa(): string {
+  const d = new Date();
+  const m = d.getMonth(); // 0-11
+  const t = d.getHours();
+  const sesong =
+    m === 11 || m <= 1
+      ? "vinter"
+      : m <= 4
+        ? "var"
+        : m <= 7
+          ? "sommer"
+          : "host";
+  const tid =
+    t < 6 ? "natt" : t < 10 ? "morgen" : t < 17 ? "dag" : t < 22 ? "kveld" : "natt";
+  return `${sesong}-${tid}`;
+}
+
 export function HjemScreen({
   fornavn,
   na,
@@ -32,7 +54,11 @@ export function HjemScreen({
   na: HusetNa;
 }) {
   const [avduket, setAvduket] = useState(false);
+  // Lyset skrives rett på elementet etter montering (ikke via state), så
+  // serveren og nettleseren aldri er uenige om hva klokka er.
+  const flate = useRef<HTMLElement>(null);
   useEffect(() => {
+    flate.current?.setAttribute("data-lys", lysNa());
     const t = setTimeout(() => setAvduket(true), 1300);
     return () => clearTimeout(t);
   }, []);
@@ -48,7 +74,7 @@ export function HjemScreen({
       : "Boligen din har det bra.";
 
   return (
-    <main className="vh-hjem">
+    <main className="vh-hjem" ref={flate}>
       <div className={`vh-slor ${avduket ? "vh-slor--vekk" : ""}`} aria-hidden="true">
         <span className="vh-slor-logo">VERTA</span>
       </div>
@@ -58,6 +84,8 @@ export function HjemScreen({
         style={na.bilde ? { backgroundImage: `url("${na.bilde}")` } : undefined}
         aria-hidden="true"
       />
+      {/* Årstidens og døgnets lys, lagt over bildet. */}
+      <div className="vh-lys" aria-hidden="true" />
       <div className="vh-slore" aria-hidden="true" />
 
       <div className="vh-innhold">
@@ -174,6 +202,27 @@ function HjemStil() {
     linear-gradient(180deg,#0b2340 0%,#081b33 36%,#051526 72%,#04111f 100%)}
 .vh-slore{position:absolute;inset:0;background:linear-gradient(180deg,
   rgba(4,17,31,.42) 0%,rgba(4,17,31,.18) 34%,rgba(4,17,31,.62) 70%,rgba(4,17,31,.96) 100%)}
+
+/* Årstidens og døgnets lys. Legges over bildet, under sløret, og tones rolig
+   inn etter montering. Standard = nøytralt, så skjermen aldri blinker. */
+.vh-lys{position:absolute;inset:0;opacity:0;transition:opacity 2.2s ease,background 2.2s ease;
+  mix-blend-mode:soft-light}
+.vh-hjem[data-lys] .vh-lys{opacity:1}
+
+.vh-hjem[data-lys$="-natt"] .vh-lys{background:linear-gradient(180deg,
+  rgba(10,30,70,.95),rgba(4,10,26,.98));mix-blend-mode:multiply}
+.vh-hjem[data-lys$="-morgen"] .vh-lys{background:radial-gradient(90% 70% at 22% 14%,
+  rgba(255,208,170,.85),transparent 62%)}
+.vh-hjem[data-lys$="-dag"] .vh-lys{background:radial-gradient(110% 80% at 50% 0%,
+  rgba(255,244,222,.7),transparent 66%)}
+.vh-hjem[data-lys$="-kveld"] .vh-lys{background:linear-gradient(180deg,
+  rgba(255,150,90,.7),rgba(40,30,80,.85))}
+
+.vh-hjem[data-lys^="vinter"] .vh-lys{filter:saturate(.7) brightness(.86)}
+.vh-hjem[data-lys^="vinter"]{--vh-aksent:#bcd4ea}
+.vh-hjem[data-lys^="sommer"] .vh-lys{filter:saturate(1.18) brightness(1.1)}
+.vh-hjem[data-lys^="host"] .vh-lys{filter:sepia(.22) saturate(1.1)}
+.vh-hjem[data-lys^="var"] .vh-lys{filter:saturate(1.05) brightness(1.04)}
 @keyframes vhPust{from{transform:scale(1.08) translateY(0)}to{transform:scale(1.14) translateY(-1.2%)}}
 
 .vh-innhold{position:relative;z-index:4;height:100%;display:grid;grid-template-rows:auto 1fr auto;
