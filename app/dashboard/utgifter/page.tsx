@@ -1,14 +1,27 @@
-import Link from "next/link";
-import { Receipt } from "lucide-react";
-
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { deleteExpense } from "./actions";
 import { ExpenseForm } from "@/components/expenses/expense-form";
 import { formatNok } from "@/lib/utils";
-import { KpiCard, PanelCard } from "@/components/dashboard/overview-ui";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import {
+  Flate,
+  Handling,
+  Liste,
+  Rad,
+  Side,
+  Situasjon,
+  Tall,
+  TallRekke,
+  Tomt,
+} from "@/components/hus";
+
+/**
+ * Utgifter — modul 1 i UI-refaktoren (se UI-REFACTOR.md).
+ *
+ * Kun presentasjonen er endret: samme spørringer, samme `deleteExpense`, samme
+ * `ExpenseForm` med samme felter. Siden åpner nå med situasjonen — hva du
+ * faktisk har ført i år — før den viser skjema og liste.
+ */
 
 type Expense = {
   id: string;
@@ -28,6 +41,13 @@ const CATEGORY_LABEL: Record<string, string> = {
   fee: "Gebyr",
   other: "Annet",
 };
+
+/** «12. mar» — kort nok til venstre kolonne. */
+function kortDato(iso: string): string {
+  return new Date(`${iso}T00:00:00Z`)
+    .toLocaleDateString("nb-NO", { day: "numeric", month: "short", timeZone: "UTC" })
+    .replace(".", "");
+}
 
 export default async function UtgifterPage({
   searchParams,
@@ -57,89 +77,125 @@ export default async function UtgifterPage({
   const expenses = (expData ?? []) as Expense[];
   const total = expenses.reduce((s, e) => s + Number(e.amount), 0);
 
+  // Avledet av tallene vi allerede har — ingen nye spørringer.
+  const perKategori = new Map<string, number>();
+  for (const e of expenses) {
+    perKategori.set(
+      e.category,
+      (perKategori.get(e.category) ?? 0) + Number(e.amount),
+    );
+  }
+  const storst = [...perKategori.entries()].sort((a, b) => b[1] - a[1])[0];
+  const sist = expenses[0];
+
+  const arValg = (
+    <>
+      {years.map((y) => (
+        <Handling
+          key={y}
+          href={`/dashboard/utgifter?year=${y}`}
+          vekt={y === year ? "gull" : "stille"}
+        >
+          {y}
+        </Handling>
+      ))}
+    </>
+  );
+
+  if (properties.length === 0) {
+    return (
+      <Side>
+        <Situasjon
+          merke="Utgifter"
+          tittel="Du har ingen bolig å føre utgifter på ennå."
+          under="Legg inn boligen din først, så kan du begynne å samle fradrag."
+        />
+        <Flate>
+          <Tomt
+            tittel="Ingen bolig registrert."
+            hva="Utgifter føres per bolig, og trekkes automatisk fra i skatterapporten."
+            knappTekst="Legg til bolig"
+            knappHref="/dashboard/properties/new"
+          />
+        </Flate>
+      </Side>
+    );
+  }
+
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-navy">Utgifter</h1>
-          <p className="text-sm text-muted-foreground">
-            Registrer fradragsberettigede utgifter — de trekkes automatisk inn i
-            skatterapporten.
-          </p>
-        </div>
-        <div className="flex gap-2">
-          {years.map((y) => (
-            <Button key={y} asChild variant={y === year ? "default" : "outline"} size="sm">
-              <Link href={`/dashboard/utgifter?year=${y}`}>{y}</Link>
-            </Button>
-          ))}
-        </div>
-      </div>
+    <Side>
+      <Situasjon
+        merke="Utgifter"
+        tittel={
+          total > 0
+            ? `Du har ført ${formatNok(total)} i utgifter i ${year}.`
+            : `Du har ikke ført noen utgifter i ${year} ennå.`
+        }
+        under={
+          total > 0
+            ? "Alt som står her trekkes fra i skatterapporten. Det er penger spart, ikke papirarbeid."
+            : "Hver utgift du fører reduserer skatten din. Det tar tjue sekunder per bilag."
+        }
+        handling={arValg}
+      />
 
-      {properties.length === 0 ? (
-        <Card>
-          <CardContent className="py-8 text-center text-sm text-muted-foreground">
-            Legg til en eiendom først.{" "}
-            <Link href="/dashboard/properties/new" className="underline">
-              Legg til eiendom
-            </Link>
-          </CardContent>
-        </Card>
-      ) : (
-        <>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <KpiCard
-              label={`Sum utgifter ${year}`}
-              value={formatNok(total)}
-              icon={Receipt}
-              trend={`${expenses.length} ${expenses.length === 1 ? "post" : "poster"}`}
-              trendTone="muted"
-            />
-          </div>
-
-          <PanelCard title="Ny utgift">
-            <ExpenseForm properties={properties} />
-          </PanelCard>
-
-          <PanelCard title={`Utgifter ${year}`}>
-            {expenses.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                Ingen utgifter registrert for {year}.
-              </p>
-            ) : (
-              <ul className="flex flex-col divide-y divide-hairline">
-                {expenses.map((e) => (
-                  <li
-                    key={e.id}
-                    className="flex items-center justify-between gap-3 py-2.5 text-sm first:pt-0 last:pb-0"
-                  >
-                    <span className="w-24 shrink-0 text-ink/50">
-                      {e.expense_date}
-                    </span>
-                    <span className="flex-1 text-ink">
-                      {CATEGORY_LABEL[e.category] ?? e.category}
-                      {e.description ? ` · ${e.description}` : ""}
-                      <span className="text-ink/50">
-                        {" "}
-                        ({nameById.get(e.property_id) ?? "—"})
-                      </span>
-                    </span>
-                    <span className="w-24 shrink-0 text-right font-semibold tabular-nums text-navy">
-                      {formatNok(Number(e.amount))}
-                    </span>
-                    <form action={deleteExpense}>
-                      <input type="hidden" name="id" value={e.id} />
-                      <Button type="submit" variant="ghost" size="sm">
-                        Slett
-                      </Button>
-                    </form>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </PanelCard>
-        </>
+      {total > 0 && (
+        <TallRekke>
+          <Tall verdi={formatNok(total)} navn={`Ført i ${year}`} tone="gull" />
+          <Tall
+            verdi={`${expenses.length}`}
+            navn={expenses.length === 1 ? "bilag" : "bilag"}
+          />
+          <Tall
+            verdi={storst ? (CATEGORY_LABEL[storst[0]] ?? storst[0]) : "—"}
+            navn="største post"
+          />
+          <Tall
+            verdi={sist ? kortDato(sist.expense_date) : "—"}
+            navn="sist ført"
+          />
+        </TallRekke>
       )}
-    </div>
+
+      <Flate
+        tittel="Før en utgift"
+        hva="Beløp, dato og hva det var. Resten ordner seg selv."
+      >
+        <ExpenseForm properties={properties} />
+      </Flate>
+
+      <Flate tittel={`Alt i ${year}`}>
+        {expenses.length === 0 ? (
+          <Tomt
+            tittel={`Ingenting ført i ${year}.`}
+            hva="Strøm, forsikring, vask, vedlikehold — alt som gjelder utleien hører hjemme her."
+          />
+        ) : (
+          <Liste>
+            {expenses.map((e) => (
+              <Rad
+                key={e.id}
+                nar={kortDato(e.expense_date)}
+                hva={
+                  e.description
+                    ? `${CATEGORY_LABEL[e.category] ?? e.category} · ${e.description}`
+                    : (CATEGORY_LABEL[e.category] ?? e.category)
+                }
+                detalj={nameById.get(e.property_id) ?? undefined}
+                verdi={formatNok(Number(e.amount))}
+                handling={
+                  <form action={deleteExpense}>
+                    <input type="hidden" name="id" value={e.id} />
+                    <Handling type="submit" vekt="naken">
+                      Slett
+                    </Handling>
+                  </form>
+                }
+              />
+            ))}
+          </Liste>
+        )}
+      </Flate>
+    </Side>
   );
 }

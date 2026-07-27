@@ -265,6 +265,7 @@ export function Handling({
   vekt = "stille",
   children,
   type,
+  disabled,
   className,
 }: {
   /** Lenke. Uten href blir det en knapp (for <form action=…>). */
@@ -272,6 +273,8 @@ export function Handling({
   vekt?: keyof typeof HANDLING_VEKT;
   children: ReactNode;
   type?: "submit" | "button";
+  /** Sperrer knappen — f.eks. mens et skjema sendes, så det ikke dobbelsendes. */
+  disabled?: boolean;
   className?: string;
 }) {
   const klasse = cn(HANDLING_BASE, HANDLING_VEKT[vekt], className);
@@ -283,7 +286,11 @@ export function Handling({
     );
   }
   return (
-    <button type={type ?? "button"} className={cn(klasse, "cursor-pointer")}>
+    <button
+      type={type ?? "button"}
+      disabled={disabled}
+      className={cn(klasse, "cursor-pointer disabled:cursor-default disabled:opacity-40")}
+    >
       {children}
     </button>
   );
@@ -322,4 +329,110 @@ export function Tomt({
       )}
     </div>
   );
+}
+
+// ---------------------------------------------------------------------------
+// Felt — skjema i husets språk
+//
+// Wrapper vanlige <input>/<select>/<textarea>. `name` går rett gjennom, så
+// server actions ser nøyaktig samme FormData som før. Egne primitiver fordi
+// components/ui/* deles med login, registrer, onboarding og admin — de skal
+// ikke endres av denne refaktoren.
+// ---------------------------------------------------------------------------
+
+const FELT_BASE =
+  "h-11 w-full rounded-xl border border-hus-linje bg-white/[0.04] px-4 text-sm text-hus-blekk outline-none transition-colors placeholder:text-hus-hvisk focus:border-hus-linje-sterk focus:bg-white/[0.07]";
+
+function Merkelapp({ htmlFor, children }: { htmlFor?: string; children: ReactNode }) {
+  return (
+    <label
+      htmlFor={htmlFor}
+      className="text-[11px] font-medium uppercase tracking-[0.14em] text-hus-svak"
+    >
+      {children}
+    </label>
+  );
+}
+
+function Feilmelding({ tekst }: { tekst?: string }) {
+  if (!tekst) return null;
+  return <p className="text-xs text-hus-kritisk">{tekst}</p>;
+}
+
+export function Felt({
+  navn,
+  merke,
+  feil,
+  ...rest
+}: {
+  /** name-attributtet. Må være identisk med det server action forventer. */
+  navn: string;
+  merke: string;
+  feil?: string;
+} & Omit<React.InputHTMLAttributes<HTMLInputElement>, "name" | "className">) {
+  return (
+    <div className="flex flex-col gap-2">
+      <Merkelapp htmlFor={navn}>{merke}</Merkelapp>
+      <input id={navn} name={navn} className={FELT_BASE} {...rest} />
+      <Feilmelding tekst={feil} />
+    </div>
+  );
+}
+
+export function Velg({
+  navn,
+  merke,
+  feil,
+  valg,
+  ...rest
+}: {
+  navn: string;
+  merke: string;
+  feil?: string;
+  valg: { verdi: string; tekst: string }[];
+} & Omit<React.SelectHTMLAttributes<HTMLSelectElement>, "name" | "children">) {
+  return (
+    <div className="flex flex-col gap-2">
+      <Merkelapp htmlFor={navn}>{merke}</Merkelapp>
+      <select id={navn} name={navn} className={cn(FELT_BASE, "cursor-pointer")} {...rest}>
+        {valg.map((v) => (
+          <option key={v.verdi} value={v.verdi} className="bg-hus-hev text-hus-blekk">
+            {v.tekst}
+          </option>
+        ))}
+      </select>
+      <Feilmelding tekst={feil} />
+    </div>
+  );
+}
+
+export function Omrade({
+  navn,
+  merke,
+  feil,
+  ...rest
+}: {
+  navn: string;
+  merke: string;
+  feil?: string;
+} & Omit<React.TextareaHTMLAttributes<HTMLTextAreaElement>, "name">) {
+  return (
+    <div className="flex flex-col gap-2">
+      <Merkelapp htmlFor={navn}>{merke}</Merkelapp>
+      <textarea
+        id={navn}
+        name={navn}
+        className={cn(FELT_BASE, "h-auto min-h-24 py-3 leading-relaxed")}
+        {...rest}
+      />
+      <Feilmelding tekst={feil} />
+    </div>
+  );
+}
+
+/** Kvittering under et skjema: feil i rødt, suksess i grønt. */
+export function Kvittering({ feil, ok }: { feil?: string; ok?: string }) {
+  if (feil) return <p className="text-sm text-hus-kritisk">{feil}</p>;
+  if (ok) return <p className="text-sm text-hus-god">{ok}</p>;
+  return null;
 }
