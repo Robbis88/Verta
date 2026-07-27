@@ -37,13 +37,20 @@ export async function resolveAlert(formData: FormData): Promise<void> {
 }
 
 /**
- * Markerer at gjestelenken er sendt til gjesten, så påminnelsen på dashbordet
- * forsvinner. RLS scoper til eierens egne bookinger.
+ * Markerer at gjestelenken er sendt til gjesten, så påminnelsen forsvinner.
+ * RLS scoper til eierens egne bookinger.
+ *
+ * Valgfritt `next`-felt bestemmer hvor man havner etterpå, slik at oppholdssiden
+ * i Huset ikke kaster brukeren tilbake til dashbordet. Uten feltet oppfører den
+ * seg nøyaktig som før. Kun interne stier godtas.
  */
 export async function markGuestLinkSent(formData: FormData): Promise<void> {
   await requireUser();
   const id = String(formData.get("id") ?? "");
   if (!id) return;
+
+  const ønsket = String(formData.get("next") ?? "");
+  const tilbake = /^\/[^/]/.test(ønsket) ? ønsket : "/dashboard";
 
   const supabase = await createClient();
   await supabase
@@ -54,6 +61,6 @@ export async function markGuestLinkSent(formData: FormData): Promise<void> {
     })
     .eq("id", id);
 
-  revalidatePath("/dashboard");
-  redirect("/dashboard");
+  revalidatePath(tilbake);
+  redirect(tilbake);
 }

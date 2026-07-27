@@ -145,6 +145,15 @@ Hele navigasjonen er fire ord:
   regnestykket i klartekst.
 - **`/hjem/ord`** — Vera i fullskjerm mot eksisterende `/api/chat` (`portal`).
 - **`/hjem/alt`** — hele modul-listen, gruppert og søkbar (`lib/nav-items.ts`).
+- **`/hjem/opphold/[id]`** — ett opphold som ÉN tråd (`loadOpphold`): gjesten,
+  pengene (total, gebyr, depositum, restbeløp, tidlig innsjekk / sen utsjekk),
+  tilkomsten (adgangskode + gjestelenke med kopier→bekreft-sendt), samtalen
+  (`messages` på `booking_id`), og etterpå (vask, anmeldelse, skadekrav).
+  Dette lå tidligere spredt over seks sider — Verta hadde ingen bookingside i
+  det hele tatt, kun `/dashboard/skade/[bookingId]`. Båtene i Tid og den ene
+  handlingen på startsiden peker hit. `markGuestLinkSent` tar nå et valgfritt
+  `next`-felt (kun interne stier) så man blir stående her; uten feltet oppfører
+  den seg som før.
 - **`/hjem/historie`** — husets biografi (`loadBiografi`): hva boligen har tjent
   siden dag én, hvor mange som har bodd her, og en tidslinje år for år bygget av
   `property_events`, løste `maintenance_requests` (med kostnad), utstyrskjøp,

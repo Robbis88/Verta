@@ -181,7 +181,7 @@ export function TidElv({
               return (
                 <Link
                   key={o.id}
-                  href="/dashboard"
+                  href={`/hjem/opphold/${o.id}`}
                   className={`vh-bat ${o.venter ? "vh-bat--venter" : ""}`}
                   style={{ left: x, width: w }}
                   title={`${o.gjest} · ${kortDato(o.inn)}–${kortDato(o.ut)} · ${
