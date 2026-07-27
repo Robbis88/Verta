@@ -219,3 +219,34 @@
     @apply font-sans;
   }
 }
+/* ---------------------------------------------------------------------------
+   Utskrift. Huset er mørkt på skjerm og hvitt på papir — en skatterapport eller
+   en husbiografi skal kunne leveres videre. Sidene trenger ikke gjøre noe;
+   `.hus-ikke-print` skjuler det som ikke hører hjemme på et ark.
+--------------------------------------------------------------------------- */
+@media print {
+  .hus-side {
+    margin: 0 !important;
+    padding: 0 !important;
+    min-height: 0 !important;
+    background: #fff !important;
+  }
+  .hus-side *,
+  .hus-side h1,
+  .hus-side h2 {
+    color: #111 !important;
+  }
+  .hus-seksjon {
+    background: #fff !important;
+    border-color: #ddd !important;
+    padding: 0 !important;
+    break-inside: avoid;
+  }
+  .hus-lys,
+  .hus-ikke-print {
+    display: none !important;
+  }
+  .hus-stig {
+    animation: none !important;
+  }
+}

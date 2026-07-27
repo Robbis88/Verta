@@ -37,11 +37,11 @@ export function Side({
   bred?: boolean;
 }) {
   return (
-    <div className="-m-6 min-h-[calc(100dvh-3.5rem)] bg-hus-flate px-5 py-10 text-hus-blekk sm:-m-8 sm:px-8 lg:-m-10 lg:px-10">
+    <div className="hus-side -m-6 min-h-[calc(100dvh-3.5rem)] bg-hus-flate px-5 py-10 text-hus-blekk sm:-m-8 sm:px-8 lg:-m-10 lg:px-10">
       {/* Lyset i taket — samme gest som på startsiden, dempet. */}
       <div
         aria-hidden="true"
-        className="pointer-events-none fixed inset-0 bg-[radial-gradient(110%_60%_at_50%_-10%,rgba(216,166,106,0.10),transparent_60%)]"
+        className="hus-lys pointer-events-none fixed inset-0 bg-[radial-gradient(110%_60%_at_50%_-10%,rgba(216,166,106,0.10),transparent_60%)]"
       />
       <div
         className={cn(
@@ -153,7 +153,7 @@ export function Flate({
   children: ReactNode;
 }) {
   return (
-    <section className="hus-stig rounded-2xl border border-hus-linje bg-[linear-gradient(180deg,rgba(245,247,250,0.045),rgba(245,247,250,0.02))] p-5 sm:p-6">
+    <section className="hus-seksjon hus-stig rounded-2xl border border-hus-linje bg-[linear-gradient(180deg,rgba(245,247,250,0.045),rgba(245,247,250,0.02))] p-5 sm:p-6">
       {(tittel || handling) && (
         <div className="mb-5 flex items-start justify-between gap-4">
           <div className="min-w-0">
@@ -186,6 +186,7 @@ export function Rad({
   detalj,
   verdi,
   tone = "ro",
+  sterk = false,
   handling,
   href,
 }: {
@@ -198,6 +199,8 @@ export function Rad({
   /** Høyrestilt tall. */
   verdi?: string;
   tone?: "ro" | "gull" | "obs" | "kritisk";
+  /** Sumlinje — tyngre skrift og en tydeligere strek over. */
+  sterk?: boolean;
   /** Knapp/skjema helt til høyre. */
   handling?: ReactNode;
   /** Gjør hele raden klikkbar. */
@@ -218,19 +221,28 @@ export function Rad({
         <span className="w-24 shrink-0 text-xs text-hus-svak tabular-nums">{nar}</span>
       )}
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-sm text-hus-blekk">{hva}</span>
+        <span className={cn("block truncate text-sm text-hus-blekk", sterk && "font-semibold")}>
+          {hva}
+        </span>
         {detalj && (
           <span className="mt-0.5 block truncate text-xs text-hus-svak">{detalj}</span>
         )}
       </span>
       {verdi && (
-        <span className={cn("shrink-0 text-sm tabular-nums", farge)}>{verdi}</span>
+        <span className={cn("shrink-0 text-sm tabular-nums", sterk && "font-semibold", farge)}>
+          {verdi}
+        </span>
       )}
     </>
   );
 
   return (
-    <li className="flex items-center gap-4 border-b border-hus-linje-svak py-3 last:border-b-0">
+    <li
+      className={cn(
+        "flex items-center gap-4 border-b border-hus-linje-svak py-3 last:border-b-0",
+        sterk && "border-t border-t-hus-linje pt-4",
+      )}
+    >
       {href ? (
         <Link
           href={href}
@@ -266,6 +278,7 @@ export function Handling({
   children,
   type,
   disabled,
+  onClick,
   className,
 }: {
   /** Lenke. Uten href blir det en knapp (for <form action=…>). */
@@ -275,6 +288,8 @@ export function Handling({
   type?: "submit" | "button";
   /** Sperrer knappen — f.eks. mens et skjema sendes, så det ikke dobbelsendes. */
   disabled?: boolean;
+  /** Kun fra klientkomponenter (f.eks. window.print()). */
+  onClick?: () => void;
   className?: string;
 }) {
   const klasse = cn(HANDLING_BASE, HANDLING_VEKT[vekt], className);
@@ -289,6 +304,7 @@ export function Handling({
     <button
       type={type ?? "button"}
       disabled={disabled}
+      onClick={onClick}
       className={cn(klasse, "cursor-pointer disabled:cursor-default disabled:opacity-40")}
     >
       {children}
