@@ -80,7 +80,13 @@ Alt er tema-bevisst (lyst/mørkt) og bygget på Verta-paletten (navy #081b33, gu
 
 ## 5. Dashboardet (`app/dashboard/`)
 
-`layout.tsx` håndhever betalingsmuren og rendrer `DashboardNav`. Meny-grupper:
+`layout.tsx` håndhever betalingsmuren og rendrer `DashboardNav`. Menyen står
+ikke lenger permanent fremme: toppen viser «← Huset», Verta-merket og ÉN knapp —
+**Alt** — som åpner hele modul-listen gruppert (`lib/nav-items.ts`, kanonisk
+kilde delt med `/hjem/alt`). Ingen modul er fjernet; Smartlås, Skade og Boost
+ble tvert imot nåbare fra menyen for første gang.
+
+Den rolige inngangen ligger på **`/hjem`** (se §5b). Meny-grupper:
 
 ### Topp
 - **Oversikt** (`/dashboard`) — KPI-er (inntekt mnd, beleggsgrad, kommende, inntekt i år), inntektsgraf (12 mnd), kommende bookinger, oppgaver, bookinger per kilde. **Røde varsler øverst**: åpne bookingforespørsler (blinkende) og kritiske penge-hendelser (refusjons-svikt / foreldreløse betalinger).
@@ -113,6 +119,32 @@ Alt er tema-bevisst (lyst/mørkt) og bygget på Verta-paletten (navy #081b33, gu
 - `/admin` — plattformtall (brukere, MRR, eiendommer, bookinger, boost, provisjon).
 - `/admin/kanaler` — sosiale kanaler for boost.
 - `/admin/nyhetsbrev` — abonnent-arkiv + skriv/send nyhetsbrev (test + bekreftelse + logg).
+
+---
+
+## 5b. Huset (`app/hjem/`) — den rolige inngangen
+
+Et presentasjonslag over dashbordet, ikke et nytt system: **kun lesing**, ingen
+ny tabell, ingen endret logikk. Loadere i `lib/hus.ts`. Egen layout med samme
+betalingsmur-vakt som dashbordet, og aksebaren `HusAkser` nederst.
+
+Hele navigasjonen er fire ord:
+
+- **`/hjem`** — startsiden. Boligens eget bilde, én hilsen og ÉN ting som
+  fortjener deg nå (`loadHusetNa`, streng prioritet: ubesvart forespørsel →
+  kritisk pengevarsel → usendt gjestelenke → vask uten vasker → neste innsjekk).
+  Ingenting som haster ⇒ «Alt er i orden», og skjermen får være tom.
+- **`/hjem/rom`** — boligen innvendig som plantegning (`loadHusplan`). Åtte soner
+  + tre skuffer, matet av `house_equipment` (plassert via `location`/`category`,
+  med alder og utløpt garanti), `properties.access_info` + `smart_locks`,
+  `supplies`, `property_events`, `property_contacts`, `incident_claims`. Åpne
+  `maintenance_requests` vises som bånd under planen.
+- **`/hjem/tid`** — 90 døgn som en elv (`loadElv`). Opphold som bånd (forespørsler
+  stiplet), tomme netter som hull priset av `base_nightly_rate` + `seasonal_rates`
+  (samme regel som `lib/pricing.ts`), vask langs bredden. «Hvorfor?» forklarer
+  regnestykket i klartekst.
+- **`/hjem/ord`** — Vera i fullskjerm mot eksisterende `/api/chat` (`portal`).
+- **`/hjem/alt`** — hele modul-listen, gruppert og søkbar (`lib/nav-items.ts`).
 
 ---
 

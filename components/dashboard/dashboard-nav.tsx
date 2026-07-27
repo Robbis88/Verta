@@ -2,13 +2,20 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
-type Item = { href: string; label: string };
-type Group = { label: string; items: Item[] };
+import { navGrupper } from "@/lib/nav-items";
 
-const linkClass = "text-sm text-white/70 hover:text-white";
-
+/**
+ * Toppen av dashbordet — døra til «Alt».
+ *
+ * Før sto 19 lenker permanent fremme (tre på rot + fire nedtrekk). Nå står det
+ * ett ord: Alt. Trykk, og hele modul-listen glir ned, gruppert og med en linje
+ * om hva hver modul er til. Ingen modul er fjernet — tvert imot dukker tre som
+ * aldri lå i menyen (Smartlås, Skade, Boost) opp her, fra lib/nav-items.ts.
+ *
+ * Panelet lukker seg selv ved navigasjon, klikk utenfor og Escape.
+ */
 export function DashboardNav({
   email,
   isAdmin,
@@ -17,109 +24,108 @@ export function DashboardNav({
   isAdmin?: boolean;
 }) {
   const pathname = usePathname();
-  const [open, setOpen] = useState<string | null>(null);
-  const ref = useRef<HTMLDivElement>(null);
+  const [apen, setApen] = useState(false);
 
-  // Lukk nedtrekk ved navigasjon eller klikk utenfor. Bevisst sync til route.
+  // Lukk ved navigasjon. Bevisst sync til route (samme mønster som før).
   // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => setOpen(null), [pathname]);
-  useEffect(() => {
-    function onClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(null);
-    }
-    document.addEventListener("click", onClick);
-    return () => document.removeEventListener("click", onClick);
-  }, []);
+  useEffect(() => setApen(false), [pathname]);
 
-  const groups: Group[] = [
-    {
-      label: "Drift",
-      items: [
-        { href: "/dashboard/meldinger", label: "Meldinger" },
-        { href: "/dashboard/varsler", label: "Varsler" },
-        { href: "/dashboard/rengjoring", label: "Rengjøring" },
-        { href: "/dashboard/finn-vaskehjelp", label: "Finn vaskehjelp" },
-        { href: "/dashboard/vedlikehold", label: "Vedlikehold" },
-        { href: "/dashboard/lager", label: "Lager" },
-      ],
-    },
-    {
-      label: "Marked",
-      items: [{ href: "/dashboard/prising", label: "Prising" }],
-    },
-    {
-      label: "Økonomi",
-      items: [
-        { href: "/dashboard/utgifter", label: "Utgifter" },
-        { href: "/dashboard/commissions", label: "Provisjon" },
-        { href: "/dashboard/tax", label: "Skatt" },
-      ],
-    },
-    {
-      label: "Konto",
-      items: [
-        { href: "/dashboard/team", label: "Team" },
-        { href: "/dashboard/sikkerhet", label: "Sikkerhet" },
-        { href: "/dashboard/settings", label: "Innstillinger" },
-        ...(isAdmin ? [{ href: "/admin", label: "Admin" }] : []),
-      ],
-    },
-  ];
+  useEffect(() => {
+    if (!apen) return;
+    function esc(e: KeyboardEvent) {
+      if (e.key === "Escape") setApen(false);
+    }
+    document.addEventListener("keydown", esc);
+    return () => document.removeEventListener("keydown", esc);
+  }, [apen]);
+
+  const grupper = navGrupper(!!isAdmin);
 
   return (
-    <div
-      ref={ref}
-      className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"
-    >
-      <nav className="flex flex-wrap items-center gap-x-4 gap-y-1">
-        <Link href="/dashboard" className="mr-1 text-lg font-bold tracking-tight text-gold">
-          Verta
-        </Link>
-        <Link href="/dashboard" className={linkClass}>
-          Oversikt
-        </Link>
-        <Link href="/dashboard/properties" className={linkClass}>
-          Eiendommer
-        </Link>
-        <Link href="/dashboard/okonomi" className={linkClass}>
-          Eiendomsøkonomi
-        </Link>
+    <div className="relative">
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <Link
+            href="/hjem"
+            className="text-sm text-white/60 transition-colors hover:text-gold"
+            title="Tilbake til huset"
+          >
+            ← Huset
+          </Link>
+          <Link
+            href="/dashboard"
+            className="text-lg font-bold tracking-tight text-gold"
+          >
+            Verta
+          </Link>
+        </div>
 
-        {groups.map((g) => (
-          <div key={g.label} className="relative">
-            <button
-              type="button"
-              onClick={() => setOpen(open === g.label ? null : g.label)}
-              className={`flex items-center gap-1 ${linkClass}`}
-            >
-              {g.label}
-              <span className="text-[10px]">▾</span>
-            </button>
-            {open === g.label && (
-              <div className="absolute left-0 top-full z-20 mt-2 flex min-w-40 flex-col rounded-lg border border-white/10 bg-navy-dark py-1 shadow-xl">
-                {g.items.map((it) => (
-                  <Link
-                    key={it.href}
-                    href={it.href}
-                    className="px-4 py-2 text-sm text-white/80 hover:bg-white/10 hover:text-white"
-                  >
-                    {it.label}
-                  </Link>
-                ))}
-              </div>
-            )}
-          </div>
-        ))}
-      </nav>
-
-      <div className="flex items-center gap-4 text-sm">
-        <span className="hidden text-white/60 sm:inline">{email}</span>
-        <form action="/auth/signout" method="post">
-          <button type="submit" className="text-white/70 hover:text-white">
-            Logg ut
+        <div className="flex items-center gap-4 text-sm">
+          <button
+            type="button"
+            onClick={() => setApen((v) => !v)}
+            aria-expanded={apen}
+            className="flex items-center gap-2 rounded-full border border-white/15 px-4 py-1.5 text-white/80 transition-colors hover:border-gold/50 hover:text-white"
+          >
+            <span className="flex flex-col gap-[3px]" aria-hidden="true">
+              <i className="block h-px w-4 bg-gold" />
+              <i className="block h-px w-4 bg-gold" />
+              <i className="block h-px w-4 bg-gold" />
+            </span>
+            Alt
           </button>
-        </form>
+          <span className="hidden text-white/50 sm:inline">{email}</span>
+          <form action="/auth/signout" method="post">
+            <button type="submit" className="text-white/70 hover:text-white">
+              Logg ut
+            </button>
+          </form>
+        </div>
       </div>
+
+      {apen && (
+        <>
+          {/* Klikk utenfor lukker. */}
+          <div
+            className="fixed inset-0 z-30"
+            onClick={() => setApen(false)}
+            role="presentation"
+          />
+          <div
+            className="absolute left-0 right-0 top-full z-40 mt-3 max-h-[75vh] overflow-y-auto rounded-2xl border border-white/10 bg-navy-dark p-6 shadow-2xl"
+            role="dialog"
+            aria-label="Alt i systemet"
+          >
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {grupper.map((g) => (
+                <section key={g.id}>
+                  <h2 className="border-b border-gold/20 pb-2 text-sm font-semibold text-gold-light">
+                    {g.tittel}
+                  </h2>
+                  <p className="mt-1 text-[11px] text-white/40">{g.hva}</p>
+                  <ul className="mt-2 flex flex-col">
+                    {g.items.map((i) => (
+                      <li key={i.href}>
+                        <Link
+                          href={i.href}
+                          className="block rounded-lg px-2 py-2 transition-colors hover:bg-white/5"
+                        >
+                          <span className="block text-sm text-white/90">
+                            {i.label}
+                          </span>
+                          <span className="block text-[11px] leading-snug text-white/40">
+                            {i.hint}
+                          </span>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
