@@ -1,0 +1,325 @@
+import Link from "next/link";
+import type { ReactNode } from "react";
+
+import { cn } from "@/lib/utils";
+
+/**
+ * HUSET — designsystemet for hele det innloggede produktet.
+ *
+ * Sju primitiver. Dette er de ENESTE lovlige byggeklossene på en side i huset.
+ * Farger, avstand og bevegelse kommer fra tokens i app/globals.css; ingen side
+ * setter farge selv. Ser du en hex-kode eller et rått <div className="rounded-2xl
+ * border bg-white"> i en side, er den ikke konvertert ennå.
+ *
+ *   Side        — flaten. Setter bakgrunn, bredde og pust.
+ *   Situasjon   — åpningen. Hva er tilfellet nå, før noen data vises.
+ *   Tall        — et tall som betyr noe, med én linje kontekst.
+ *   Flate       — en rolig seksjon med overskrift.
+ *   Rad         — én linje i en liste: når, hva, hvor mye, handling.
+ *   Handling    — lenke eller knapp. To vekter: gull og stille.
+ *   Tomt        — ingenting her ennå, og én vei videre.
+ *
+ * Alle er server-komponenter (ingen "use client"), så de kan brukes direkte i
+ * sider som henter data. Interaktivitet legges i egne klientkomponenter som
+ * plasseres INNI disse.
+ */
+
+// ---------------------------------------------------------------------------
+// Side
+// ---------------------------------------------------------------------------
+
+export function Side({
+  children,
+  bred = false,
+}: {
+  children: ReactNode;
+  /** Bred flate for tunge tabeller og kalendere. Standard er lesbar bredde. */
+  bred?: boolean;
+}) {
+  return (
+    <div className="-m-6 min-h-[calc(100dvh-3.5rem)] bg-hus-flate px-5 py-10 text-hus-blekk sm:-m-8 sm:px-8 lg:-m-10 lg:px-10">
+      {/* Lyset i taket — samme gest som på startsiden, dempet. */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none fixed inset-0 bg-[radial-gradient(110%_60%_at_50%_-10%,rgba(216,166,106,0.10),transparent_60%)]"
+      />
+      <div
+        className={cn(
+          "relative mx-auto flex w-full flex-col gap-8",
+          bred ? "max-w-6xl" : "max-w-3xl",
+        )}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Situasjon — åpningen. ALDRI en tabell først.
+// ---------------------------------------------------------------------------
+
+export function Situasjon({
+  merke,
+  tittel,
+  under,
+  handling,
+}: {
+  /** Kort ord over overskriften: «Utgifter», «Skatt», «Rengjøring». */
+  merke: string;
+  /** Hva som ER tilfellet nå — en setning, ikke et modulnavn. */
+  tittel: string;
+  /** Én linje til, hvis den tilfører noe. */
+  under?: ReactNode;
+  /** Filtre eller primærhandling, til høyre på store skjermer. */
+  handling?: ReactNode;
+}) {
+  return (
+    <header className="hus-stig flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+      <div className="min-w-0">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-hus-gull">
+          {merke}
+        </p>
+        <h1 className="mt-3 text-balance text-3xl font-light leading-tight text-hus-blekk sm:text-4xl">
+          {tittel}
+        </h1>
+        {under && (
+          <p className="mt-3 max-w-prose text-balance text-sm leading-relaxed text-hus-dempet">
+            {under}
+          </p>
+        )}
+      </div>
+      {handling && <div className="flex shrink-0 flex-wrap gap-2">{handling}</div>}
+    </header>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Tall
+// ---------------------------------------------------------------------------
+
+export function TallRekke({ children }: { children: ReactNode }) {
+  return (
+    <div className="hus-stig grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-hus-linje bg-hus-linje-svak sm:grid-cols-4">
+      {children}
+    </div>
+  );
+}
+
+export function Tall({
+  verdi,
+  navn,
+  tone = "ro",
+}: {
+  verdi: string;
+  navn: string;
+  /** ro = hvit, gull = penger, obs/kritisk = krever noe. */
+  tone?: "ro" | "gull" | "obs" | "kritisk";
+}) {
+  const farge =
+    tone === "gull"
+      ? "text-hus-gull-lys"
+      : tone === "obs"
+        ? "text-hus-obs"
+        : tone === "kritisk"
+          ? "text-hus-kritisk"
+          : "text-hus-blekk";
+  return (
+    <div className="bg-hus-flate px-5 py-6">
+      <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-hus-svak">
+        {navn}
+      </p>
+      <p className={cn("mt-2 text-2xl font-light tabular-nums sm:text-3xl", farge)}>
+        {verdi}
+      </p>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Flate — seksjon
+// ---------------------------------------------------------------------------
+
+export function Flate({
+  tittel,
+  hva,
+  handling,
+  children,
+}: {
+  tittel?: string;
+  /** Én linje som forklarer seksjonen for en som aldri har sett den. */
+  hva?: string;
+  handling?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <section className="hus-stig rounded-2xl border border-hus-linje bg-[linear-gradient(180deg,rgba(245,247,250,0.045),rgba(245,247,250,0.02))] p-5 sm:p-6">
+      {(tittel || handling) && (
+        <div className="mb-5 flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            {tittel && (
+              <h2 className="text-[11px] font-semibold uppercase tracking-[0.24em] text-hus-gull">
+                {tittel}
+              </h2>
+            )}
+            {hva && <p className="mt-1.5 text-sm text-hus-svak">{hva}</p>}
+          </div>
+          {handling && <div className="shrink-0">{handling}</div>}
+        </div>
+      )}
+      {children}
+    </section>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Rad — én linje i en liste
+// ---------------------------------------------------------------------------
+
+export function Liste({ children }: { children: ReactNode }) {
+  return <ul className="flex flex-col">{children}</ul>;
+}
+
+export function Rad({
+  nar,
+  hva,
+  detalj,
+  verdi,
+  tone = "ro",
+  handling,
+  href,
+}: {
+  /** Venstre kolonne: dato eller kort merkelapp. */
+  nar?: string;
+  /** Hovedteksten. */
+  hva: ReactNode;
+  /** Én linje under, dempet. */
+  detalj?: ReactNode;
+  /** Høyrestilt tall. */
+  verdi?: string;
+  tone?: "ro" | "gull" | "obs" | "kritisk";
+  /** Knapp/skjema helt til høyre. */
+  handling?: ReactNode;
+  /** Gjør hele raden klikkbar. */
+  href?: string;
+}) {
+  const farge =
+    tone === "gull"
+      ? "text-hus-gull-lys"
+      : tone === "obs"
+        ? "text-hus-obs"
+        : tone === "kritisk"
+          ? "text-hus-kritisk"
+          : "text-hus-blekk";
+
+  const innhold = (
+    <>
+      {nar && (
+        <span className="w-24 shrink-0 text-xs text-hus-svak tabular-nums">{nar}</span>
+      )}
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-sm text-hus-blekk">{hva}</span>
+        {detalj && (
+          <span className="mt-0.5 block truncate text-xs text-hus-svak">{detalj}</span>
+        )}
+      </span>
+      {verdi && (
+        <span className={cn("shrink-0 text-sm tabular-nums", farge)}>{verdi}</span>
+      )}
+    </>
+  );
+
+  return (
+    <li className="flex items-center gap-4 border-b border-hus-linje-svak py-3 last:border-b-0">
+      {href ? (
+        <Link
+          href={href}
+          className="-mx-2 flex min-w-0 flex-1 items-center gap-4 rounded-lg px-2 py-1 transition-colors hover:bg-white/[0.03]"
+        >
+          {innhold}
+        </Link>
+      ) : (
+        innhold
+      )}
+      {handling && <span className="shrink-0">{handling}</span>}
+    </li>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Handling — lenke eller knapp
+// ---------------------------------------------------------------------------
+
+const HANDLING_BASE =
+  "inline-flex items-center justify-center rounded-full px-5 py-2.5 text-sm no-underline transition-all duration-300";
+
+const HANDLING_VEKT = {
+  gull: "bg-[linear-gradient(180deg,var(--color-hus-gull-lys),var(--color-hus-gull))] font-semibold text-hus-flate hover:-translate-y-px",
+  stille:
+    "border border-hus-linje text-hus-dempet hover:border-hus-linje-sterk hover:text-hus-blekk",
+  naken: "px-2 py-1 text-hus-svak hover:text-hus-gull",
+} as const;
+
+export function Handling({
+  href,
+  vekt = "stille",
+  children,
+  type,
+  className,
+}: {
+  /** Lenke. Uten href blir det en knapp (for <form action=…>). */
+  href?: string;
+  vekt?: keyof typeof HANDLING_VEKT;
+  children: ReactNode;
+  type?: "submit" | "button";
+  className?: string;
+}) {
+  const klasse = cn(HANDLING_BASE, HANDLING_VEKT[vekt], className);
+  if (href) {
+    return (
+      <Link href={href} className={klasse}>
+        {children}
+      </Link>
+    );
+  }
+  return (
+    <button type={type ?? "button"} className={cn(klasse, "cursor-pointer")}>
+      {children}
+    </button>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Tomt — aldri en blindvei
+// ---------------------------------------------------------------------------
+
+export function Tomt({
+  tittel,
+  hva,
+  knappTekst,
+  knappHref,
+}: {
+  tittel: string;
+  /** Hvorfor det er verdt å fylle den. */
+  hva?: string;
+  knappTekst?: string;
+  knappHref?: string;
+}) {
+  return (
+    <div className="py-12 text-center">
+      <p className="text-balance text-lg font-light text-hus-blekk">{tittel}</p>
+      {hva && (
+        <p className="mx-auto mt-2 max-w-sm text-balance text-sm text-hus-dempet">
+          {hva}
+        </p>
+      )}
+      {knappTekst && knappHref && (
+        <div className="mt-6">
+          <Handling href={knappHref} vekt="gull">
+            {knappTekst}
+          </Handling>
+        </div>
+      )}
+    </div>
+  );
+}

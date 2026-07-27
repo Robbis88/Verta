@@ -15,6 +15,68 @@
   --color-hairline: #e0e7ff;
   --animate-marquee: marquee 30s linear infinite;
   --animate-blink: blink 1.1s ease-in-out infinite;
+
+  /* ---------------------------------------------------------------------
+     HUSET — designsystemet for hele det innloggede produktet.
+
+     Én kilde for farge, flate og bevegelse. Primitivene i components/hus/
+     bruker KUN disse; sidene bruker kun primitivene. Skal noe endres i
+     uttrykket, endres det her — ikke på 28 sider.
+
+     Regel: ingen side under app/dashboard eller app/hjem skal sette farger
+     selv. Ser du en hex-kode i en side, er den feil.
+  --------------------------------------------------------------------- */
+
+  /* Flater — mørk navy, husets grunnstemning */
+  --color-hus-flate: #04111f;
+  --color-hus-hev: #0a2038;
+  --color-hus-hev2: #0e2a47;
+
+  /* Blekk — tre nivåer, aldri flere */
+  --color-hus-blekk: #f5f7fa;
+  --color-hus-dempet: #93a3b8;
+  --color-hus-svak: #6b7a8f;
+  --color-hus-hvisk: #46566d;
+
+  /* Gull betyr penger og handling. Ingenting annet får være gull. */
+  --color-hus-gull: #d8a66a;
+  --color-hus-gull-lys: #f2c38b;
+
+  /* Tilstand — rolige toner, aldri skrikende */
+  --color-hus-obs: #e9c48d;
+  --color-hus-kritisk: #f0a89a;
+  --color-hus-god: #7fb79a;
+
+  /* Linjer */
+  --color-hus-linje: rgba(216, 166, 106, 0.18);
+  --color-hus-linje-sterk: rgba(216, 166, 106, 0.42);
+  --color-hus-linje-svak: rgba(245, 247, 250, 0.055);
+
+  /* Bevegelse — én kurve, tre hastigheter */
+  --ease-hus: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+/* Husets bevegelser. Alt som beveger seg bruker disse — ingen egne keyframes
+   ute i sidene. Respekterer prefers-reduced-motion. */
+@keyframes husStig {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.hus-stig {
+  animation: husStig 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hus-stig {
+    animation: none;
+  }
 }
 
 @keyframes marquee {
