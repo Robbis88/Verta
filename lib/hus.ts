@@ -1,0 +1,886 @@
+import "server-only";
+
+import type { createClient } from "@/lib/supabase/server";
+
+/**
+ * Dataloadere for «huset» — de to romlige aksene på /hjem.
+ *
+ *   ROM  = boligen innvendig (utstyr, adgang, lager, historikk, folk, skader)
+ *   TID  = de neste ~90 døgnene som en elv (opphold, tomme netter, vask)
+ *
+ * Prinsipp: KUN lesing. Ingen tabell, kolonne, migrasjon, server action eller
+ * forretningslogikk er endret for dette laget — alt her er nye SELECT-er over
+ * data som allerede finnes, satt sammen på en ny måte. Hver loader er isolert
+ * med try/catch, så en modul uten kjørt SQL aldri velter skjermen.
+ */
+
+type SupabaseServer = Awaited<ReturnType<typeof createClient>>;
+
+function isoDate(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
+function addDays(iso: string, n: number): string {
+  const d = new Date(`${iso}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+function netterMellom(a: string, b: string): number {
+  const d1 = new Date(`${a}T00:00:00Z`).getTime();
+  const d2 = new Date(`${b}T00:00:00Z`).getTime();
+  return Math.max(0, Math.round((d2 - d1) / 86400000));
+}
+
+/** Legger på property_id-filter når én bestemt bolig er valgt. */
+type MedEq = { eq(column: string, value: string): unknown };
+function medBolig<Q>(q: Q, propertyId: string | null): Q {
+  if (!propertyId) return q;
+  return (q as MedEq).eq("property_id", propertyId) as Q;
+}
+
+// ---------------------------------------------------------------------------
+// AKSE 1 — ROM
+// ---------------------------------------------------------------------------
+
+export type SoneId =
+  | "soverom"
+  | "bad"
+  | "kjokken"
+  | "stue"
+  | "ute"
+  | "teknikk"
+  | "adgang"
+  | "lager"
+  | "historikk"
+  | "folk"
+  | "skader";
+
+export type SoneTing = {
+  id: string;
+  navn: string;
+  /** Én linje under navnet: alder, antall, hvem, når. */
+  detalj: string | null;
+  /** Krever oppmerksomhet — får rommet til å lyse. */
+  varsel: boolean;
+  href: string;
+};
+
+export type Sone = {
+  id: SoneId;
+  navn: string;
+  /** Hva sonen er, i én setning. */
+  hva: string;
+  ting: SoneTing[];
+  varsler: number;
+  /** Hvor man går for å endre eller legge til. */
+  href: string;
+};
+
+export type Sak = {
+  id: string;
+  tittel: string;
+  prioritet: string;
+};
+
+export type Husplan = {
+  soner: Sone[];
+  saker: Sak[];
+  soverom: number | null;
+  bad: number | null;
+};
+
+const SONE_META: Record<SoneId, { navn: string; hva: string; href: string }> = {
+  soverom: {
+    navn: "Soverom",
+    hva: "Senger og alt som står på soverommene.",
+    href: "/dashboard/properties",
+  },
+  bad: {
+    navn: "Bad",
+    hva: "Dusj, vann og alt som kan lekke.",
+    href: "/dashboard/properties",
+  },
+  kjokken: {
+    navn: "Kjøkken",
+    hva: "Hvitevarer og det gjestene lager mat med.",
+    href: "/dashboard/properties",
+  },
+  stue: {
+    navn: "Stue",
+    hva: "Møbler, TV og fellesarealet.",
+    href: "/dashboard/properties",
+  },
+  ute: {
+    navn: "Ute",
+    hva: "Terrasse, bod, badestamp og uteplass.",
+    href: "/dashboard/properties",
+  },
+  teknikk: {
+    navn: "Teknikk",
+    hva: "Varme, strøm, vann og elektronikk.",
+    href: "/dashboard/properties",
+  },
+  adgang: {
+    navn: "Adgang",
+    hva: "Hvordan gjestene kommer seg inn.",
+    href: "/dashboard/properties",
+  },
+  lager: {
+    navn: "Lager",
+    hva: "Forbruksvarer gjestene bruker opp.",
+    href: "/dashboard/lager",
+  },
+  historikk: {
+    navn: "Historikk",
+    hva: "Alt som har skjedd med boligen, år for år.",
+    href: "/dashboard/okonomi",
+  },
+  folk: {
+    navn: "Folk",
+    hva: "Dine faste folk: snekker, brøyting, vaktmester.",
+    href: "/dashboard/properties",
+  },
+  skader: {
+    navn: "Skader",
+    hva: "Skadekrav mot gjester.",
+    href: "/dashboard/skade",
+  },
+};
+
+const REKKEFOLGE: SoneId[] = [
+  "soverom",
+  "bad",
+  "kjokken",
+  "stue",
+  "ute",
+  "teknikk",
+  "adgang",
+  "lager",
+  "historikk",
+  "folk",
+  "skader",
+];
+
+/** Plasserer utstyr i et rom ut fra fritekst-lokasjonen, ellers kategorien. */
+function soneForUtstyr(
+  kategori: string | null,
+  lokasjon: string | null,
+): SoneId {
+  const l = `${lokasjon ?? ""} ${kategori ?? ""}`.toLowerCase();
+  if (/sov|seng|bedroom/.test(l)) return "soverom";
+  if (/bad|dusj|wc|toalett|bath/.test(l)) return "bad";
+  if (/kjøkken|kjokken|kitchen|komfyr|kaffe|oppvask/.test(l)) return "kjokken";
+  if (/stue|salong|tv|peis|living/.test(l)) return "stue";
+  if (/ute|terrasse|balkong|hage|bod|stamp|boblebad|garasje|uthus/.test(l))
+    return "ute";
+  return "teknikk";
+}
+
+/** «11 år gammel» — gjør husets forfall synlig før noe ryker. */
+function alderTekst(kjopt: string | null): string | null {
+  if (!kjopt) return null;
+  const ar =
+    (Date.now() - new Date(`${kjopt}T00:00:00Z`).getTime()) /
+    (365.25 * 86400000);
+  if (ar < 1) return "ny i år";
+  return `${Math.floor(ar)} år gammel`;
+}
+
+export async function loadHusplan(
+  supabase: SupabaseServer,
+  propertyId: string | null,
+): Promise<Husplan> {
+  const idag = isoDate(new Date());
+  const bøtter = new Map<SoneId, SoneTing[]>();
+  const varsler = new Map<SoneId, number>();
+
+  const legg = (sone: SoneId, ting: SoneTing) => {
+    const liste = bøtter.get(sone) ?? [];
+    liste.push(ting);
+    bøtter.set(sone, liste);
+    if (ting.varsel) varsler.set(sone, (varsler.get(sone) ?? 0) + 1);
+  };
+
+  // Utstyret — med alder og garanti, festet til rommet det står i.
+  try {
+    const { data } = await medBolig(
+      supabase
+        .from("house_equipment")
+        .select("id,name,category,location,brand,purchased_at,warranty_until"),
+      propertyId,
+    ).order("created_at");
+    for (const e of (data ?? []) as {
+      id: string;
+      name: string;
+      category: string | null;
+      location: string | null;
+      brand: string | null;
+      purchased_at: string | null;
+      warranty_until: string | null;
+    }[]) {
+      const garantiUte = !!e.warranty_until && e.warranty_until < idag;
+      const deler = [
+        e.location,
+        e.brand,
+        alderTekst(e.purchased_at),
+        garantiUte ? "garanti utløpt" : null,
+      ].filter(Boolean);
+      legg(soneForUtstyr(e.category, e.location), {
+        id: `eq-${e.id}`,
+        navn: e.name,
+        detalj: deler.length > 0 ? deler.join(" · ") : null,
+        varsel: garantiUte,
+        href: "/dashboard/properties",
+      });
+    }
+  } catch {
+    /* modulen finnes ikke ennå */
+  }
+
+  // Adgang: hvordan gjesten kommer inn — smartlås og/eller nøkkelboks-tekst.
+  try {
+    const q = supabase
+      .from("properties")
+      .select("id,name,access_info,bedrooms,bathrooms");
+    const { data } = await (propertyId ? q.eq("id", propertyId) : q);
+    for (const p of (data ?? []) as {
+      id: string;
+      name: string;
+      access_info: string | null;
+      bedrooms: number | null;
+      bathrooms: number | null;
+    }[]) {
+      legg("adgang", {
+        id: `ai-${p.id}`,
+        navn: p.access_info ? "Tilkomst er beskrevet" : "Ingen tilkomst lagret",
+        detalj: p.access_info
+          ? p.access_info.replace(/\s+/g, " ").slice(0, 90)
+          : "Gjestene får ingen kode eller nøkkelinfo automatisk",
+        varsel: !p.access_info,
+        href: `/dashboard/properties/${p.id}`,
+      });
+    }
+  } catch {
+    /* ignorer */
+  }
+
+  try {
+    const { data } = await medBolig(
+      supabase.from("smart_locks").select("id,provider,status,property_id"),
+      propertyId,
+    );
+    for (const l of (data ?? []) as {
+      id: string;
+      provider: string;
+      status: string;
+      property_id: string;
+    }[]) {
+      legg("adgang", {
+        id: `sl-${l.id}`,
+        navn: `Smartlås (${l.provider})`,
+        detalj:
+          l.status === "connected"
+            ? "tilkoblet — koder lages automatisk"
+            : `status: ${l.status}`,
+        varsel: l.status !== "connected",
+        href: `/dashboard/properties/${l.property_id}`,
+      });
+    }
+  } catch {
+    /* ignorer */
+  }
+
+  // Lageret — alt på eller under terskel lyser.
+  try {
+    const { data } = await medBolig(
+      supabase.from("supplies").select("id,name,current_qty,low_threshold,unit"),
+      propertyId,
+    ).order("name");
+    for (const s of (data ?? []) as {
+      id: string;
+      name: string;
+      current_qty: number;
+      low_threshold: number;
+      unit: string | null;
+    }[]) {
+      const lavt = Number(s.current_qty) <= Number(s.low_threshold);
+      legg("lager", {
+        id: `su-${s.id}`,
+        navn: s.name,
+        detalj: `${s.current_qty} ${s.unit ?? "stk"}${lavt ? " · må fylles" : ""}`,
+        varsel: lavt,
+        href: "/dashboard/lager",
+      });
+    }
+  } catch {
+    /* ignorer */
+  }
+
+  // Historikken — husets dagbok: kjøp, oppussing, vedlikehold, verdi.
+  try {
+    const { data } = await medBolig(
+      supabase
+        .from("property_events")
+        .select("id,event_date,title,kind,amount"),
+      propertyId,
+    )
+      .order("event_date", { ascending: false })
+      .limit(14);
+    for (const e of (data ?? []) as {
+      id: string;
+      event_date: string;
+      title: string;
+      kind: string;
+      amount: number | null;
+    }[]) {
+      const ar = e.event_date.slice(0, 4);
+      legg("historikk", {
+        id: `ev-${e.id}`,
+        navn: e.title,
+        detalj: [ar, e.kind, e.amount ? `${Math.round(Number(e.amount))} kr` : null]
+          .filter(Boolean)
+          .join(" · "),
+        varsel: false,
+        href: "/dashboard/okonomi",
+      });
+    }
+  } catch {
+    /* ignorer */
+  }
+
+  // Folkene — eierens faste kontakter for boligen.
+  try {
+    const { data } = await medBolig(
+      supabase.from("property_contacts").select("id,name,role,phone"),
+      propertyId,
+    ).order("created_at");
+    for (const c of (data ?? []) as {
+      id: string;
+      name: string;
+      role: string | null;
+      phone: string | null;
+    }[]) {
+      legg("folk", {
+        id: `pc-${c.id}`,
+        navn: c.name,
+        detalj: [c.role, c.phone].filter(Boolean).join(" · ") || null,
+        varsel: false,
+        href: "/dashboard/properties",
+      });
+    }
+  } catch {
+    /* ignorer */
+  }
+
+  // Skadekrav — ubetalte krav lyser.
+  try {
+    const { data } = await medBolig(
+      supabase
+        .from("incident_claims")
+        .select("id,amount,description,status,created_at"),
+      propertyId,
+    )
+      .order("created_at", { ascending: false })
+      .limit(10);
+    for (const s of (data ?? []) as {
+      id: string;
+      amount: number;
+      description: string | null;
+      status: string;
+      created_at: string;
+    }[]) {
+      legg("skader", {
+        id: `ic-${s.id}`,
+        navn: s.description?.slice(0, 60) || "Skadekrav",
+        detalj: `${Math.round(Number(s.amount))} kr · ${
+          s.status === "paid"
+            ? "betalt"
+            : s.status === "cancelled"
+              ? "avlyst"
+              : "venter på betaling"
+        }`,
+        varsel: s.status === "pending",
+        href: "/dashboard/skade",
+      });
+    }
+  } catch {
+    /* ignorer */
+  }
+
+  // Åpne saker hører til huset, ikke ett rom — de vises som et bånd under planen.
+  let saker: Sak[] = [];
+  try {
+    const { data } = await medBolig(
+      supabase
+        .from("maintenance_requests")
+        .select("id,title,priority,status"),
+      propertyId,
+    )
+      .in("status", ["open", "in_progress"])
+      .order("created_at", { ascending: false })
+      .limit(8);
+    saker = ((data ?? []) as { id: string; title: string; priority: string }[]).map(
+      (m) => ({ id: m.id, tittel: m.title, prioritet: m.priority }),
+    );
+  } catch {
+    /* ignorer */
+  }
+
+  // Rom-antall gir planen riktig størrelse selv uten registrert utstyr.
+  let soverom: number | null = null;
+  let bad: number | null = null;
+  try {
+    const q = supabase.from("properties").select("bedrooms,bathrooms");
+    const { data } = await (propertyId ? q.eq("id", propertyId) : q);
+    for (const p of (data ?? []) as {
+      bedrooms: number | null;
+      bathrooms: number | null;
+    }[]) {
+      if (p.bedrooms != null) soverom = (soverom ?? 0) + Number(p.bedrooms);
+      if (p.bathrooms != null) bad = (bad ?? 0) + Number(p.bathrooms);
+    }
+  } catch {
+    /* ignorer */
+  }
+
+  const soner: Sone[] = REKKEFOLGE.map((id) => ({
+    id,
+    navn: SONE_META[id].navn,
+    hva: SONE_META[id].hva,
+    ting: bøtter.get(id) ?? [],
+    varsler: varsler.get(id) ?? 0,
+    href: SONE_META[id].href,
+  }));
+
+  return { soner, saker, soverom, bad };
+}
+
+// ---------------------------------------------------------------------------
+// AKSE 2 — TID
+// ---------------------------------------------------------------------------
+
+export type Opphold = {
+  id: string;
+  gjest: string;
+  inn: string;
+  ut: string;
+  netter: number;
+  belop: number | null;
+  kilde: string;
+  /** Venter på eierens svar (status = requested). */
+  venter: boolean;
+  bolig: string | null;
+};
+
+export type Hull = {
+  fra: string;
+  til: string;
+  netter: number;
+  /** Hva de tomme nettene er verdt, i kroner. */
+  tap: number;
+};
+
+export type Merke = {
+  id: string;
+  dato: string;
+  tekst: string;
+  slag: "vask";
+  href: string;
+};
+
+export type Elv = {
+  start: string;
+  dager: number;
+  opphold: Opphold[];
+  hull: Hull[];
+  merker: Merke[];
+  taptTotalt: number;
+  /** Andel netter som er booket i vinduet, 0–1. */
+  belegg: number;
+  /** Snittprisen vi regnet med, eller null hvis ingen pris er satt. */
+  snittNattpris: number | null;
+};
+
+type Sesong = { date_from: string; date_to: string; nightly_rate: number };
+
+/**
+ * Nattpris for én dato: sesongpris som dekker datoen (sist startende vinner),
+ * ellers baseprisen. Speiler regelen i lib/pricing.ts (rateForNight) — den er
+ * privat der, og prislogikken er ikke endret.
+ */
+function nattpris(
+  dato: string,
+  base: number | null,
+  sesonger: Sesong[],
+): number | null {
+  const dekker = sesonger
+    .filter((s) => dato >= s.date_from && dato <= s.date_to)
+    .sort((a, b) => a.date_from.localeCompare(b.date_from));
+  const s = dekker[dekker.length - 1];
+  if (s) return Number(s.nightly_rate);
+  return base != null ? Number(base) : null;
+}
+
+export async function loadElv(
+  supabase: SupabaseServer,
+  propertyId: string | null,
+  dager = 90,
+): Promise<Elv> {
+  const start = isoDate(new Date());
+  const slutt = addDays(start, dager);
+  const tom: Elv = {
+    start,
+    dager,
+    opphold: [],
+    hull: [],
+    merker: [],
+    taptTotalt: 0,
+    belegg: 0,
+    snittNattpris: null,
+  };
+
+  // Prisgrunnlaget — brukes til å regne hva en tom natt koster.
+  let base: number | null = null;
+  let sesonger: Sesong[] = [];
+  try {
+    const q = supabase.from("properties").select("base_nightly_rate");
+    const { data } = await (propertyId ? q.eq("id", propertyId) : q).limit(1);
+    base = ((data ?? []) as { base_nightly_rate: number | null }[])[0]
+      ?.base_nightly_rate ?? null;
+  } catch {
+    /* ingen pris satt — da vises hullene uten kroner */
+  }
+  try {
+    const { data } = await medBolig(
+      supabase.from("seasonal_rates").select("date_from,date_to,nightly_rate"),
+      propertyId,
+    );
+    sesonger = (data ?? []) as Sesong[];
+  } catch {
+    /* ignorer */
+  }
+
+  // Oppholdene — båtene i elven. Forespørsler tas med som «venter».
+  let opphold: Opphold[] = [];
+  try {
+    const { data } = await medBolig(
+      supabase
+        .from("bookings")
+        .select(
+          "id,guest_name,check_in,check_out,total_price,source,status,property_id",
+        ),
+      propertyId,
+    )
+      .in("status", ["confirmed", "completed", "requested"])
+      .gte("check_out", start)
+      .lte("check_in", slutt)
+      .order("check_in");
+
+    let navn = new Map<string, string>();
+    try {
+      const { data: props } = await supabase.from("properties").select("id,name");
+      navn = new Map(
+        ((props ?? []) as { id: string; name: string }[]).map((p) => [
+          p.id,
+          p.name,
+        ]),
+      );
+    } catch {
+      /* ignorer */
+    }
+
+    opphold = ((data ?? []) as {
+      id: string;
+      guest_name: string;
+      check_in: string;
+      check_out: string;
+      total_price: number | null;
+      source: string;
+      status: string;
+      property_id: string;
+    }[]).map((b) => ({
+      id: b.id,
+      gjest: b.guest_name,
+      inn: b.check_in,
+      ut: b.check_out,
+      netter: netterMellom(b.check_in, b.check_out),
+      belop: b.total_price == null ? null : Number(b.total_price),
+      kilde: b.source,
+      venter: b.status === "requested",
+      bolig: propertyId ? null : (navn.get(b.property_id) ?? null),
+    }));
+  } catch {
+    return tom;
+  }
+
+  // Hull = sammenhengende netter uten et bekreftet opphold. Forespørsler regnes
+  // IKKE som opptatt — de er ikke penger i hus ennå.
+  const opptatt = new Set<string>();
+  for (const o of opphold) {
+    if (o.venter) continue;
+    for (let d = o.inn; d < o.ut; d = addDays(d, 1)) opptatt.add(d);
+  }
+
+  const byggHull = (fra: string, til: string): Hull => {
+    let tap = 0;
+    for (let d = fra; d < til; d = addDays(d, 1)) tap += nattpris(d, base, sesonger) ?? 0;
+    return { fra, til, netter: netterMellom(fra, til), tap: Math.round(tap) };
+  };
+
+  const hull: Hull[] = [];
+  let løpende: string | null = null;
+  let prisSum = 0;
+  let prisAntall = 0;
+  for (let i = 0; i < dager; i++) {
+    const d = addDays(start, i);
+    const np = nattpris(d, base, sesonger);
+    if (np != null) {
+      prisSum += np;
+      prisAntall++;
+    }
+    if (!opptatt.has(d)) {
+      if (løpende === null) løpende = d;
+    } else if (løpende !== null) {
+      hull.push(byggHull(løpende, d));
+      løpende = null;
+    }
+  }
+  if (løpende !== null) hull.push(byggHull(løpende, addDays(start, dager)));
+
+  // Vask langs bredden.
+  const merker: Merke[] = [];
+  try {
+    const { data } = await medBolig(
+      supabase.from("cleaning_tasks").select("id,task_date,status,type"),
+      propertyId,
+    )
+      .gte("task_date", start)
+      .lte("task_date", slutt)
+      .order("task_date");
+    for (const t of (data ?? []) as {
+      id: string;
+      task_date: string;
+      status: string;
+      type: string;
+    }[]) {
+      merker.push({
+        id: `ct-${t.id}`,
+        dato: t.task_date,
+        tekst:
+          t.status === "completed"
+            ? "Vasket"
+            : t.status === "pending"
+              ? "Vask (ingen vasker)"
+              : "Vask",
+        slag: "vask",
+        href: "/dashboard/rengjoring",
+      });
+    }
+  } catch {
+    /* ignorer */
+  }
+
+  const bookedeNetter = Array.from(opptatt).filter(
+    (d) => d >= start && d < slutt,
+  ).length;
+
+  return {
+    start,
+    dager,
+    opphold,
+    hull,
+    merker,
+    taptTotalt: hull.reduce((s, h) => s + h.tap, 0),
+    belegg: dager > 0 ? bookedeNetter / dager : 0,
+    snittNattpris: prisAntall > 0 ? Math.round(prisSum / prisAntall) : null,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Startskjermen — dagens ENE ting
+// ---------------------------------------------------------------------------
+
+export type DagensTing = {
+  /** Kort merkelapp over overskriften. */
+  merke: string;
+  overskrift: string;
+  under: string | null;
+  tone: "ro" | "obs" | "kritisk";
+  knappTekst: string;
+  knappHref: string;
+};
+
+export type HusetNa = {
+  /** Første bilde av boligen, eller null. */
+  bilde: string | null;
+  boligNavn: string | null;
+  boligAntall: number;
+  ting: DagensTing | null;
+  /** Antall andre ting som venter, utover den ene vi viser. */
+  restAntall: number;
+};
+
+/**
+ * Finner den ENE tingen som fortjener skjermen akkurat nå, i streng
+ * prioritet: ubesvart forespørsel → kritisk varsel → gjestelenke som ikke er
+ * sendt → vask uten vasker → neste innsjekk. Ingenting = ro.
+ */
+export async function loadHusetNa(
+  supabase: SupabaseServer,
+): Promise<HusetNa> {
+  const idag = isoDate(new Date());
+
+  /** Kjører en spørring uten å kunne velte skjermen. */
+  async function trygg<T>(q: PromiseLike<{ data: unknown }>): Promise<T[]> {
+    try {
+      const { data } = await q;
+      return (data ?? []) as T[];
+    } catch {
+      return [];
+    }
+  }
+
+  // Alle spørringene i parallell — startskjermen handler om det første
+  // sekundet, så ingenting skal vente på noe annet.
+  const [boliger, forespørsler, varsler, usendte, vask, neste] = await Promise.all([
+    trygg<{ id: string; name: string; images: string[] | null }>(
+      supabase.from("properties").select("id,name,images").order("created_at"),
+    ),
+    trygg<{ id: string; guest_name: string; property_id: string }>(
+      supabase
+        .from("bookings")
+        .select("id,guest_name,property_id")
+        .eq("status", "requested")
+        .order("created_at"),
+    ),
+    trygg<{ id: string; title: string }>(
+      supabase
+        .from("critical_alerts")
+        .select("id,title")
+        .eq("resolved", false)
+        .order("created_at", { ascending: false }),
+    ),
+    trygg<{ id: string; guest_name: string }>(
+      supabase
+        .from("bookings")
+        .select("id,guest_name,check_in")
+        .eq("guest_link_sent", false)
+        .not("guest_token", "is", null)
+        .not("status", "in", "(cancelled,requested)")
+        .gte("check_out", idag)
+        .order("check_in"),
+    ),
+    trygg<{ id: string; task_date: string }>(
+      supabase
+        .from("cleaning_tasks")
+        .select("id,task_date")
+        .eq("status", "pending")
+        .is("cleaner_id", null)
+        .gte("task_date", idag)
+        .lte("task_date", addDays(idag, 10))
+        .order("task_date"),
+    ),
+    trygg<{ id: string; guest_name: string; check_in: string; property_id: string }>(
+      supabase
+        .from("bookings")
+        .select("id,guest_name,check_in,property_id")
+        .eq("status", "confirmed")
+        .gte("check_in", idag)
+        .order("check_in")
+        .limit(1),
+    ),
+  ]);
+
+  const bilde =
+    boliger.map((b) => b.images?.[0]).find((u): u is string => !!u) ?? null;
+  const boligNavn = boliger.length === 1 ? boliger[0].name : null;
+
+  // Streng prioritet: hvem venter mest på deg akkurat nå?
+  const kandidater: DagensTing[] = [];
+
+  // 1. En gjest har spurt og står og venter på svar.
+  if (forespørsler.length > 0) {
+    const r = forespørsler[0];
+    kandidater.push({
+      merke: "Venter på deg",
+      overskrift: `${r.guest_name} har spurt om å få bo hos deg.`,
+      under:
+        forespørsler.length > 1
+          ? `${forespørsler.length} forespørsler venter på svar.`
+          : "Svar før gjesten finner noe annet.",
+      tone: "kritisk",
+      knappTekst: "Svar nå",
+      knappHref: `/dashboard/properties/${r.property_id}`,
+    });
+  }
+
+  // 2. Penger som ikke har gått som de skulle.
+  if (varsler.length > 0) {
+    kandidater.push({
+      merke: "Trenger deg",
+      overskrift: varsler[0].title,
+      under:
+        varsler.length > 1
+          ? `${varsler.length} varsler om betaling eller refusjon.`
+          : "Et betalingsvarsel er ikke løst.",
+      tone: "kritisk",
+      knappTekst: "Se varselet",
+      knappHref: "/dashboard",
+    });
+  }
+
+  // 3. Gjesten mangler lenken sin til innsjekk, WiFi og dørkode.
+  if (usendte.length > 0) {
+    kandidater.push({
+      merke: "Én ting igjen",
+      overskrift: `${usendte[0].guest_name} har ikke fått gjestelenken sin.`,
+      under: "Innsjekk, WiFi og dørkode — alt på én lenke.",
+      tone: "obs",
+      knappTekst: "Send lenken",
+      knappHref: "/dashboard",
+    });
+  }
+
+  // 4. Vask som nærmer seg uten at noen er satt på.
+  if (vask.length > 0) {
+    const dager = netterMellom(idag, vask[0].task_date);
+    kandidater.push({
+      merke: "Snart",
+      overskrift:
+        dager === 0
+          ? "Det skal vaskes i dag, men ingen er satt på."
+          : `Det skal vaskes om ${dager} dager, men ingen er satt på.`,
+      under: "Sett en vasker, eller finn hjelp i nærheten.",
+      tone: "obs",
+      knappTekst: "Sett vasker",
+      knappHref: "/dashboard/rengjoring",
+    });
+  }
+
+  // 5. Det hyggelige tilfellet: neste gjest på vei.
+  if (neste.length > 0) {
+    const dager = netterMellom(idag, neste[0].check_in);
+    kandidater.push({
+      merke: "Neste gjest",
+      overskrift:
+        dager === 0
+          ? `${neste[0].guest_name} kommer i dag.`
+          : dager === 1
+            ? `${neste[0].guest_name} kommer i morgen.`
+            : `${neste[0].guest_name} kommer om ${dager} dager.`,
+      under: "Alt er klart så langt jeg kan se.",
+      tone: "ro",
+      knappTekst: "Se oppholdet",
+      knappHref: `/dashboard/properties/${neste[0].property_id}`,
+    });
+  }
+
+  return {
+    bilde,
+    boligNavn,
+    boligAntall: boliger.length,
+    ting: kandidater[0] ?? null,
+    restAntall: Math.max(0, kandidater.length - 1),
+  };
+}
