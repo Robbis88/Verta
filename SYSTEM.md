@@ -145,6 +145,17 @@ Hele navigasjonen er fire ord:
   regnestykket i klartekst.
 - **`/hjem/ord`** — Vera i fullskjerm mot eksisterende `/api/chat` (`portal`).
 - **`/hjem/alt`** — hele modul-listen, gruppert og søkbar (`lib/nav-items.ts`).
+- **`/hjem/historie`** — husets biografi (`loadBiografi`): hva boligen har tjent
+  siden dag én, hvor mange som har bodd her, og en tidslinje år for år bygget av
+  `property_events`, løste `maintenance_requests` (med kostnad), utstyrskjøp,
+  `expenses` og `property_reviews`. Har egen `@media print` (hvitt papir, svart
+  tekst) fordi siden er ment å skrives ut og gis til en kjøper. Nås fra
+  Historikk-skuffen i Rom.
+
+Startsiden har **levende lys**: `data-lys` settes etter montering fra brukerens
+faktiske årstid og klokkeslett (vinternatt dyp og blå, sommerformiddag høy og
+gyllen). Skrives rett på elementet via ref, ikke via state, så server og
+nettleser aldri er uenige om hva klokka er.
 
 ---
 

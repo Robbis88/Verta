@@ -134,7 +134,7 @@ const SONE_META: Record<SoneId, { navn: string; hva: string; href: string }> = {
   historikk: {
     navn: "Historikk",
     hva: "Alt som har skjedd med boligen, år for år.",
-    href: "/dashboard/okonomi",
+    href: "/dashboard/okonomi/historikk",
   },
   folk: {
     navn: "Folk",
@@ -342,7 +342,7 @@ export async function loadHusplan(
           .filter(Boolean)
           .join(" · "),
         varsel: false,
-        href: "/dashboard/okonomi",
+        href: "/dashboard/okonomi/historikk",
       });
     }
   } catch {
@@ -882,5 +882,231 @@ export async function loadHusetNa(
     boligAntall: boliger.length,
     ting: kandidater[0] ?? null,
     restAntall: Math.max(0, kandidater.length - 1),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// HUSETS BIOGRAFI — det boligen har vært gjennom
+// ---------------------------------------------------------------------------
+
+export type Hendelse = {
+  id: string;
+  dato: string;
+  tittel: string;
+  /** Hva slags hendelse: kjøp, oppussing, vedlikehold, finans, verdi, utstyr. */
+  slag: string;
+  belop: number | null;
+};
+
+export type BiografiAr = {
+  ar: number;
+  inntekt: number;
+  kostnad: number;
+  netter: number;
+  gjester: number;
+  hendelser: Hendelse[];
+};
+
+export type Biografi = {
+  boligNavn: string | null;
+  /** Første året vi har spor av — kjøp, hendelse eller booking. */
+  forsteAr: number | null;
+  totalInntekt: number;
+  totalKostnad: number;
+  totalNetter: number;
+  totalGjester: number;
+  snittRating: number | null;
+  antallAnmeldelser: number;
+  /** Ett sitat fra en gjest, hvis noen har skrevet noe. */
+  sitat: { tekst: string; navn: string; rating: number } | null;
+  ar: BiografiAr[];
+};
+
+/**
+ * Samler alt boligen har vært gjennom til én lesbar historie, år for år.
+ * Leser property_events, løste maintenance_requests, house_equipment-kjøp,
+ * bookings, expenses og property_reviews. Ingenting nytt lagres — dette er
+ * hukommelsen som allerede ligger der, satt sammen slik et menneske leser den.
+ */
+export async function loadBiografi(
+  supabase: SupabaseServer,
+  propertyId: string | null,
+): Promise<Biografi> {
+  async function trygg<T>(q: PromiseLike<{ data: unknown }>): Promise<T[]> {
+    try {
+      const { data } = await q;
+      return (data ?? []) as T[];
+    } catch {
+      return [];
+    }
+  }
+
+  const [boliger, events, saker, utstyr, bookinger, utgifter, anmeldelser] =
+    await Promise.all([
+      trygg<{ id: string; name: string }>(
+        supabase.from("properties").select("id,name").order("created_at"),
+      ),
+      trygg<{
+        id: string;
+        event_date: string;
+        title: string;
+        kind: string;
+        amount: number | null;
+      }>(
+        medBolig(
+          supabase
+            .from("property_events")
+            .select("id,event_date,title,kind,amount"),
+          propertyId,
+        ).order("event_date", { ascending: false }),
+      ),
+      trygg<{ id: string; title: string; cost: number | null; resolved_at: string }>(
+        medBolig(
+          supabase
+            .from("maintenance_requests")
+            .select("id,title,cost,resolved_at"),
+          propertyId,
+        )
+          .eq("status", "resolved")
+          .not("resolved_at", "is", null)
+          .order("resolved_at", { ascending: false }),
+      ),
+      trygg<{ id: string; name: string; brand: string | null; purchased_at: string }>(
+        medBolig(
+          supabase
+            .from("house_equipment")
+            .select("id,name,brand,purchased_at"),
+          propertyId,
+        ).not("purchased_at", "is", null),
+      ),
+      trygg<{
+        id: string;
+        check_in: string;
+        check_out: string;
+        total_price: number | null;
+        nights: number | null;
+      }>(
+        medBolig(
+          supabase
+            .from("bookings")
+            .select("id,check_in,check_out,total_price,nights"),
+          propertyId,
+        ).in("status", ["confirmed", "completed"]),
+      ),
+      trygg<{ id: string; amount: number; expense_date: string }>(
+        medBolig(
+          supabase.from("expenses").select("id,amount,expense_date"),
+          propertyId,
+        ),
+      ),
+      trygg<{
+        id: string;
+        guest_name: string;
+        rating: number;
+        comment: string | null;
+      }>(
+        medBolig(
+          supabase
+            .from("property_reviews")
+            .select("id,guest_name,rating,comment"),
+          propertyId,
+        ).order("created_at", { ascending: false }),
+      ),
+    ]);
+
+  const arKart = new Map<number, BiografiAr>();
+  const hent = (ar: number): BiografiAr => {
+    let rad = arKart.get(ar);
+    if (!rad) {
+      rad = { ar, inntekt: 0, kostnad: 0, netter: 0, gjester: 0, hendelser: [] };
+      arKart.set(ar, rad);
+    }
+    return rad;
+  };
+
+  for (const e of events) {
+    hent(Number(e.event_date.slice(0, 4))).hendelser.push({
+      id: `ev-${e.id}`,
+      dato: e.event_date,
+      tittel: e.title,
+      slag: e.kind,
+      belop: e.amount == null ? null : Number(e.amount),
+    });
+  }
+
+  for (const s of saker) {
+    const dato = s.resolved_at.slice(0, 10);
+    hent(Number(dato.slice(0, 4))).hendelser.push({
+      id: `mr-${s.id}`,
+      dato,
+      tittel: s.title,
+      slag: "reparasjon",
+      belop: s.cost == null ? null : Number(s.cost),
+    });
+  }
+
+  for (const u of utstyr) {
+    hent(Number(u.purchased_at.slice(0, 4))).hendelser.push({
+      id: `he-${u.id}`,
+      dato: u.purchased_at,
+      tittel: [u.name, u.brand].filter(Boolean).join(" · "),
+      slag: "utstyr",
+      belop: null,
+    });
+  }
+
+  let totalInntekt = 0;
+  let totalNetter = 0;
+  let totalGjester = 0;
+  for (const b of bookinger) {
+    const rad = hent(Number(b.check_in.slice(0, 4)));
+    const belop = b.total_price == null ? 0 : Number(b.total_price);
+    const netter = b.nights ?? netterMellom(b.check_in, b.check_out);
+    rad.inntekt += belop;
+    rad.netter += netter;
+    rad.gjester += 1;
+    totalInntekt += belop;
+    totalNetter += netter;
+    totalGjester += 1;
+  }
+
+  let totalKostnad = 0;
+  for (const u of utgifter) {
+    const belop = Number(u.amount);
+    hent(Number(u.expense_date.slice(0, 4))).kostnad += belop;
+    totalKostnad += belop;
+  }
+
+  const medKarakter = anmeldelser.filter((a) => a.rating > 0);
+  const snittRating =
+    medKarakter.length > 0
+      ? Math.round(
+          (medKarakter.reduce((n, a) => n + a.rating, 0) / medKarakter.length) * 10,
+        ) / 10
+      : null;
+  const medTekst = anmeldelser.find((a) => (a.comment ?? "").trim().length > 20);
+
+  const ar = Array.from(arKart.values()).sort((a, b) => b.ar - a.ar);
+  for (const rad of ar) {
+    rad.hendelser.sort((a, b) => (a.dato < b.dato ? 1 : -1));
+  }
+
+  return {
+    boligNavn: boliger.length === 1 ? boliger[0].name : null,
+    forsteAr: ar.length > 0 ? ar[ar.length - 1].ar : null,
+    totalInntekt,
+    totalKostnad,
+    totalNetter,
+    totalGjester,
+    snittRating,
+    antallAnmeldelser: medKarakter.length,
+    sitat: medTekst
+      ? {
+          tekst: (medTekst.comment ?? "").trim(),
+          navn: medTekst.guest_name,
+          rating: medTekst.rating,
+        }
+      : null,
+    ar,
   };
 }
