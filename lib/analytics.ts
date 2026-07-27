@@ -17,6 +17,8 @@ type BoostRow = {
 export type SourceStat = { source: string; count: number; revenue: number };
 
 export type UpcomingBooking = {
+  /** Booking-id, så oversikten kan lenke til oppholdssiden i Huset. */
+  id: string;
   guestName: string;
   propertyName: string;
   checkIn: string;
@@ -124,11 +126,12 @@ export async function getDashboardMetrics(
   // Kommende bookinger (fra og med i dag) — ekte gjester, sortert på innsjekk.
   const { data: upcomingData } = await supabase
     .from("bookings")
-    .select("guest_name,source,check_in,check_out,property_id,status")
+    .select("id,guest_name,source,check_in,check_out,property_id,status")
     .gte("check_in", today)
     .order("check_in", { ascending: true })
     .limit(6);
   const upcoming: UpcomingBooking[] = ((upcomingData ?? []) as (BookingRow & {
+    id: string;
     guest_name: string | null;
     check_out: string;
     property_id: string;
@@ -136,6 +139,7 @@ export async function getDashboardMetrics(
     .filter((b) => b.status !== "cancelled")
     .slice(0, 5)
     .map((b) => ({
+      id: b.id,
       guestName: b.guest_name ?? "Gjest",
       propertyName: propertyName.get(b.property_id) ?? "—",
       checkIn: b.check_in,

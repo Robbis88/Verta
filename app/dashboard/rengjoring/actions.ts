@@ -65,6 +65,10 @@ export async function assignTask(formData: FormData): Promise<void> {
     })
     .eq("id", id);
   revalidatePath("/dashboard/rengjoring");
+  // Valgfritt `next`: lar Besetningen i Huset tildele uten å miste siden sin.
+  // Kun interne stier. Uten feltet oppfører handlingen seg nøyaktig som før.
+  const neste = String(formData.get("next") ?? "");
+  if (/^\/[^/]/.test(neste)) revalidatePath(neste);
 }
 
 export async function deleteTask(formData: FormData): Promise<void> {

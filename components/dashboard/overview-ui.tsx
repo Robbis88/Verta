@@ -109,3 +109,48 @@ export function PanelCard({
     </div>
   );
 }
+
+/**
+ * Rolig tallrad — fire nøkkeltall i ÉN flate i stedet for fire bokser med
+ * ikoner. Brukes på oversikten, der poenget er å lese tallene raskt, ikke å
+ * telle kort. (KpiCard beholdes uendret for Utgifter, Skatt og Provisjon.)
+ */
+export function TallRad({
+  tall,
+}: {
+  tall: {
+    label: string;
+    value: string;
+    trend?: string;
+    trendTone?: "up" | "down" | "muted";
+  }[];
+}) {
+  return (
+    <div className="grid grid-cols-2 divide-hairline rounded-2xl border border-hairline bg-white shadow-[0_8px_30px_rgba(8,27,51,0.06)] sm:grid-cols-4 sm:divide-x">
+      {tall.map((t) => (
+        <div key={t.label} className="px-5 py-6">
+          <p className="text-xs font-medium uppercase tracking-wide text-ink/50">
+            {t.label}
+          </p>
+          <p className="mt-2 text-2xl font-semibold tabular-nums text-navy">
+            {t.value}
+          </p>
+          {t.trend && (
+            <p
+              className={cn(
+                "mt-1 text-xs",
+                t.trendTone === "up"
+                  ? "text-emerald-600"
+                  : t.trendTone === "down"
+                    ? "text-red-600"
+                    : "text-ink/50",
+              )}
+            >
+              {t.trend}
+            </p>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}

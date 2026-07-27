@@ -848,7 +848,7 @@ export async function loadHusetNa(
           : "Svar før gjesten finner noe annet.",
       tone: "kritisk",
       knappTekst: "Svar nå",
-      knappHref: `/dashboard/properties/${r.property_id}`,
+      knappHref: `/hjem/opphold/${r.id}`,
     });
   }
 
@@ -875,7 +875,7 @@ export async function loadHusetNa(
       under: "Innsjekk, WiFi og dørkode — alt på én lenke.",
       tone: "obs",
       knappTekst: "Send lenken",
-      knappHref: "/dashboard",
+      knappHref: `/hjem/opphold/${usendte[0].id}`,
     });
   }
 
@@ -909,7 +909,7 @@ export async function loadHusetNa(
       under: "Alt er klart så langt jeg kan se.",
       tone: "ro",
       knappTekst: "Se oppholdet",
-      knappHref: `/dashboard/properties/${neste[0].property_id}`,
+      knappHref: `/hjem/opphold/${neste[0].id}`,
     });
   }
 
@@ -1145,5 +1145,457 @@ export async function loadBiografi(
         }
       : null,
     ar,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// ETT OPPHOLD — hele gjestens historie som én tråd
+// ---------------------------------------------------------------------------
+
+export type OppholdMelding = {
+  id: string;
+  retning: "inn" | "ut";
+  kanal: string;
+  tekst: string;
+  nar: string;
+};
+
+export type OppholdDetalj = {
+  id: string;
+  gjest: string;
+  epost: string | null;
+  telefon: string | null;
+  antallGjester: number | null;
+  beskjed: string | null;
+  inn: string;
+  ut: string;
+  netter: number;
+  kilde: string;
+  status: string;
+  /** venter | kommer | her | ferdig | avlyst */
+  fase: "venter" | "kommer" | "her" | "ferdig" | "avlyst";
+  /** Døgn til innsjekk (negativt = pågår/passert). */
+  dagerTil: number;
+
+  boligId: string;
+  boligNavn: string;
+
+  // Penger
+  total: number | null;
+  tjenestegebyr: number | null;
+  depositum: number | null;
+  restbelop: number | null;
+  restBetalt: boolean;
+  betalingsstatus: string | null;
+  senUtsjekkBetalt: boolean;
+  tidligInnsjekkBetalt: boolean;
+
+  // Tilkomst
+  adgangskode: string | null;
+  gjestToken: string | null;
+  lenkeSendt: boolean;
+  lenkeSendtNar: string | null;
+
+  // Rundt oppholdet
+  meldinger: OppholdMelding[];
+  vask: { id: string; dato: string; status: string } | null;
+  anmeldelse: { rating: number; kommentar: string | null } | null;
+  skader: { id: string; belop: number; status: string; beskrivelse: string | null }[];
+};
+
+/**
+ * Samler ALT om ett opphold til én tråd: gjesten, pengene, tilkomsten,
+ * samtalen, vasken etterpå, anmeldelsen og et eventuelt skadekrav.
+ *
+ * Dette fantes fra før — bare spredt over seks sider. Kun lesing; RLS scoper
+ * til eierens egne bookinger, så et fremmed opphold gir null.
+ */
+export async function loadOpphold(
+  supabase: SupabaseServer,
+  bookingId: string,
+): Promise<OppholdDetalj | null> {
+  async function trygg<T>(q: PromiseLike<{ data: unknown }>): Promise<T[]> {
+    try {
+      const { data } = await q;
+      return (data ?? []) as T[];
+    } catch {
+      return [];
+    }
+  }
+
+  const rader = await trygg<{
+    id: string;
+    property_id: string;
+    guest_name: string;
+    guest_email: string | null;
+    guest_phone: string | null;
+    check_in: string;
+    check_out: string;
+    nights: number | null;
+    num_guests: number | null;
+    guest_message: string | null;
+    source: string;
+    status: string;
+    total_price: number | null;
+    service_fee: number | null;
+    deposit_amount: number | null;
+    remaining_amount: number | null;
+    remaining_paid: boolean | null;
+    payment_status: string | null;
+    late_checkout_paid: boolean | null;
+    early_checkin_paid: boolean | null;
+    access_code: string | null;
+    guest_token: string | null;
+    guest_link_sent: boolean | null;
+    guest_link_sent_at: string | null;
+  }>(
+    supabase
+      .from("bookings")
+      .select(
+        "id,property_id,guest_name,guest_email,guest_phone,check_in,check_out,nights," +
+          "num_guests,guest_message,source,status,total_price,service_fee,deposit_amount," +
+          "remaining_amount,remaining_paid,payment_status,late_checkout_paid," +
+          "early_checkin_paid,access_code,guest_token,guest_link_sent,guest_link_sent_at",
+      )
+      .eq("id", bookingId)
+      .limit(1),
+  );
+
+  const b = rader[0];
+  if (!b) return null;
+
+  const [boliger, meldinger, vasker, anmeldelser, skader] = await Promise.all([
+    trygg<{ id: string; name: string }>(
+      supabase.from("properties").select("id,name").eq("id", b.property_id).limit(1),
+    ),
+    trygg<{
+      id: string;
+      direction: string;
+      channel: string;
+      body: string;
+      created_at: string;
+    }>(
+      supabase
+        .from("messages")
+        .select("id,direction,channel,body,created_at")
+        .eq("booking_id", b.id)
+        .order("created_at"),
+    ),
+    trygg<{ id: string; task_date: string; status: string }>(
+      supabase
+        .from("cleaning_tasks")
+        .select("id,task_date,status")
+        .eq("booking_id", b.id)
+        .limit(1),
+    ),
+    trygg<{ rating: number; comment: string | null }>(
+      supabase
+        .from("property_reviews")
+        .select("rating,comment")
+        .eq("booking_id", b.id)
+        .limit(1),
+    ),
+    trygg<{
+      id: string;
+      amount: number;
+      status: string;
+      description: string | null;
+    }>(
+      supabase
+        .from("incident_claims")
+        .select("id,amount,status,description")
+        .eq("booking_id", b.id)
+        .order("created_at", { ascending: false }),
+    ),
+  ]);
+
+  const idag = isoDate(new Date());
+  const dagerTil = netterMellom(idag, b.check_in);
+  const fase: OppholdDetalj["fase"] =
+    b.status === "cancelled"
+      ? "avlyst"
+      : b.status === "requested"
+        ? "venter"
+        : b.check_out <= idag
+          ? "ferdig"
+          : b.check_in <= idag
+            ? "her"
+            : "kommer";
+
+  return {
+    id: b.id,
+    gjest: b.guest_name,
+    epost: b.guest_email,
+    telefon: b.guest_phone,
+    antallGjester: b.num_guests,
+    beskjed: b.guest_message,
+    inn: b.check_in,
+    ut: b.check_out,
+    netter: b.nights ?? netterMellom(b.check_in, b.check_out),
+    kilde: b.source,
+    status: b.status,
+    fase,
+    dagerTil,
+
+    boligId: b.property_id,
+    boligNavn: boliger[0]?.name ?? "Boligen",
+
+    total: b.total_price == null ? null : Number(b.total_price),
+    tjenestegebyr: b.service_fee == null ? null : Number(b.service_fee),
+    depositum: b.deposit_amount == null ? null : Number(b.deposit_amount),
+    restbelop: b.remaining_amount == null ? null : Number(b.remaining_amount),
+    restBetalt: !!b.remaining_paid,
+    betalingsstatus: b.payment_status,
+    senUtsjekkBetalt: !!b.late_checkout_paid,
+    tidligInnsjekkBetalt: !!b.early_checkin_paid,
+
+    adgangskode: b.access_code,
+    gjestToken: b.guest_token,
+    lenkeSendt: !!b.guest_link_sent,
+    lenkeSendtNar: b.guest_link_sent_at,
+
+    meldinger: meldinger.map((m) => ({
+      id: m.id,
+      retning: m.direction === "incoming" ? "inn" : "ut",
+      kanal: m.channel,
+      tekst: m.body,
+      nar: m.created_at,
+    })),
+    vask: vasker[0]
+      ? { id: vasker[0].id, dato: vasker[0].task_date, status: vasker[0].status }
+      : null,
+    anmeldelse: anmeldelser[0]
+      ? { rating: anmeldelser[0].rating, kommentar: anmeldelser[0].comment }
+      : null,
+    skader: skader.map((s) => ({
+      id: s.id,
+      belop: Number(s.amount),
+      status: s.status,
+      beskrivelse: s.description,
+    })),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// BESETNINGEN — menneskene som passer huset
+// ---------------------------------------------------------------------------
+
+export type Person = {
+  id: string;
+  navn: string;
+  /** «Vasker», «Rørlegger», «Co-host», «Brøyting» … */
+  rolle: string;
+  slag: "vasker" | "handverker" | "kontakt" | "cohost";
+  telefon: string | null;
+  epost: string | null;
+  /** Token-portal for vaskere og håndverkere (ingen innlogging). */
+  portal: string | null;
+  /** Hva de har på seg akkurat nå. */
+  oppgaver: number;
+  /** Ventende invitasjon (co-host som ikke har takket ja). */
+  venter: boolean;
+};
+
+export type Ledig = {
+  id: string;
+  slag: "vask" | "sak";
+  tittel: string;
+  nar: string | null;
+  bolig: string | null;
+};
+
+export type Besetning = {
+  folk: Person[];
+  /** Arbeid som ikke har fått noen ennå. */
+  ledig: Ledig[];
+  /** Vaskerne, til hurtigtildeling. */
+  vaskere: { id: string; navn: string }[];
+};
+
+/**
+ * Alle som passer huset, samlet ett sted: vaskere, håndverkere, faste kontakter
+ * og co-hosts — med hva de har på seg nå og ett trykk for å nå dem. Under ligger
+ * arbeidet som ennå ikke har fått noen.
+ *
+ * Kun lesing. Tildeling skjer via den eksisterende assignTask-handlingen.
+ */
+export async function loadBesetning(
+  supabase: SupabaseServer,
+): Promise<Besetning> {
+  const idag = isoDate(new Date());
+
+  async function trygg<T>(q: PromiseLike<{ data: unknown }>): Promise<T[]> {
+    try {
+      const { data } = await q;
+      return (data ?? []) as T[];
+    } catch {
+      return [];
+    }
+  }
+
+  const [vaskere, handverkere, kontakter, team, vaskOppgaver, saker, boliger] =
+    await Promise.all([
+      trygg<{
+        id: string;
+        name: string;
+        phone: string | null;
+        email: string | null;
+        access_token: string;
+      }>(
+        supabase
+          .from("cleaners")
+          .select("id,name,phone,email,access_token")
+          .order("name"),
+      ),
+      trygg<{
+        id: string;
+        name: string;
+        trade: string | null;
+        phone: string | null;
+        email: string | null;
+        access_token: string;
+      }>(
+        supabase
+          .from("contractors")
+          .select("id,name,trade,phone,email,access_token")
+          .order("name"),
+      ),
+      trygg<{
+        id: string;
+        name: string;
+        role: string | null;
+        phone: string | null;
+        email: string | null;
+      }>(
+        supabase
+          .from("property_contacts")
+          .select("id,name,role,phone,email")
+          .eq("active", true)
+          .order("created_at"),
+      ),
+      trygg<{ id: string; member_email: string; accepted_at: string | null }>(
+        supabase
+          .from("team_members")
+          .select("id,member_email,accepted_at")
+          .order("created_at"),
+      ),
+      trygg<{
+        id: string;
+        task_date: string;
+        status: string;
+        cleaner_id: string | null;
+        property_id: string;
+      }>(
+        supabase
+          .from("cleaning_tasks")
+          .select("id,task_date,status,cleaner_id,property_id")
+          .neq("status", "completed")
+          .gte("task_date", addDays(idag, -30))
+          .order("task_date"),
+      ),
+      trygg<{
+        id: string;
+        title: string;
+        status: string;
+        contractor_id: string | null;
+        property_id: string;
+      }>(
+        supabase
+          .from("maintenance_requests")
+          .select("id,title,status,contractor_id,property_id")
+          .in("status", ["open", "in_progress"])
+          .order("created_at", { ascending: false }),
+      ),
+      trygg<{ id: string; name: string }>(
+        supabase.from("properties").select("id,name"),
+      ),
+    ]);
+
+  const boligNavn = new Map(boliger.map((b) => [b.id, b.name]));
+
+  const tellVask = new Map<string, number>();
+  for (const t of vaskOppgaver) {
+    if (t.cleaner_id) tellVask.set(t.cleaner_id, (tellVask.get(t.cleaner_id) ?? 0) + 1);
+  }
+  const tellSak = new Map<string, number>();
+  for (const s of saker) {
+    if (s.contractor_id)
+      tellSak.set(s.contractor_id, (tellSak.get(s.contractor_id) ?? 0) + 1);
+  }
+
+  const folk: Person[] = [
+    ...vaskere.map((c) => ({
+      id: c.id,
+      navn: c.name,
+      rolle: "Vasker",
+      slag: "vasker" as const,
+      telefon: c.phone,
+      epost: c.email,
+      portal: `/vasker/${c.access_token}`,
+      oppgaver: tellVask.get(c.id) ?? 0,
+      venter: false,
+    })),
+    ...handverkere.map((c) => ({
+      id: c.id,
+      navn: c.name,
+      rolle: c.trade
+        ? c.trade.charAt(0).toUpperCase() + c.trade.slice(1)
+        : "Håndverker",
+      slag: "handverker" as const,
+      telefon: c.phone,
+      epost: c.email,
+      portal: `/handverker/${c.access_token}`,
+      oppgaver: tellSak.get(c.id) ?? 0,
+      venter: false,
+    })),
+    ...kontakter.map((c) => ({
+      id: c.id,
+      navn: c.name,
+      rolle: c.role ?? "Fast kontakt",
+      slag: "kontakt" as const,
+      telefon: c.phone,
+      epost: c.email,
+      portal: null,
+      oppgaver: 0,
+      venter: false,
+    })),
+    ...team.map((t) => ({
+      id: t.id,
+      navn: t.member_email.split("@")[0],
+      rolle: "Co-host",
+      slag: "cohost" as const,
+      telefon: null,
+      epost: t.member_email,
+      portal: null,
+      oppgaver: 0,
+      venter: !t.accepted_at,
+    })),
+  ];
+
+  const ledig: Ledig[] = [
+    ...vaskOppgaver
+      .filter((t) => !t.cleaner_id)
+      .map((t) => ({
+        id: t.id,
+        slag: "vask" as const,
+        tittel: "Vask",
+        nar: t.task_date,
+        bolig: boligNavn.get(t.property_id) ?? null,
+      })),
+    ...saker
+      .filter((s) => !s.contractor_id)
+      .map((s) => ({
+        id: s.id,
+        slag: "sak" as const,
+        tittel: s.title,
+        nar: null,
+        bolig: boligNavn.get(s.property_id) ?? null,
+      })),
+  ];
+
+  return {
+    folk,
+    ledig,
+    vaskere: vaskere.map((c) => ({ id: c.id, navn: c.name })),
   };
 }
