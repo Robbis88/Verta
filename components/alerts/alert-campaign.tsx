@@ -6,40 +6,49 @@ import {
   generateCampaign,
   type CampaignState,
 } from "@/app/dashboard/varsler/actions";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import { Handling, Kvittering, Omrade } from "@/components/hus";
 
 const initial: CampaignState = {};
 
+/**
+ * Ferdig kampanjetekst for et varsel. Kun presentasjon er endret — samme
+ * `generateCampaign`, samme `alert_id`-felt, samme kopier-til-utklippstavle.
+ */
 export function AlertCampaign({ alertId }: { alertId: string }) {
   const [state, action, pending] = useActionState(generateCampaign, initial);
-  const [copied, setCopied] = useState(false);
+  const [kopiert, setKopiert] = useState(false);
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-3">
       <form action={action}>
         <input type="hidden" name="alert_id" value={alertId} />
-        <Button type="submit" size="sm" variant="outline" disabled={pending}>
-          {pending ? "Lager kampanje…" : "Lag kampanje"}
-        </Button>
+        <Handling type="submit" vekt="stille" disabled={pending}>
+          {pending ? "Skriver kampanjen …" : "Lag kampanje"}
+        </Handling>
       </form>
-      {state.error && <p className="text-xs text-destructive">{state.error}</p>}
+
+      <Kvittering feil={state.error} />
+
       {state.campaign && (
-        <div className="flex flex-col gap-2">
-          <Textarea readOnly rows={10} value={state.campaign} />
+        <div className="flex flex-col gap-3">
+          <Omrade
+            navn="kampanje"
+            merke="Ferdig tekst"
+            readOnly
+            rows={10}
+            value={state.campaign}
+          />
           <div>
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
+            <Handling
+              vekt="naken"
               onClick={async () => {
                 await navigator.clipboard.writeText(state.campaign ?? "");
-                setCopied(true);
-                setTimeout(() => setCopied(false), 1500);
+                setKopiert(true);
+                setTimeout(() => setKopiert(false), 1500);
               }}
             >
-              {copied ? "Kopiert ✓" : "Kopier"}
-            </Button>
+              {kopiert ? "Kopiert ✓" : "Kopier"}
+            </Handling>
           </div>
         </div>
       )}

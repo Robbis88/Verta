@@ -2,8 +2,12 @@ import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { runScan, dismissAlert, resolveAlert } from "./actions";
 import { AlertCampaign } from "@/components/alerts/alert-campaign";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Flate, Handling, Side, Situasjon, Tomt } from "@/components/hus";
+
+/**
+ * Varsler — modul 3 i UI-refaktoren. Kun presentasjon; samme spørring og
+ * samme tre handlinger (runScan, resolveAlert, dismissAlert).
+ */
 
 type Alert = {
   id: string;
@@ -13,10 +17,11 @@ type Alert = {
   message: string;
 };
 
-const SEVERITY_STYLE: Record<string, string> = {
-  critical: "border-l-red-500 bg-red-50",
-  warning: "border-l-amber-500 bg-amber-50",
-  normal: "border-l-gold bg-cloud",
+/** Alvorlighet som en tynn stripe i kanten, ikke som en farget boks. */
+const STRIPE: Record<string, string> = {
+  critical: "border-l-hus-kritisk",
+  warning: "border-l-hus-obs",
+  normal: "border-l-hus-gull",
 };
 
 export default async function VarslerPage() {
@@ -31,59 +36,73 @@ export default async function VarslerPage() {
     .order("created_at", { ascending: false });
   const alerts = (data ?? []) as Alert[];
 
+  const kritiske = alerts.filter((a) => a.severity === "critical").length;
+
+  const skann = (
+    <form action={runScan}>
+      <Handling type="submit" vekt={alerts.length === 0 ? "gull" : "stille"}>
+        Skann nå
+      </Handling>
+    </form>
+  );
+
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold">Varsler</h1>
-          <p className="text-sm text-muted-foreground">
-            Verta skanner de neste 60 dagene og varsler om lavt belegg, store
-            hull og nært forestående tomme datoer — med ferdig kampanje på ett
-            klikk.
-          </p>
-        </div>
-        <form action={runScan}>
-          <Button type="submit">Skann nå</Button>
-        </form>
-      </div>
+    <Side>
+      <Situasjon
+        merke="Varsler"
+        tittel={
+          alerts.length === 0
+            ? "Ingenting roper på deg akkurat nå."
+            : kritiske > 0
+              ? `${kritiske} av ${alerts.length} varsler haster.`
+              : `${alerts.length} ${alerts.length === 1 ? "periode" : "perioder"} er verdt å gjøre noe med.`
+        }
+        under="Verta skanner de neste 60 dagene etter lavt belegg, store hull og tomme datoer som nærmer seg — og skriver kampanjen for deg."
+        handling={skann}
+      />
 
       {alerts.length === 0 ? (
-        <Card>
-          <CardContent className="py-8 text-center text-sm text-muted-foreground">
-            Ingen aktive varsler. Trykk «Skann nå» for å sjekke kommende datoer.
-          </CardContent>
-        </Card>
+        <Flate>
+          <Tomt
+            tittel="Ingen aktive varsler."
+            hva="Trykk «Skann nå», så går Verta gjennom kalenderen din og sier fra hvis noe er verdt å fylle."
+          />
+        </Flate>
       ) : (
-        <ul className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4">
           {alerts.map((a) => (
-            <li
+            <div
               key={a.id}
-              className={`flex flex-col gap-3 rounded-lg border border-l-4 p-4 ${
-                SEVERITY_STYLE[a.severity] ?? SEVERITY_STYLE.normal
+              className={`hus-seksjon hus-stig rounded-2xl border border-l-2 border-hus-linje bg-[linear-gradient(180deg,rgba(245,247,250,0.045),rgba(245,247,250,0.02))] p-5 sm:p-6 ${
+                STRIPE[a.severity] ?? STRIPE.normal
               }`}
             >
-              <div className="flex items-start justify-between gap-3">
-                <p className="text-sm font-medium text-navy">{a.message}</p>
-                <div className="flex shrink-0 gap-2">
+              <div className="flex items-start justify-between gap-4">
+                <p className="text-balance text-base leading-relaxed text-hus-blekk">
+                  {a.message}
+                </p>
+                <div className="flex shrink-0 gap-1">
                   <form action={resolveAlert}>
                     <input type="hidden" name="id" value={a.id} />
-                    <Button type="submit" size="sm" variant="ghost">
+                    <Handling type="submit" vekt="naken">
                       Løst
-                    </Button>
+                    </Handling>
                   </form>
                   <form action={dismissAlert}>
                     <input type="hidden" name="id" value={a.id} />
-                    <Button type="submit" size="sm" variant="ghost">
+                    <Handling type="submit" vekt="naken">
                       Skjul
-                    </Button>
+                    </Handling>
                   </form>
                 </div>
               </div>
-              <AlertCampaign alertId={a.id} />
-            </li>
+              <div className="mt-4">
+                <AlertCampaign alertId={a.id} />
+              </div>
+            </div>
           ))}
-        </ul>
+        </div>
       )}
-    </div>
+    </Side>
   );
 }
