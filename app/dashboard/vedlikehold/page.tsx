@@ -1,5 +1,3 @@
-import Link from "next/link";
-
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -10,17 +8,31 @@ import {
   deleteContractor,
 } from "./actions";
 import { formatNok } from "@/lib/utils";
-import { CopyButton } from "@/components/shared/copy-button";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { Kopier } from "@/components/hus/kopier";
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  Felt,
+  feltKlasse,
+  Flate,
+  Handling,
+  Kort,
+  Liste,
+  Merke,
+  Omrade,
+  Rad,
+  Side,
+  Situasjon,
+  Tomt,
+  Velg,
+} from "@/components/hus";
+
+/**
+ * Vedlikehold — modul 4 i UI-refaktoren. Kun presentasjon.
+ *
+ * Samme fem handlinger med samme felter: createRequest, updateRequest
+ * (id/status/priority/contractor_id/cost), deleteRequest, addContractor,
+ * deleteContractor. Koblingen «løst sak med kostnad → utgift i skatt» er
+ * uendret, og nå sagt tydelig i situasjonen.
+ */
 
 type Request = {
   id: string;
@@ -44,26 +56,23 @@ type Contractor = {
 };
 
 const STATUS = [
-  ["open", "Åpen"],
-  ["in_progress", "Pågår"],
-  ["resolved", "Løst"],
-  ["cancelled", "Avbrutt"],
-] as const;
+  { verdi: "open", tekst: "Åpen" },
+  { verdi: "in_progress", tekst: "Pågår" },
+  { verdi: "resolved", tekst: "Løst" },
+  { verdi: "cancelled", tekst: "Avbrutt" },
+];
 const PRIORITY = [
-  ["low", "Lav"],
-  ["normal", "Normal"],
-  ["high", "Høy"],
-  ["urgent", "Haster"],
-] as const;
-const PRIORITY_STYLE: Record<string, string> = {
-  urgent: "text-red-600",
-  high: "text-amber-600",
-  normal: "text-ink",
-  low: "text-ink/50",
+  { verdi: "low", tekst: "Lav" },
+  { verdi: "normal", tekst: "Normal" },
+  { verdi: "high", tekst: "Høy" },
+  { verdi: "urgent", tekst: "Haster" },
+];
+const PRIORITY_TONE: Record<string, "ro" | "obs" | "kritisk"> = {
+  urgent: "kritisk",
+  high: "obs",
+  normal: "ro",
+  low: "ro",
 };
-
-const inputClass =
-  "h-9 rounded-lg border border-input bg-background px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 export default async function VedlikeholdPage() {
   await requireUser();
@@ -76,6 +85,7 @@ export default async function VedlikeholdPage() {
     .order("name");
   const properties = (props ?? []) as { id: string; name: string }[];
   const nameById = new Map(properties.map((p) => [p.id, p.name]));
+  const flereBoliger = properties.length > 1;
 
   const { data: contractorData } = await supabase
     .from("contractors")
@@ -92,243 +102,245 @@ export default async function VedlikeholdPage() {
     .order("created_at", { ascending: false });
   const requests = (reqData ?? []) as Request[];
 
+  const apne = requests.filter(
+    (r) => r.status === "open" || r.status === "in_progress",
+  );
+  const haster = apne.filter((r) => r.priority === "urgent");
+
   return (
-    <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Vedlikehold</h1>
-        <p className="text-sm text-muted-foreground">
-          Hold styr på saker. Løser du en sak med kostnad, føres den automatisk
-          som fradragsberettiget utgift i skatterapporten.
-        </p>
-      </div>
+    <Side>
+      <Situasjon
+        merke="Vedlikehold"
+        tittel={
+          requests.length === 0
+            ? "Ingen saker på huset."
+            : haster.length > 0
+              ? `${haster.length} ${haster.length === 1 ? "sak haster" : "saker haster"}.`
+              : apne.length > 0
+                ? `${apne.length} ${apne.length === 1 ? "åpen sak" : "åpne saker"}.`
+                : "Alt er løst."
+        }
+        under="Løser du en sak og fører kostnaden, blir den automatisk en fradragsberettiget utgift i skatterapporten. Du slipper å registrere den to ganger."
+      />
 
       {properties.length === 0 ? (
-        <Card>
-          <CardContent className="py-8 text-center text-sm text-muted-foreground">
-            Legg til en eiendom først.{" "}
-            <Link href="/dashboard/properties/new" className="underline">
-              Legg til eiendom
-            </Link>
-          </CardContent>
-        </Card>
+        <Flate>
+          <Tomt
+            tittel="Ingen bolig registrert."
+            hva="Saker føres per bolig, så Verta vet hva som hører hvor."
+            knappTekst="Legg til bolig"
+            knappHref="/dashboard/properties/new"
+          />
+        </Flate>
       ) : (
-        <Card>
-          <CardHeader>
-            <CardTitle>Ny sak</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form action={createRequest} className="flex flex-col gap-3">
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="flex flex-col gap-1.5">
-                  <Label>Eiendom</Label>
-                  <select name="property_id" className={inputClass}>
-                    {properties.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <Label>Prioritet</Label>
-                  <select name="priority" className={inputClass} defaultValue="normal">
-                    {PRIORITY.map(([v, l]) => (
-                      <option key={v} value={v}>
-                        {l}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="title">Tittel</Label>
-                <Input id="title" name="title" required placeholder="F.eks. Lekkasje under kjøkkenvask" />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="description">Beskrivelse (valgfritt)</Label>
-                <Textarea id="description" name="description" rows={2} />
-              </div>
-              <div>
-                <Button type="submit">Opprett sak</Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
+        <Flate tittel="Ny sak">
+          <form action={createRequest} className="flex flex-col gap-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Velg
+                navn="property_id"
+                merke="Eiendom"
+                valg={properties.map((p) => ({ verdi: p.id, tekst: p.name }))}
+              />
+              <Velg
+                navn="priority"
+                merke="Prioritet"
+                defaultValue="normal"
+                valg={PRIORITY}
+              />
+            </div>
+            <Felt
+              navn="title"
+              merke="Hva er galt?"
+              required
+              placeholder="F.eks. Lekkasje under kjøkkenvask"
+            />
+            <Omrade
+              navn="description"
+              merke="Beskrivelse (valgfritt)"
+              rows={2}
+            />
+            <div>
+              <Handling type="submit" vekt="gull">
+                Opprett saken
+              </Handling>
+            </div>
+          </form>
+        </Flate>
       )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Håndverkere ({contractors.length})</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          <p className="text-sm text-muted-foreground">
-            Registrer håndverkere og gi dem en egen lenke der de ser og
-            oppdaterer sakene du tildeler dem — uten innlogging.
-          </p>
-          <form
-            action={addContractor}
-            className="flex flex-col gap-2 sm:flex-row sm:items-end"
-          >
-            <div className="flex flex-1 flex-col gap-1.5">
-              <Label htmlFor="c-name">Navn</Label>
-              <Input id="c-name" name="name" required />
-            </div>
-            <div className="flex flex-1 flex-col gap-1.5">
-              <Label htmlFor="c-trade">Fag</Label>
-              <Input id="c-trade" name="trade" placeholder="F.eks. rørlegger" />
-            </div>
-            <div className="flex flex-1 flex-col gap-1.5">
-              <Label htmlFor="c-email">E-post</Label>
-              <Input id="c-email" name="email" type="email" />
-            </div>
-            <div className="flex flex-1 flex-col gap-1.5">
-              <Label htmlFor="c-phone">Telefon</Label>
-              <Input id="c-phone" name="phone" />
-            </div>
-            <Button type="submit">Legg til</Button>
-          </form>
+      <Flate
+        tittel={`Håndverkere (${contractors.length})`}
+        hva="Portal-lenken lar dem se og oppdatere sakene du tildeler dem — uten innlogging."
+      >
+        <form action={addContractor} className="flex flex-col gap-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Felt navn="name" merke="Navn" required />
+            <Felt navn="trade" merke="Fag" placeholder="F.eks. rørlegger" />
+            <Felt navn="email" merke="E-post" type="email" />
+            <Felt navn="phone" merke="Telefon" />
+          </div>
+          <div>
+            <Handling type="submit" vekt="stille">
+              Legg til håndverker
+            </Handling>
+          </div>
+        </form>
 
-          {contractors.length > 0 && (
-            <ul className="flex flex-col divide-y">
+        {contractors.length > 0 && (
+          <div className="mt-5 border-t border-hus-linje pt-2">
+            <Liste>
               {contractors.map((c) => (
-                <li
+                <Rad
                   key={c.id}
-                  className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm"
-                >
-                  <span className="font-medium">
-                    {c.name}
-                    {c.trade && (
-                      <span className="font-normal text-muted-foreground">
-                        {" "}
-                        · {c.trade}
-                      </span>
-                    )}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <CopyButton
-                      text={`${site}/handverker/${c.access_token}`}
-                      label="Kopier portal-lenke"
-                    />
-                    <form action={deleteContractor}>
-                      <input type="hidden" name="id" value={c.id} />
-                      <Button type="submit" variant="ghost" size="sm">
-                        Slett
-                      </Button>
-                    </form>
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Saker ({requests.length})</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {requests.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Ingen saker ennå.</p>
-          ) : (
-            <ul className="flex flex-col gap-4">
-              {requests.map((r) => (
-                <li key={r.id} className="rounded-lg border p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="font-medium">{r.title}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {nameById.get(r.property_id) ?? "—"} ·{" "}
-                        <span className={PRIORITY_STYLE[r.priority]}>
-                          {PRIORITY.find(([v]) => v === r.priority)?.[1] ??
-                            r.priority}
-                        </span>
-                        {r.contractor_id && contractorById.has(r.contractor_id)
-                          ? ` · ${contractorById.get(r.contractor_id)}`
-                          : r.assignee
-                            ? ` · ${r.assignee}`
-                            : ""}
-                      </p>
-                      {r.description && (
-                        <p className="mt-1 text-sm text-muted-foreground">
-                          {r.description}
-                        </p>
-                      )}
-                    </div>
-                    <form action={deleteRequest}>
-                      <input type="hidden" name="id" value={r.id} />
-                      <Button type="submit" variant="ghost" size="sm">
-                        Slett
-                      </Button>
-                    </form>
-                  </div>
-
-                  <form
-                    action={updateRequest}
-                    className="mt-3 flex flex-wrap items-end gap-2 border-t pt-3"
-                  >
-                    <input type="hidden" name="id" value={r.id} />
-                    <div className="flex flex-col gap-1">
-                      <Label className="text-xs">Status</Label>
-                      <select name="status" defaultValue={r.status} className={inputClass}>
-                        {STATUS.map(([v, l]) => (
-                          <option key={v} value={v}>
-                            {l}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <Label className="text-xs">Prioritet</Label>
-                      <select name="priority" defaultValue={r.priority} className={inputClass}>
-                        {PRIORITY.map(([v, l]) => (
-                          <option key={v} value={v}>
-                            {l}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <Label className="text-xs">Håndverker</Label>
-                      <select
-                        name="contractor_id"
-                        defaultValue={r.contractor_id ?? ""}
-                        className={`${inputClass} w-40`}
-                      >
-                        <option value="">Ikke tildelt</option>
-                        {contractors.map((c) => (
-                          <option key={c.id} value={c.id}>
-                            {c.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <Label className="text-xs">Kostnad (kr)</Label>
-                      <Input
-                        name="cost"
-                        type="number"
-                        min={0}
-                        step="0.01"
-                        defaultValue={r.cost ?? ""}
-                        className="h-9 w-28"
+                  hva={c.name}
+                  detalj={[c.trade, c.phone, c.email].filter(Boolean).join(" · ")}
+                  handling={
+                    <span className="flex items-center gap-1">
+                      <Kopier
+                        tekst={`${site}/handverker/${c.access_token}`}
+                        merke="Kopier portal-lenke"
                       />
-                    </div>
-                    <Button type="submit" size="sm" variant="outline">
-                      Lagre
-                    </Button>
-                    {r.cost != null && r.status === "resolved" && (
-                      <span className="text-xs text-emerald-600">
-                        → {formatNok(Number(r.cost))} i skatt
-                      </span>
-                    )}
-                  </form>
-                </li>
+                      <form action={deleteContractor}>
+                        <input type="hidden" name="id" value={c.id} />
+                        <Handling type="submit" vekt="naken">
+                          Slett
+                        </Handling>
+                      </form>
+                    </span>
+                  }
+                />
               ))}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+            </Liste>
+          </div>
+        )}
+      </Flate>
+
+      <Flate tittel={`Saker (${requests.length})`}>
+        {requests.length === 0 ? (
+          <Tomt
+            tittel="Ingen saker ennå."
+            hva="Alt fra en løs dørhåndtak til en lekkasje. Fører du kostnaden, havner den i skatterapporten av seg selv."
+          />
+        ) : (
+          <div className="flex flex-col gap-3">
+            {requests.map((r) => (
+              <Kort key={r.id}>
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <p className="flex flex-wrap items-center gap-2 text-sm text-hus-blekk">
+                      {r.title}
+                      <Merke tone={PRIORITY_TONE[r.priority] ?? "ro"}>
+                        {PRIORITY.find((p) => p.verdi === r.priority)?.tekst ??
+                          r.priority}
+                      </Merke>
+                    </p>
+                    <p className="mt-1 text-xs text-hus-svak">
+                      {[
+                        flereBoliger ? nameById.get(r.property_id) : null,
+                        r.contractor_id && contractorById.has(r.contractor_id)
+                          ? contractorById.get(r.contractor_id)
+                          : r.assignee,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </p>
+                    {r.description && (
+                      <p className="mt-2 text-sm leading-relaxed text-hus-dempet">
+                        {r.description}
+                      </p>
+                    )}
+                  </div>
+                  <form action={deleteRequest}>
+                    <input type="hidden" name="id" value={r.id} />
+                    <Handling type="submit" vekt="naken">
+                      Slett
+                    </Handling>
+                  </form>
+                </div>
+
+                <form
+                  action={updateRequest}
+                  className="mt-4 flex flex-wrap items-end gap-2 border-t border-hus-linje pt-4"
+                >
+                  <input type="hidden" name="id" value={r.id} />
+                  <label className="flex flex-col gap-1.5">
+                    <span className="text-[11px] uppercase tracking-[0.14em] text-hus-svak">
+                      Status
+                    </span>
+                    <select
+                      name="status"
+                      defaultValue={r.status}
+                      className={`${feltKlasse} h-9 w-auto cursor-pointer`}
+                    >
+                      {STATUS.map((s) => (
+                        <option key={s.verdi} value={s.verdi} className="bg-hus-hev">
+                          {s.tekst}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="flex flex-col gap-1.5">
+                    <span className="text-[11px] uppercase tracking-[0.14em] text-hus-svak">
+                      Prioritet
+                    </span>
+                    <select
+                      name="priority"
+                      defaultValue={r.priority}
+                      className={`${feltKlasse} h-9 w-auto cursor-pointer`}
+                    >
+                      {PRIORITY.map((p) => (
+                        <option key={p.verdi} value={p.verdi} className="bg-hus-hev">
+                          {p.tekst}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="flex flex-col gap-1.5">
+                    <span className="text-[11px] uppercase tracking-[0.14em] text-hus-svak">
+                      Håndverker
+                    </span>
+                    <select
+                      name="contractor_id"
+                      defaultValue={r.contractor_id ?? ""}
+                      className={`${feltKlasse} h-9 w-auto cursor-pointer`}
+                    >
+                      <option value="" className="bg-hus-hev">
+                        Ikke tildelt
+                      </option>
+                      {contractors.map((c) => (
+                        <option key={c.id} value={c.id} className="bg-hus-hev">
+                          {c.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="flex flex-col gap-1.5">
+                    <span className="text-[11px] uppercase tracking-[0.14em] text-hus-svak">
+                      Kostnad (kr)
+                    </span>
+                    <input
+                      name="cost"
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      defaultValue={r.cost ?? ""}
+                      className={`${feltKlasse} h-9 w-32`}
+                    />
+                  </label>
+                  <Handling type="submit" vekt="stille">
+                    Lagre
+                  </Handling>
+                  {r.cost != null && r.status === "resolved" && (
+                    <span className="text-xs text-hus-god">
+                      → {formatNok(Number(r.cost))} ført i skatt
+                    </span>
+                  )}
+                </form>
+              </Kort>
+            ))}
+          </div>
+        )}
+      </Flate>
+    </Side>
   );
 }

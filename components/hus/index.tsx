@@ -188,6 +188,7 @@ export function Rad({
   tone = "ro",
   sterk = false,
   handling,
+  mer,
   href,
 }: {
   /** Venstre kolonne: dato eller kort merkelapp. */
@@ -203,6 +204,8 @@ export function Rad({
   sterk?: boolean;
   /** Knapp/skjema helt til høyre. */
   handling?: ReactNode;
+  /** Ekstra innhold i full bredde under raden (bilder, tidspunkt, notat). */
+  mer?: ReactNode;
   /** Gjør hele raden klikkbar. */
   href?: string;
 }) {
@@ -239,10 +242,11 @@ export function Rad({
   return (
     <li
       className={cn(
-        "flex items-center gap-4 border-b border-hus-linje-svak py-3 last:border-b-0",
+        "border-b border-hus-linje-svak py-3 last:border-b-0",
         sterk && "border-t border-t-hus-linje pt-4",
       )}
     >
+      <div className="flex items-center gap-4">
       {href ? (
         <Link
           href={href}
@@ -253,7 +257,9 @@ export function Rad({
       ) : (
         innhold
       )}
-      {handling && <span className="shrink-0">{handling}</span>}
+        {handling && <span className="shrink-0">{handling}</span>}
+      </div>
+      {mer && <div className="mt-2 pl-0 sm:pl-28">{mer}</div>}
     </li>
   );
 }
@@ -356,7 +362,8 @@ export function Tomt({
 // ikke endres av denne refaktoren.
 // ---------------------------------------------------------------------------
 
-const FELT_BASE =
+/** Feltstilen, eksportert for de få stedene et rått <select> må stå inline. */
+export const feltKlasse =
   "h-11 w-full rounded-xl border border-hus-linje bg-white/[0.04] px-4 text-sm text-hus-blekk outline-none transition-colors placeholder:text-hus-hvisk focus:border-hus-linje-sterk focus:bg-white/[0.07]";
 
 function Merkelapp({ htmlFor, children }: { htmlFor?: string; children: ReactNode }) {
@@ -389,7 +396,7 @@ export function Felt({
   return (
     <div className="flex flex-col gap-2">
       <Merkelapp htmlFor={navn}>{merke}</Merkelapp>
-      <input id={navn} name={navn} className={FELT_BASE} {...rest} />
+      <input id={navn} name={navn} className={feltKlasse} {...rest} />
       <Feilmelding tekst={feil} />
     </div>
   );
@@ -410,7 +417,7 @@ export function Velg({
   return (
     <div className="flex flex-col gap-2">
       <Merkelapp htmlFor={navn}>{merke}</Merkelapp>
-      <select id={navn} name={navn} className={cn(FELT_BASE, "cursor-pointer")} {...rest}>
+      <select id={navn} name={navn} className={cn(feltKlasse, "cursor-pointer")} {...rest}>
         {valg.map((v) => (
           <option key={v.verdi} value={v.verdi} className="bg-hus-hev text-hus-blekk">
             {v.tekst}
@@ -438,7 +445,7 @@ export function Omrade({
       <textarea
         id={navn}
         name={navn}
-        className={cn(FELT_BASE, "h-auto min-h-24 py-3 leading-relaxed")}
+        className={cn(feltKlasse, "h-auto min-h-24 py-3 leading-relaxed")}
         {...rest}
       />
       <Feilmelding tekst={feil} />
@@ -451,4 +458,79 @@ export function Kvittering({ feil, ok }: { feil?: string; ok?: string }) {
   if (feil) return <p className="text-sm text-hus-kritisk">{feil}</p>;
   if (ok) return <p className="text-sm text-hus-god">{ok}</p>;
   return null;
+}
+
+// ---------------------------------------------------------------------------
+// Merke — kort status. Aldri en farget boks; en rolig pille.
+// ---------------------------------------------------------------------------
+
+export function Merke({
+  children,
+  tone = "ro",
+}: {
+  children: ReactNode;
+  tone?: "ro" | "gull" | "obs" | "kritisk" | "god";
+}) {
+  const stil =
+    tone === "gull"
+      ? "border-hus-linje-sterk text-hus-gull-lys"
+      : tone === "obs"
+        ? "border-hus-obs/40 text-hus-obs"
+        : tone === "kritisk"
+          ? "border-hus-kritisk/40 text-hus-kritisk"
+          : tone === "god"
+            ? "border-hus-god/40 text-hus-god"
+            : "border-hus-linje text-hus-dempet";
+  return (
+    <span
+      className={cn(
+        "inline-flex shrink-0 items-center rounded-full border px-2.5 py-0.5 text-[11px] font-medium",
+        stil,
+      )}
+    >
+      {children}
+    </span>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Beskjed — kvittering etter en handling. Rolig, aldri en skrikende boks.
+// ---------------------------------------------------------------------------
+
+export function Beskjed({
+  children,
+  tone = "god",
+}: {
+  children: ReactNode;
+  tone?: "god" | "obs" | "kritisk";
+}) {
+  const stil =
+    tone === "kritisk"
+      ? "border-l-hus-kritisk text-hus-kritisk"
+      : tone === "obs"
+        ? "border-l-hus-obs text-hus-obs"
+        : "border-l-hus-god text-hus-god";
+  return (
+    <p
+      className={cn(
+        "hus-stig rounded-r-xl border-l-2 bg-white/[0.03] px-4 py-3 text-sm leading-relaxed",
+        stil,
+      )}
+    >
+      {children}
+    </p>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Kort — en flate INNI en Flate. For lister der hver rad har eget skjema
+// (saker, forespørsler). Finnes så ikke sidene finner opp egne bakgrunner.
+// ---------------------------------------------------------------------------
+
+export function Kort({ children }: { children: ReactNode }) {
+  return (
+    <div className="rounded-xl border border-hus-linje bg-white/[0.02] p-4">
+      {children}
+    </div>
+  );
 }
