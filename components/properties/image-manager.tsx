@@ -2,7 +2,7 @@
 
 import { useRef, useTransition } from "react";
 
-import { Button } from "@/components/ui/button";
+import { Handling } from "@/components/hus";
 
 type ImageAction = (formData: FormData) => Promise<void>;
 
@@ -36,7 +36,7 @@ export function ImageManager({
               <img
                 src={url}
                 alt=""
-                className="h-full w-full rounded-md object-cover"
+                className="h-full w-full rounded-xl border border-hus-linje object-cover"
               />
               <form
                 action={deleteAction}
@@ -46,7 +46,7 @@ export function ImageManager({
                 <input type="hidden" name="url" value={url} />
                 <button
                   type="submit"
-                  className="rounded-full bg-black/60 px-2 py-0.5 text-xs text-white hover:bg-black/80"
+                  className="cursor-pointer rounded-full border border-hus-linje-sterk bg-hus-flate/80 px-2 py-0.5 text-xs text-hus-blekk backdrop-blur transition-colors hover:text-hus-kritisk"
                   aria-label="Slett bilde"
                 >
                   ✕
@@ -56,7 +56,7 @@ export function ImageManager({
           ))}
         </div>
       ) : (
-        <p className="text-sm text-muted-foreground">Ingen bilder ennå.</p>
+        <p className="text-sm text-hus-dempet">Ingen bilder ennå.</p>
       )}
 
       <form ref={formRef} action={uploadAction} className="flex flex-col gap-2">
@@ -76,16 +76,16 @@ export function ImageManager({
           }}
         />
         <div>
-          <Button
+          <Handling
             type="button"
-            size="sm"
+            vekt="gull"
             disabled={pending}
             onClick={() => inputRef.current?.click()}
           >
-            {pending ? "Laster opp…" : "Velg bilde og last opp"}
-          </Button>
+            {pending ? "Laster opp …" : "Velg bilde og last opp"}
+          </Handling>
         </div>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs text-hus-svak">
           JPG, PNG eller WebP, maks 8 MB. Første bilde brukes som hovedbilde.
         </p>
       </form>

@@ -1,12 +1,9 @@
-import Link from "next/link";
-
 import { requireUser } from "@/lib/auth";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Flate, Handling, Kort, Merke, Side, Situasjon } from "@/components/hus";
+
+/**
+ * Smartlås-guiden — modul 7. Kun presentasjon; ren lesesside.
+ */
 
 type Pick = {
   badge: string;
@@ -42,67 +39,95 @@ const PICKS: Pick[] = [
   },
 ];
 
+const SJEKKLISTE = [
+  <>
+    Har <strong className="font-medium text-hus-blekk">tastatur (keypad)</strong>{" "}
+    — det er der gjesten taster koden
+  </>,
+  <>
+    Har{" "}
+    <strong className="font-medium text-hus-blekk">wifi / fjerntilgang</strong>{" "}
+    (egen wifi eller bro) — så koder kan lages når gjesten kommer
+  </>,
+  <>
+    Settes opp i{" "}
+    <strong className="font-medium text-hus-blekk">
+      leverandørens egen app
+    </strong>{" "}
+    (f.eks. Yale Home for Yale) —{" "}
+    <strong className="font-medium text-hus-blekk">ikke</strong> låst til et
+    alarmselskap som Verisure
+  </>,
+  <>
+    Er et merke Verta støtter:{" "}
+    <strong className="font-medium text-hus-blekk">
+      Igloohome, Yale, Nuki, Salto, August, Schlage
+    </strong>{" "}
+    m.fl.
+  </>,
+];
+
 export default async function SmartlasGuidePage() {
   await requireUser();
 
   return (
-    <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Hvilken smartlås bør jeg kjøpe?</h1>
-        <p className="text-sm text-muted-foreground">
-          Verta kobler til smartlåser via Seam, og lager automatisk en
-          adgangskode for hver booking. Her er hva vi anbefaler.
-        </p>
-      </div>
+    <Side>
+      <Situasjon
+        merke="Smartlås"
+        tittel="Gjesten skal komme seg inn uten at du er der."
+        under="Verta kobler til smartlåser via Seam og lager automatisk en adgangskode for hver booking. Her er låsene vi anbefaler."
+      />
 
       <div className="grid gap-4 sm:grid-cols-2">
         {PICKS.map((p) => (
-          <Card key={p.title}>
-            <CardHeader>
-              <span className="w-fit rounded-full bg-gold/15 px-3 py-1 text-xs font-medium text-gold">
-                {p.badge}
-              </span>
-              <CardTitle className="mt-2">{p.title}</CardTitle>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-2 text-sm">
-              <p className="text-ink">{p.body}</p>
-              <p className="text-muted-foreground">
-                <span className="font-medium text-navy">Kjøp:</span> {p.buy}
+          <Kort key={p.title}>
+            <div className="flex flex-col gap-3">
+              <Merke tone="gull">{p.badge}</Merke>
+              <p className="text-base font-light text-hus-blekk">{p.title}</p>
+              <p className="text-sm leading-relaxed text-hus-dempet">{p.body}</p>
+              <p className="text-sm text-hus-svak">
+                <span className="text-hus-dempet">Kjøp:</span> {p.buy}
               </p>
-            </CardContent>
-          </Card>
+            </div>
+          </Kort>
         ))}
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Sjekkliste før du kjøper</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ul className="flex flex-col gap-2 text-sm text-ink">
-            <li>✅ Har <strong>tastatur (keypad)</strong> — det er der gjesten taster koden</li>
-            <li>✅ Har <strong>wifi / fjerntilgang</strong> (egen wifi eller bro) — så koder kan lages når gjesten kommer</li>
-            <li>
-              ✅ Settes opp i <strong>leverandørens egen app</strong> (f.eks. Yale
-              Home for Yale) — <strong>ikke</strong> låst til et alarmselskap som
-              Verisure
+      <Flate
+        tittel="Sjekkliste før du kjøper"
+        hva="Fire ting som avgjør om låsen fungerer sammen med Verta."
+      >
+        <ul className="flex flex-col gap-3">
+          {SJEKKLISTE.map((punkt, i) => (
+            <li key={i} className="flex gap-3 text-sm leading-relaxed text-hus-dempet">
+              <span aria-hidden="true" className="shrink-0 text-hus-god">
+                ✓
+              </span>
+              <span>{punkt}</span>
             </li>
-            <li>✅ Er et merke Verta støtter: <strong>Igloohome, Yale, Nuki, Salto, August, Schlage</strong> m.fl.</li>
-          </ul>
-          <p className="mt-4 text-sm text-muted-foreground">
-            Unntak: <strong>Igloohome</strong> trenger ikke nett — den lager koder
-            offline, og er derfor det tryggeste valget for hytter.
-          </p>
-        </CardContent>
-      </Card>
+          ))}
+        </ul>
+        <p className="mt-5 border-t border-hus-linje pt-5 text-sm leading-relaxed text-hus-svak">
+          Unntak:{" "}
+          <strong className="font-medium text-hus-dempet">Igloohome</strong>{" "}
+          trenger ikke nett — den lager koder offline, og er derfor det tryggeste
+          valget for hytter.
+        </p>
+      </Flate>
 
-      <p className="text-sm text-muted-foreground">
-        Klar til å koble til? Gå til en eiendom →{" "}
-        <Link href="/dashboard/properties" className="underline">
-          Eiendommer
-        </Link>{" "}
-        → «Koble til smartlås».
-      </p>
-    </div>
+      <Flate
+        tittel="Når låsen er kjøpt"
+        hva="Koblingen gjøres per bolig, og tar under et minutt."
+      >
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <p className="text-sm text-hus-dempet">
+            Gå til boligen og velg «Koble til smartlås».
+          </p>
+          <Handling href="/dashboard/properties" vekt="gull">
+            Til eiendommene
+          </Handling>
+        </div>
+      </Flate>
+    </Side>
   );
 }

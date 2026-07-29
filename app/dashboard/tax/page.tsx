@@ -1,14 +1,28 @@
-import Link from "next/link";
-import { TrendingUp, Landmark } from "lucide-react";
-
 import { createClient } from "@/lib/supabase/server";
 import { generateTaxReport } from "./actions";
 import { PrintButton } from "@/components/tax/print-button";
 import { formatNok } from "@/lib/utils";
-import { KpiCard } from "@/components/dashboard/overview-ui";
-import { Button } from "@/components/ui/button";
+import {
+  Flate,
+  Handling,
+  Liste,
+  Rad,
+  Side,
+  Situasjon,
+  Tall,
+  TallRekke,
+  Tomt,
+} from "@/components/hus";
 import type { TaxReport } from "@/lib/tax";
 
+/**
+ * Skatterapport — modul 2 i UI-refaktoren. Kun presentasjon.
+ *
+ * Samme spørring, samme `generateTaxReport`, samme to skattemodeller og samme
+ * forbehold. Rapporten er bygget av Rad med `sterk` på sumlinjene i stedet for
+ * en <table>, så den arver husets utskriftsstil: mørk på skjerm, hvitt papir
+ * når du skriver den ut.
+ */
 export default async function TaxPage({
   searchParams,
 }: {
@@ -27,159 +41,135 @@ export default async function TaxPage({
     .single();
   const report = data as TaxReport | null;
 
-  const rows: { label: string; value: number }[] = report
-    ? [
-        { label: "Inntekt fra Airbnb", value: report.income_from_airbnb },
-        { label: "Inntekt fra Booking.com", value: report.income_from_booking },
-        { label: "Inntekt fra direkte booking", value: report.income_from_verta_direct },
-        { label: "Inntekt fra Verta-kanaler", value: report.income_from_verta_boosts },
-      ]
-    : [];
+  const arValg = (
+    <span className="hus-ikke-print flex flex-wrap gap-2">
+      {years.map((y) => (
+        <Handling
+          key={y}
+          href={`/dashboard/tax?year=${y}`}
+          vekt={y === year ? "gull" : "stille"}
+        >
+          {y}
+        </Handling>
+      ))}
+    </span>
+  );
+
+  if (!report) {
+    return (
+      <Side>
+        <Situasjon
+          merke="Skatt"
+          tittel={`Du har ingen skatterapport for ${year} ennå.`}
+          under="Verta regner ut grunnlaget fra bookingene og utgiftene dine. Det tar noen sekunder."
+          handling={arValg}
+        />
+        <Flate>
+          <Tomt
+            tittel={`Ingen rapport for ${year}.`}
+            hva="Alt Verta trenger ligger allerede i systemet — inntekter per kanal og førte utgifter."
+          />
+          <form action={generateTaxReport} className="flex justify-center">
+            <input type="hidden" name="year" value={year} />
+            <Handling type="submit" vekt="gull">
+              Lag rapporten for {year}
+            </Handling>
+          </form>
+        </Flate>
+      </Side>
+    );
+  }
+
+  const kilder: { navn: string; belop: number }[] = [
+    { navn: "Airbnb", belop: report.income_from_airbnb },
+    { navn: "Booking.com", belop: report.income_from_booking },
+    { navn: "Direkte booking", belop: report.income_from_verta_direct },
+    { navn: "Verta-kanaler", belop: report.income_from_verta_boosts },
+  ];
+
+  const netto = report.net_income ?? report.total_income;
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between print:hidden">
-        <h1 className="text-2xl font-bold tracking-tight text-navy">
-          Skatterapport
-        </h1>
-        <div className="flex gap-2">
-          {years.map((y) => (
-            <Button
-              key={y}
-              asChild
-              variant={y === year ? "default" : "outline"}
-              size="sm"
-            >
-              <Link href={`/dashboard/tax?year=${y}`}>{y}</Link>
-            </Button>
+    <Side>
+      <Situasjon
+        merke="Skatt"
+        tittel={`Du hadde ${formatNok(report.total_income)} i utleieinntekt i ${report.year}.`}
+        under={`Etter fribeløp og fradrag er ${formatNok(report.taxable_income)} skattepliktig, hvis dette er egen bolig. Er det hytte eller sekundærbolig, er tallet ${formatNok(netto)}.`}
+        handling={arValg}
+      />
+
+      <TallRekke>
+        <Tall
+          verdi={formatNok(report.total_income)}
+          navn="sum inntekt"
+          tone="gull"
+        />
+        <Tall
+          verdi={formatNok(report.total_expenses ?? 0)}
+          navn="førte utgifter"
+        />
+        <Tall verdi={formatNok(netto)} navn="netto (hytte)" />
+        <Tall
+          verdi={formatNok(report.taxable_income)}
+          navn="skattepliktig (egen bolig)"
+          tone="obs"
+        />
+      </TallRekke>
+
+      <Flate
+        tittel={`Skatterapport ${report.year}`}
+        hva="Utleieinntekter og beregnet skattepliktig beløp."
+      >
+        <Liste>
+          {kilder.map((k) => (
+            <Rad key={k.navn} hva={k.navn} verdi={formatNok(k.belop)} />
           ))}
-        </div>
+          <Rad hva="Sum inntekt" verdi={formatNok(report.total_income)} sterk />
+          <Rad
+            hva="Provisjon betalt til Verta"
+            verdi={formatNok(report.verta_commission_paid)}
+          />
+          <Rad
+            hva="Fradragsberettigede utgifter"
+            verdi={`−${formatNok(report.total_expenses ?? 0)}`}
+          />
+          <Rad
+            hva="Netto utleieresultat"
+            detalj="hytte / sekundærbolig — regnskapsligning"
+            verdi={formatNok(netto)}
+            sterk
+          />
+          <Rad hva="Fribeløp (egen bolig)" verdi={`−${formatNok(15000)}`} />
+          <Rad
+            hva="Skattepliktig inntekt (85 %)"
+            detalj="korttidsutleie av egen bolig"
+            verdi={formatNok(report.taxable_income)}
+            tone="gull"
+            sterk
+          />
+        </Liste>
+
+        <p className="mt-6 text-xs leading-relaxed text-hus-svak">
+          To modeller vises: <strong className="text-hus-dempet">egen bolig</strong>{" "}
+          (fribeløp 15 000 kr + 85 %) og{" "}
+          <strong className="text-hus-dempet">hytte/sekundærbolig</strong> (netto
+          inntekt minus utgifter). Hvilken som gjelder avhenger av din situasjon —
+          sjekk reglene hos Skatteetaten.
+        </p>
+      </Flate>
+
+      <div className="hus-ikke-print flex flex-wrap gap-2">
+        <PrintButton />
+        <Handling href={`/api/tax/${year}`} vekt="stille">
+          Last ned JSON
+        </Handling>
+        <form action={generateTaxReport}>
+          <input type="hidden" name="year" value={year} />
+          <Handling type="submit" vekt="naken">
+            Oppdater tallene
+          </Handling>
+        </form>
       </div>
-
-      {!report ? (
-        <div className="flex flex-col items-start gap-3 print:hidden">
-          <p className="text-sm text-muted-foreground">
-            Ingen rapport for {year} ennå.
-          </p>
-          <form action={generateTaxReport}>
-            <input type="hidden" name="year" value={year} />
-            <Button type="submit">Generer rapport for {year}</Button>
-          </form>
-        </div>
-      ) : (
-        <div className="flex flex-col gap-6">
-          <div className="grid gap-4 sm:grid-cols-2 print:hidden">
-            <KpiCard
-              label="Sum inntekt"
-              value={formatNok(report.total_income)}
-              icon={TrendingUp}
-              trend={`utleie ${report.year}`}
-              trendTone="muted"
-            />
-            <KpiCard
-              label="Skattepliktig inntekt"
-              value={formatNok(report.taxable_income)}
-              icon={Landmark}
-              trend="grunnlag for skatt"
-              trendTone="muted"
-            />
-          </div>
-
-          <div className="rounded-2xl border border-hairline p-6 shadow-[0_8px_30px_rgba(8,27,51,0.06)] print:border-0 print:shadow-none">
-            <h2 className="mb-1 text-xl font-bold text-navy">
-              Skatterapport {report.year}
-            </h2>
-            <p className="mb-6 text-sm text-muted-foreground">
-              Utleieinntekter og beregnet skattepliktig beløp.
-            </p>
-
-            <table className="w-full text-sm">
-              <tbody className="divide-y divide-hairline">
-                {rows.map((r) => (
-                  <tr key={r.label}>
-                    <td className="py-2 text-muted-foreground">{r.label}</td>
-                    <td className="py-2 text-right tabular-nums">
-                      {formatNok(r.value)}
-                    </td>
-                  </tr>
-                ))}
-                <tr className="font-semibold text-navy">
-                  <td className="py-2">Sum inntekt</td>
-                  <td className="py-2 text-right tabular-nums">
-                    {formatNok(report.total_income)}
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-2 text-muted-foreground">
-                    Provisjon betalt til Verta
-                  </td>
-                  <td className="py-2 text-right">
-                    {formatNok(report.verta_commission_paid)}
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-2 text-muted-foreground">
-                    Fradragsberettigede utgifter
-                  </td>
-                  <td className="py-2 text-right">
-                    −{formatNok(report.total_expenses ?? 0)}
-                  </td>
-                </tr>
-                <tr className="border-t border-hairline text-base font-semibold">
-                  <td className="py-3 text-navy">
-                    Netto utleieresultat
-                    <span className="block text-xs font-normal text-muted-foreground">
-                      hytte / sekundærbolig (regnskapsligning)
-                    </span>
-                  </td>
-                  <td className="py-3 text-right">
-                    {formatNok(report.net_income ?? report.total_income)}
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-2 text-muted-foreground">
-                    Fribeløp (egen bolig)
-                  </td>
-                  <td className="py-2 text-right">−{formatNok(15000)}</td>
-                </tr>
-                <tr className="border-t border-hairline text-base font-semibold">
-                  <td className="py-3 text-navy">
-                    Skattepliktig inntekt (85 %)
-                    <span className="block text-xs font-normal text-muted-foreground">
-                      korttidsutleie av egen bolig
-                    </span>
-                  </td>
-                  <td className="py-3 text-right tabular-nums text-gold">
-                    {formatNok(report.taxable_income)}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-
-            <p className="mt-6 text-xs text-muted-foreground">
-              To modeller vises: <strong>egen bolig</strong> (fribeløp 15 000 kr +
-              85 %) og <strong>hytte/sekundærbolig</strong> (netto inntekt minus
-              utgifter). Hvilken som gjelder avhenger av din situasjon — sjekk
-              reglene hos Skatteetaten.
-            </p>
-          </div>
-
-          <div className="flex gap-2 print:hidden">
-            <PrintButton />
-            <Button asChild variant="outline">
-              <Link href={`/api/tax/${year}`} target="_blank">
-                Last ned JSON
-              </Link>
-            </Button>
-            <form action={generateTaxReport}>
-              <input type="hidden" name="year" value={year} />
-              <Button type="submit" variant="ghost">
-                Oppdater tall
-              </Button>
-            </form>
-          </div>
-        </div>
-      )}
-    </div>
+    </Side>
   );
 }

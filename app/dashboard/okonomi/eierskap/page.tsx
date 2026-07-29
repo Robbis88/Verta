@@ -3,16 +3,12 @@ import { formatNok } from "@/lib/utils";
 import { StatCard, MiniBar, EmptyOkonomi } from "@/components/okonomi/ui";
 import { DemoAction } from "@/components/okonomi/demo-action";
 import { addOwner, deleteOwner, addContribution } from "../actions";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Beskjed, Felt, Flate, Handling, Kort, Velg } from "@/components/hus";
 
+/**
+ * Delt eierskap — modul 6. Kun presentasjon; samme oppgjørsberegning og samme
+ * actions (addOwner, deleteOwner, addContribution) med uendrede feltnavn.
+ */
 export default async function EierskapPage({
   searchParams,
 }: {
@@ -56,11 +52,28 @@ export default async function EierskapPage({
   const shareSum = owners.reduce((s, o) => s + o.sharePct, 0);
 
   return (
-    <div className="flex flex-col gap-6">
-      <div>
-        <h2 className="text-xl font-semibold">Delt eierskap</h2>
-        <p className="text-sm text-muted-foreground">{economy.propertyName}</p>
-      </div>
+    <>
+      <p className="text-sm text-hus-dempet">
+        {owners.length === 0 ? (
+          <>
+            Ingen medeiere er registrert på {economy.propertyName} ennå. Legg dem
+            inn, så holder Verta regnskapet mellom dere.
+          </>
+        ) : transfers.length === 0 ? (
+          <>
+            {economy.propertyName} eies av {owners.length} personer, og alt er
+            gjort opp — ingen skylder noen noe.
+          </>
+        ) : (
+          <>
+            {economy.propertyName} eies av {owners.length} personer.{" "}
+            {transfers.length === 1
+              ? "Én overføring står"
+              : `${transfers.length} overføringer står`}{" "}
+            igjen før alt er gjort opp.
+          </>
+        )}
+      </p>
 
       {owners.length > 0 && (
         <div className="grid gap-4 sm:grid-cols-3">
@@ -74,46 +87,44 @@ export default async function EierskapPage({
         </div>
       )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Eiere</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
+      <Flate tittel="Eiere" hva="Hvem eier hvor mye, og hvem har lagt ut for hva.">
+        <div className="flex flex-col gap-5">
           {owners.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-hus-dempet">
               Ingen medeiere registrert. Legg til eierne under.
             </p>
           ) : (
             owners.map((o) => {
               const balance = o.paid - o.shouldPay;
               return (
-                <div key={o.id} className="flex flex-col gap-1">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="font-medium text-navy">
+                <div key={o.id} className="flex flex-col gap-2">
+                  <div className="flex items-center justify-between gap-4 text-sm">
+                    <span className="min-w-0 truncate text-hus-blekk">
                       {o.name}{" "}
-                      <span className="text-muted-foreground">· {o.sharePct} %</span>
+                      <span className="text-hus-svak">· {o.sharePct} %</span>
                     </span>
-                    <span className="flex items-center gap-3">
+                    <span className="flex shrink-0 items-center gap-3">
                       <span
-                        className={balance >= 0 ? "text-emerald-600" : "text-red-600"}
+                        className={
+                          balance >= 0
+                            ? "tabular-nums text-hus-god"
+                            : "tabular-nums text-hus-kritisk"
+                        }
                       >
                         {balance >= 0 ? "Til gode " : "Skylder "}
                         {formatNok(Math.abs(balance))}
                       </span>
                       <form action={deleteOwner}>
                         <input type="hidden" name="id" value={o.id} />
-                        <button
-                          type="submit"
-                          className="text-xs text-muted-foreground hover:text-destructive"
-                          aria-label="Fjern eier"
-                        >
-                          ✕
-                        </button>
+                        <Handling type="submit" vekt="naken">
+                          <span aria-hidden="true">✕</span>
+                          <span className="sr-only">Fjern eier</span>
+                        </Handling>
                       </form>
                     </span>
                   </div>
                   <MiniBar pct={o.sharePct} />
-                  <div className="flex justify-between text-xs text-muted-foreground">
+                  <div className="flex justify-between text-xs text-hus-svak tabular-nums">
                     <span>Betalt: {formatNok(o.paid)}</span>
                     <span>Skulle betalt: {formatNok(o.shouldPay)}</span>
                   </div>
@@ -123,111 +134,105 @@ export default async function EierskapPage({
           )}
 
           {shareSum !== 100 && owners.length > 0 && (
-            <p className="text-xs text-amber-600">
+            <Beskjed tone="obs">
               Eierandelene summerer til {shareSum} % (bør være 100 %).
-            </p>
+            </Beskjed>
           )}
 
           <form
             action={addOwner}
-            className="flex flex-wrap items-end gap-3 border-t border-hairline pt-4"
+            className="flex flex-col gap-4 border-t border-hus-linje pt-5"
           >
             <input type="hidden" name="property_id" value={selected.id} />
-            <div className="flex flex-col gap-1">
-              <Label>Navn</Label>
-              <Input name="name" required className="w-44" />
-            </div>
-            <div className="flex flex-col gap-1">
-              <Label>Andel %</Label>
-              <Input
-                name="share_pct"
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Felt navn="name" merke="Navn" required />
+              <Felt
+                navn="share_pct"
+                merke="Andel %"
                 type="number"
                 min={0}
                 max={100}
                 step={0.1}
-                className="w-24"
               />
             </div>
-            <Button type="submit" size="sm" variant="outline">
-              Legg til eier
-            </Button>
+            <div>
+              <Handling type="submit" vekt="stille">
+                Legg til eier
+              </Handling>
+            </div>
           </form>
-        </CardContent>
-      </Card>
+        </div>
+      </Flate>
 
       {owners.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Registrer innbetaling</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form action={addContribution} className="flex flex-wrap items-end gap-3">
-              <input type="hidden" name="property_id" value={selected.id} />
-              <div className="flex flex-col gap-1">
-                <Label>Eier</Label>
-                <select
-                  name="owner_id"
-                  className="h-9 w-44 rounded-md border border-input bg-transparent px-3 text-sm shadow-sm"
-                >
-                  {owners.map((o) => (
-                    <option key={o.id} value={o.id}>
-                      {o.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="flex flex-col gap-1">
-                <Label>Beløp (kr)</Label>
-                <Input name="amount" type="number" min={1} className="w-32" required />
-              </div>
-              <div className="flex flex-col gap-1">
-                <Label>Notat</Label>
-                <Input name="note" className="w-44" placeholder="F.eks. nytt tak" />
-              </div>
-              <Button type="submit" size="sm">
+        <Flate
+          tittel="Registrer innbetaling"
+          hva="Når én av dere legger ut for noe, føres det her."
+        >
+          <form action={addContribution} className="flex flex-col gap-4">
+            <input type="hidden" name="property_id" value={selected.id} />
+            <div className="grid gap-4 sm:grid-cols-3">
+              <Velg
+                navn="owner_id"
+                merke="Eier"
+                valg={owners.map((o) => ({ verdi: o.id, tekst: o.name }))}
+              />
+              <Felt
+                navn="amount"
+                merke="Beløp (kr)"
+                type="number"
+                min={1}
+                required
+              />
+              <Felt navn="note" merke="Notat" placeholder="F.eks. nytt tak" />
+            </div>
+            <div>
+              <Handling type="submit" vekt="gull">
                 Registrer
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+              </Handling>
+            </div>
+          </form>
+        </Flate>
       )}
 
       {owners.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Forslag til oppgjør</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-3">
+        <Flate
+          tittel="Forslag til oppgjør"
+          hva="Færrest mulig overføringer for å gjøre opp mellom dere."
+        >
+          <div className="flex flex-col gap-4">
             {transfers.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-hus-dempet">
                 Alt er gjort opp — ingen skylder noe.
               </p>
             ) : (
-              <ul className="flex flex-col gap-2 text-sm">
+              <ul className="flex flex-col gap-2">
                 {transfers.map((t, i) => (
-                  <li
-                    key={i}
-                    className="flex items-center justify-between rounded-lg border border-hairline px-3 py-2"
-                  >
-                    <span>
-                      <span className="font-medium text-navy">{t.from}</span>{" "}
-                      betaler{" "}
-                      <span className="font-medium text-navy">{t.to}</span>
-                    </span>
-                    <span className="font-semibold tabular-nums">
-                      {formatNok(t.amount)}
-                    </span>
+                  <li key={i}>
+                    <Kort>
+                      <div className="flex items-center justify-between gap-4 text-sm">
+                        <span className="min-w-0 text-hus-dempet">
+                          <span className="text-hus-blekk">{t.from}</span> betaler{" "}
+                          <span className="text-hus-blekk">{t.to}</span>
+                        </span>
+                        <span className="shrink-0 tabular-nums text-hus-gull-lys">
+                          {formatNok(t.amount)}
+                        </span>
+                      </div>
+                    </Kort>
                   </li>
                 ))}
               </ul>
             )}
-            <DemoAction
-              label="Lag oppgjør"
-              done="Oppgjør opprettet og sendt til medeierne (demo)."
-            />
-          </CardContent>
-        </Card>
+            <div>
+              <DemoAction
+                label="Lag oppgjør"
+                done="Oppgjør opprettet og sendt til medeierne (demo)."
+              />
+            </div>
+          </div>
+        </Flate>
       )}
-    </div>
+    </>
   );
 }

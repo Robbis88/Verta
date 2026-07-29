@@ -1,11 +1,12 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
+import { Handling } from "@/components/hus";
 
+/** Skriver ut skatterapporten. Utskriftsstilen ligger i app/globals.css. */
 export function PrintButton() {
   return (
-    <Button variant="outline" onClick={() => window.print()}>
+    <Handling vekt="gull" onClick={() => window.print()}>
       Skriv ut / lagre som PDF
-    </Button>
+    </Handling>
   );
 }

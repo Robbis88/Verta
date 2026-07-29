@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
-import { Input } from "@/components/ui/input";
+import { feltKlasse } from "@/components/hus";
 
 type Suggestion = { text: string; lat: number; lng: number };
 
@@ -77,22 +77,23 @@ export function AddressAutocomplete({
           <input type="hidden" name="lng" value={coords.lng} />
         </>
       )}
-      <Input
+      <input
         name={name}
         value={value}
         autoComplete="off"
         placeholder="F.eks. Kvernhusveien 39, 5164 Laksevåg"
         onChange={(e) => onChange(e.target.value)}
         onFocus={() => suggestions.length > 0 && setOpen(true)}
+        className={feltKlasse}
       />
       {open && suggestions.length > 0 && (
-        <ul className="absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded-lg border border-hairline bg-white py-1 shadow-lg">
+        <ul className="absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded-xl border border-hus-linje bg-hus-hev py-1 shadow-lg">
           {suggestions.map((s, i) => (
             <li key={`${s.text}-${i}`}>
               <button
                 type="button"
                 onClick={() => pick(s)}
-                className="block w-full px-3 py-2 text-left text-sm text-navy hover:bg-cloud"
+                className="block w-full px-4 py-2 text-left text-sm text-hus-dempet transition-colors hover:bg-white/[0.05] hover:text-hus-blekk"
               >
                 {s.text}
               </button>

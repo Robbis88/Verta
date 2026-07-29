@@ -1,5 +1,3 @@
-import Link from "next/link";
-
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { PricingTool } from "@/components/pricing/pricing-tool";
@@ -8,13 +6,13 @@ import {
   type PriceProperty,
   type Season,
 } from "@/components/pricing/seasonal-rates";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Flate, Side, Situasjon, Tomt } from "@/components/hus";
+import { formatNok } from "@/lib/utils";
 
+/**
+ * Prising — modul 3 i UI-refaktoren. Kun presentasjon; samme spørringer og
+ * samme to verktøy.
+ */
 export default async function PrisingPage() {
   await requireUser();
   const supabase = await createClient();
@@ -33,47 +31,62 @@ export default async function PrisingPage() {
     : { data: [] };
   const seasons = (seasonData ?? []) as Season[];
 
+  if (properties.length === 0) {
+    return (
+      <Side>
+        <Situasjon
+          merke="Prising"
+          tittel="Du har ingen bolig å prise ennå."
+          under="Legg inn boligen din først, så hjelper Verta deg med å finne riktig nattpris."
+        />
+        <Flate>
+          <Tomt
+            tittel="Ingen bolig registrert."
+            hva="Uten pris kan ikke Verta regne ut bookingtotaler eller si hva tomme netter koster deg."
+            knappTekst="Legg til bolig"
+            knappHref="/dashboard/properties/new"
+          />
+        </Flate>
+      </Side>
+    );
+  }
+
+  const utenPris = properties.filter((p) => p.base_nightly_rate == null);
+  const forste = properties[0];
+
   return (
-    <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Prising</h1>
-        <p className="text-sm text-muted-foreground">
-          Sett basepris og sesongpriser, så regnes totalprisen ut automatisk på
-          nye bookinger. Få også AI-forslag til nattepriser basert på
-          beliggenhet, størrelse og belegg de neste 90 dagene.
-        </p>
-      </div>
+    <Side>
+      <Situasjon
+        merke="Prising"
+        tittel={
+          utenPris.length > 0
+            ? utenPris.length === properties.length
+              ? "Du har ikke satt nattpris ennå."
+              : `${utenPris.length} av boligene dine mangler nattpris.`
+            : properties.length === 1 && forste.base_nightly_rate != null
+              ? `${forste.name} koster ${formatNok(Number(forste.base_nightly_rate))} per natt.`
+              : "Prisene dine er satt."
+        }
+        under={
+          utenPris.length > 0
+            ? "Uten pris kan ikke Verta regne ut totalen på nye bookinger — eller vise deg hva de tomme nettene er verdt."
+            : "Sesongprisene overstyrer baseprisen i periodene du velger. Under kan du be Verta om et forslag."
+        }
+      />
 
-      {properties.length === 0 ? (
-        <Card>
-          <CardContent className="py-8 text-center text-sm text-muted-foreground">
-            Legg til en eiendom først.{" "}
-            <Link href="/dashboard/properties/new" className="underline">
-              Legg til eiendom
-            </Link>
-          </CardContent>
-        </Card>
-      ) : (
-        <>
-          <Card>
-            <CardHeader>
-              <CardTitle>Faste priser og sesonger</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <SeasonalRates properties={properties} seasons={seasons} />
-            </CardContent>
-          </Card>
+      <Flate
+        tittel="Faste priser og sesonger"
+        hva="Sesongprisen gjelder foran baseprisen i datoene den dekker."
+      >
+        <SeasonalRates properties={properties} seasons={seasons} />
+      </Flate>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>AI-prisforslag</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <PricingTool properties={properties} />
-            </CardContent>
-          </Card>
-        </>
-      )}
-    </div>
+      <Flate
+        tittel="Spør Verta"
+        hva="Forslag basert på beliggenhet, størrelse og belegget ditt de neste 90 dagene."
+      >
+        <PricingTool properties={properties} />
+      </Flate>
+    </Side>
   );
 }

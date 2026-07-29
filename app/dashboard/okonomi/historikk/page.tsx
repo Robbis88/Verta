@@ -2,15 +2,12 @@ import { getEconomyContext, getTimeline } from "@/lib/okonomi";
 import { formatNok } from "@/lib/utils";
 import { EmptyOkonomi } from "@/components/okonomi/ui";
 import { addEvent, deleteEvent } from "../actions";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Felt, Flate, Handling, Merke, Tabell, Velg } from "@/components/hus";
+
+/**
+ * Historikk — modul 6. Kun presentasjon; samme tall og samme actions
+ * (addEvent, deleteEvent) med uendrede feltnavn.
+ */
 
 const KIND_LABEL: Record<string, string> = {
   kjop: "Kjøp",
@@ -20,13 +17,22 @@ const KIND_LABEL: Record<string, string> = {
   verdi: "Verdivurdering",
 };
 
-const KIND_TONE: Record<string, string> = {
-  kjop: "bg-navy text-white",
-  oppussing: "bg-gold/20 text-navy",
-  vedlikehold: "bg-emerald-100 text-emerald-800",
-  finans: "bg-blue-100 text-blue-800",
-  verdi: "bg-amber-100 text-amber-800",
+/** De gamle badge-fargene oversatt til husets fem toner. */
+const KIND_TONE: Record<string, "ro" | "gull" | "obs" | "god"> = {
+  kjop: "gull",
+  oppussing: "ro",
+  vedlikehold: "god",
+  finans: "ro",
+  verdi: "obs",
 };
+
+const KIND_VALG = [
+  { verdi: "kjop", tekst: "Kjøp" },
+  { verdi: "oppussing", tekst: "Oppussing" },
+  { verdi: "vedlikehold", tekst: "Vedlikehold" },
+  { verdi: "finans", tekst: "Finans" },
+  { verdi: "verdi", tekst: "Verdivurdering" },
+];
 
 export default async function HistorikkPage({
   searchParams,
@@ -39,99 +45,92 @@ export default async function HistorikkPage({
 
   const events = await getTimeline(selected.id);
 
+  const forste = economy.history[0];
+  const siste = economy.history[economy.history.length - 1];
+  const vekst =
+    forste && siste && forste.value > 0
+      ? Math.round(((siste.value - forste.value) / forste.value) * 100)
+      : null;
+
   return (
-    <div className="flex flex-col gap-6">
-      <div>
-        <h2 className="text-xl font-semibold">Historikk</h2>
-        <p className="text-sm text-muted-foreground">{economy.propertyName}</p>
-      </div>
+    <>
+      <p className="text-sm text-hus-dempet">
+        {vekst != null ? (
+          <>
+            {economy.propertyName} har gått fra{" "}
+            <span className="text-hus-blekk">{formatNok(forste.value)}</span> i{" "}
+            {forste.year} til{" "}
+            <span className="text-hus-gull-lys">{formatNok(siste.value)}</span> i{" "}
+            {siste.year} — {vekst >= 0 ? "opp" : "ned"} {Math.abs(vekst)} %.
+          </>
+        ) : (
+          <>Alt som har skjedd med {economy.propertyName}, år for år.</>
+        )}
+      </p>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Utvikling år for år</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-hairline text-xs uppercase tracking-wide text-muted-foreground">
-                  <th className="py-2 text-left font-medium">År</th>
-                  <th className="py-2 text-right font-medium">Inntekt</th>
-                  <th className="py-2 text-right font-medium">Kostnad</th>
-                  <th className="py-2 text-right font-medium">Resultat</th>
-                  <th className="py-2 text-right font-medium">Verdi</th>
-                </tr>
-              </thead>
-              <tbody>
-                {economy.history.map((h) => (
-                  <tr key={h.year} className="border-b border-hairline/60">
-                    <td className="py-2 font-medium">{h.year}</td>
-                    <td className="py-2 text-right tabular-nums">
-                      {formatNok(h.income)}
-                    </td>
-                    <td className="py-2 text-right tabular-nums text-muted-foreground">
-                      {formatNok(h.costs)}
-                    </td>
-                    <td
-                      className={`py-2 text-right tabular-nums ${h.result >= 0 ? "text-emerald-600" : "text-red-600"}`}
-                    >
-                      {formatNok(h.result)}
-                    </td>
-                    <td className="py-2 text-right tabular-nums">
-                      {formatNok(h.value)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
+      <Flate
+        tittel="Utvikling år for år"
+        hva="Inn, ut og hva boligen var verdt ved utgangen av året."
+      >
+        <Tabell
+          kolonner={["År", "Inntekt", "Kostnad", "Resultat", "Verdi"]}
+          rader={economy.history.map((h) => [
+            h.year,
+            formatNok(h.income),
+            formatNok(h.costs),
+            <span
+              key="res"
+              className={h.result >= 0 ? "text-hus-god" : "text-hus-kritisk"}
+            >
+              {formatNok(h.result)}
+            </span>,
+            formatNok(h.value),
+          ])}
+        />
+      </Flate>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Tidslinje</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
+      <Flate
+        tittel="Tidslinje"
+        hva="Hendelsene som forklarer tallene — kjøp, oppussing, refinansiering."
+      >
+        <div className="flex flex-col gap-5">
           {events.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-hus-dempet">
               Ingen hendelser ennå. Legg til den første under.
             </p>
           ) : (
-            <ol className="flex flex-col gap-4">
+            <ol className="flex flex-col">
               {events.map((e) => (
                 <li key={e.id} className="flex gap-4">
                   <div className="flex w-12 shrink-0 flex-col items-center">
-                    <span className="text-sm font-semibold text-navy">
+                    <span className="text-sm tabular-nums text-hus-gull-lys">
                       {e.year}
                     </span>
-                    <span className="mt-1 h-full w-px bg-hairline" />
+                    <span
+                      aria-hidden="true"
+                      className="mt-1 h-full w-px bg-hus-linje"
+                    />
                   </div>
-                  <div className="flex flex-1 items-start justify-between gap-2 pb-2">
-                    <div className="flex flex-col gap-1">
+                  <div className="flex flex-1 items-start justify-between gap-3 pb-5">
+                    <div className="flex min-w-0 flex-col gap-1.5">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-medium text-navy">{e.title}</span>
-                        <span
-                          className={`rounded-full px-2 py-0.5 text-[11px] ${KIND_TONE[e.kind] ?? "bg-muted"}`}
-                        >
+                        <span className="text-sm text-hus-blekk">{e.title}</span>
+                        <Merke tone={KIND_TONE[e.kind] ?? "ro"}>
                           {KIND_LABEL[e.kind] ?? e.kind}
-                        </span>
+                        </Merke>
                       </div>
                       {e.amount != null && (
-                        <span className="text-sm text-muted-foreground tabular-nums">
+                        <span className="text-xs tabular-nums text-hus-svak">
                           {formatNok(e.amount)}
                         </span>
                       )}
                     </div>
                     <form action={deleteEvent}>
                       <input type="hidden" name="id" value={e.id} />
-                      <button
-                        type="submit"
-                        className="text-xs text-muted-foreground hover:text-destructive"
-                        aria-label="Slett hendelse"
-                      >
-                        ✕
-                      </button>
+                      <Handling type="submit" vekt="naken">
+                        <span aria-hidden="true">✕</span>
+                        <span className="sr-only">Slett hendelse</span>
+                      </Handling>
                     </form>
                   </div>
                 </li>
@@ -141,41 +140,28 @@ export default async function HistorikkPage({
 
           <form
             action={addEvent}
-            className="flex flex-wrap items-end gap-3 border-t border-hairline pt-4"
+            className="flex flex-col gap-4 border-t border-hus-linje pt-5"
           >
             <input type="hidden" name="property_id" value={selected.id} />
-            <div className="flex flex-col gap-1">
-              <Label>Hendelse</Label>
-              <Input name="title" required className="w-44" placeholder="Nytt tak" />
-            </div>
-            <div className="flex flex-col gap-1">
-              <Label>Type</Label>
-              <select
-                name="kind"
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Felt navn="title" merke="Hendelse" required placeholder="Nytt tak" />
+              <Velg
+                navn="kind"
+                merke="Type"
                 defaultValue="vedlikehold"
-                className="h-9 rounded-md border border-input bg-transparent px-3 text-sm shadow-sm"
-              >
-                <option value="kjop">Kjøp</option>
-                <option value="oppussing">Oppussing</option>
-                <option value="vedlikehold">Vedlikehold</option>
-                <option value="finans">Finans</option>
-                <option value="verdi">Verdivurdering</option>
-              </select>
+                valg={KIND_VALG}
+              />
+              <Felt navn="event_date" merke="Dato" type="date" required />
+              <Felt navn="amount" merke="Beløp (kr)" type="number" min={0} />
             </div>
-            <div className="flex flex-col gap-1">
-              <Label>Dato</Label>
-              <Input name="event_date" type="date" required />
+            <div>
+              <Handling type="submit" vekt="stille">
+                Legg til
+              </Handling>
             </div>
-            <div className="flex flex-col gap-1">
-              <Label>Beløp (kr)</Label>
-              <Input name="amount" type="number" min={0} className="w-32" />
-            </div>
-            <Button type="submit" size="sm" variant="outline">
-              Legg til
-            </Button>
           </form>
-        </CardContent>
-      </Card>
-    </div>
+        </div>
+      </Flate>
+    </>
   );
 }

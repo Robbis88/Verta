@@ -1,17 +1,22 @@
-import Link from "next/link";
-
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { deleteMessage } from "./actions";
 import { GuestReplyTool, ReviewReplyTool } from "@/components/messages/reply-tools";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  Flate,
+  Handling,
+  Liste,
+  Merke,
+  Rad,
+  Side,
+  Situasjon,
+  Tomt,
+} from "@/components/hus";
+
+/**
+ * Meldinger — modul 5 i UI-refaktoren. Kun presentasjon; samme spørringer og
+ * samme `deleteMessage`.
+ */
 
 type Message = {
   id: string;
@@ -20,6 +25,15 @@ type Message = {
   channel: string;
   body: string;
   created_at: string;
+};
+
+const KANAL: Record<string, string> = {
+  airbnb: "Airbnb",
+  booking: "Booking.com",
+  whatsapp: "WhatsApp",
+  sms: "SMS",
+  email: "E-post",
+  other: "Annet",
 };
 
 export default async function MeldingerPage() {
@@ -39,26 +53,25 @@ export default async function MeldingerPage() {
     .limit(30);
   const messages = (msgs ?? []) as Message[];
   const nameById = new Map(properties.map((p) => [p.id, p.name]));
+  const flereBoliger = properties.length > 1;
 
   return (
-    <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Meldinger</h1>
-        <p className="text-sm text-muted-foreground">
-          La Verta foreslå svar på gjestemeldinger og anmeldelser — på
-          gjestens språk, basert på fakta om eiendommen din.
-        </p>
-      </div>
+    <Side bred>
+      <Situasjon
+        merke="Meldinger"
+        tittel="Du trenger ikke finne ordene selv."
+        under="Lim inn det gjesten skrev, så foreslår Verta et svar på gjestens språk — med fakta hentet fra din bolig. Du redigerer fritt før du sender."
+      />
 
       {properties.length === 0 ? (
-        <Card>
-          <CardContent className="py-8 text-center text-sm text-muted-foreground">
-            Legg til en eiendom først, så kan du få AI-svar tilpasset den.{" "}
-            <Link href="/dashboard/properties/new" className="underline">
-              Legg til eiendom
-            </Link>
-          </CardContent>
-        </Card>
+        <Flate>
+          <Tomt
+            tittel="Ingen bolig registrert."
+            hva="Verta trenger å vite noe om boligen for å kunne svare på WiFi, dørkode og husregler."
+            knappTekst="Legg til bolig"
+            knappHref="/dashboard/properties/new"
+          />
+        </Flate>
       ) : (
         <div className="grid gap-6 lg:grid-cols-2">
           <GuestReplyTool properties={properties} />
@@ -66,39 +79,48 @@ export default async function MeldingerPage() {
         </div>
       )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Logg ({messages.length})</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {messages.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              Ingen loggede meldinger ennå.
-            </p>
-          ) : (
-            <ul className="flex flex-col divide-y">
-              {messages.map((m) => (
-                <li key={m.id} className="flex items-start gap-3 py-3 text-sm">
-                  <Badge>{m.direction === "incoming" ? "Inn" : "Ut"}</Badge>
-                  <div className="flex-1">
-                    <p className="text-xs text-muted-foreground">
-                      {nameById.get(m.property_id) ?? "—"} · {m.channel} ·{" "}
-                      {m.created_at.slice(0, 10)}
-                    </p>
-                    <p className="whitespace-pre-line">{m.body}</p>
-                  </div>
+      <Flate
+        tittel={`Logg (${messages.length})`}
+        hva="Samtaler du har valgt å logge. Verta bruker dem som kontekst neste gang."
+      >
+        {messages.length === 0 ? (
+          <Tomt
+            tittel="Ingen loggede meldinger ennå."
+            hva="Trykk «Logg samtalen» etter et svar, så husker Verta hva som er sagt."
+          />
+        ) : (
+          <Liste>
+            {messages.map((m) => (
+              <Rad
+                key={m.id}
+                hva={
+                  <span className="flex items-center gap-2">
+                    <Merke tone={m.direction === "incoming" ? "ro" : "gull"}>
+                      {m.direction === "incoming" ? "Inn" : "Ut"}
+                    </Merke>
+                    <span className="truncate">{m.body}</span>
+                  </span>
+                }
+                detalj={[
+                  flereBoliger ? nameById.get(m.property_id) : null,
+                  KANAL[m.channel] ?? m.channel,
+                  m.created_at.slice(0, 10),
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+                handling={
                   <form action={deleteMessage}>
                     <input type="hidden" name="id" value={m.id} />
-                    <Button type="submit" variant="ghost" size="sm">
+                    <Handling type="submit" vekt="naken">
                       Slett
-                    </Button>
+                    </Handling>
                   </form>
-                </li>
-              ))}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+                }
+              />
+            ))}
+          </Liste>
+        )}
+      </Flate>
+    </Side>
   );
 }

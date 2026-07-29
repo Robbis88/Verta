@@ -2,8 +2,8 @@
 
 import { useState, useTransition } from "react";
 
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import { feltKlasse, Handling, Omrade } from "@/components/hus";
+import { cn } from "@/lib/utils";
 
 type Action = (formData: FormData) => Promise<void>;
 
@@ -37,61 +37,63 @@ export function PublicListingEditor({
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-sm text-muted-foreground">
+      <p className="text-sm leading-relaxed text-hus-dempet">
         Denne teksten vises på den offentlige siden{" "}
         <a
           href={publicUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-gold underline"
+          className="text-hus-gull-lys underline"
         >
           {publicUrl.replace(/^https?:\/\//, "")}
         </a>
         . Generer med AI, velg tone, og finpuss selv.
       </p>
 
-      <form action={saveAction} className="flex flex-col gap-3">
+      <form action={saveAction} className="flex flex-col gap-4">
         <input type="hidden" name="id" value={propertyId} />
-        <Textarea
-          name="public_listing"
+        <Omrade
+          navn="public_listing"
+          merke="Annonsetekst"
           rows={8}
           defaultValue={listing}
           key={listing}
           placeholder="Ingen annonsetekst ennå. Trykk «Generer med AI», eller skriv din egen."
         />
         <div>
-          <Button type="submit" size="sm">
+          <Handling type="submit" vekt="gull">
             Lagre tekst
-          </Button>
+          </Handling>
         </div>
       </form>
 
       <form
         action={(fd) => startRegen(() => regenerateAction(fd))}
-        className="flex flex-wrap items-center gap-2 border-t border-hairline pt-4"
+        className="flex flex-wrap items-center gap-3 border-t border-hus-linje pt-4"
       >
         <input type="hidden" name="id" value={propertyId} />
         <input type="hidden" name="tone" value={tone} />
-        <span className="text-sm text-muted-foreground">Tone:</span>
+        <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-hus-svak">
+          Tone
+        </span>
         <select
           value={tone}
           onChange={(e) => setTone(e.target.value)}
-          className="h-9 rounded-lg border border-input bg-background px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className={cn(feltKlasse, "w-auto cursor-pointer")}
         >
           {TONES.map((t) => (
-            <option key={t.value} value={t.value}>
+            <option
+              key={t.value}
+              value={t.value}
+              className="bg-hus-hev text-hus-blekk"
+            >
               {t.label}
             </option>
           ))}
         </select>
-        <Button
-          type="submit"
-          size="sm"
-          variant="outline"
-          disabled={regenerating}
-        >
-          {regenerating ? "Genererer…" : "Generer med AI"}
-        </Button>
+        <Handling type="submit" vekt="stille" disabled={regenerating}>
+          {regenerating ? "Genererer …" : "Generer med AI"}
+        </Handling>
       </form>
     </div>
   );

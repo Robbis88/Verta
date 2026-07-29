@@ -39,12 +39,12 @@ function MonthGrid({
 
   return (
     <div className="flex flex-col gap-2">
-      <p className="text-sm font-medium">
+      <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-hus-gull">
         {MONTH_NAMES[month]} {year}
       </p>
-      <div className="grid grid-cols-7 gap-1 text-center text-xs">
+      <div className="grid grid-cols-7 gap-1 text-center text-xs tabular-nums">
         {WEEKDAYS.map((w) => (
-          <span key={w} className="text-muted-foreground">
+          <span key={w} className="text-hus-svak">
             {w}
           </span>
         ))}
@@ -56,10 +56,10 @@ function MonthGrid({
             <span
               key={iso}
               className={cn(
-                "rounded py-1",
+                "rounded-md py-1",
                 isBooked
-                  ? "bg-muted text-muted-foreground line-through"
-                  : "text-foreground",
+                  ? "bg-white/[0.06] text-hus-svak line-through"
+                  : "text-hus-dempet",
               )}
             >
               {day}

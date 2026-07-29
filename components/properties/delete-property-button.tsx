@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
+import { Handling } from "@/components/hus";
 
 export function DeletePropertyButton({
   action,
@@ -19,9 +19,13 @@ export function DeletePropertyButton({
       }}
     >
       <input type="hidden" name="id" value={id} />
-      <Button type="submit" variant="destructive">
+      <Handling
+        type="submit"
+        vekt="stille"
+        className="border-hus-kritisk/40 text-hus-kritisk hover:border-hus-kritisk hover:text-hus-kritisk"
+      >
         Slett eiendom
-      </Button>
+      </Handling>
     </form>
   );
 }

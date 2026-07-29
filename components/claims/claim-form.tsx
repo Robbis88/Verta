@@ -3,10 +3,7 @@
 import { useRef, useState } from "react";
 
 import { createClient } from "@/lib/supabase/client";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { Felt, Handling, Kvittering, Omrade } from "@/components/hus";
 
 const BUCKET = "incident-photos";
 const ALLOWED = ["image/jpeg", "image/png", "image/webp"];
@@ -70,37 +67,33 @@ export function ClaimForm({
   }
 
   return (
-    <form action={createAction} className="flex max-w-lg flex-col gap-4">
+    <form action={createAction} className="flex flex-col gap-4">
       <input type="hidden" name="booking_id" value={bookingId} />
       {photos.map((p) => (
         <input key={p.path} type="hidden" name="photos" value={p.path} />
       ))}
 
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="amount">Beløp (kr)</Label>
-        <Input
-          id="amount"
-          name="amount"
-          type="number"
-          min={1}
-          step={1}
-          required
-          placeholder="F.eks. 1500"
-        />
-      </div>
+      <Felt
+        navn="amount"
+        merke="Beløp (kr)"
+        type="number"
+        min={1}
+        step={1}
+        required
+        placeholder="F.eks. 1500"
+      />
 
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="description">Beskrivelse</Label>
-        <Textarea
-          id="description"
-          name="description"
-          rows={3}
-          placeholder="Beskriv skaden — f.eks. «Madrass tilsølt, måtte renses/erstattes»."
-        />
-      </div>
+      <Omrade
+        navn="description"
+        merke="Beskrivelse"
+        rows={3}
+        placeholder="Beskriv skaden — f.eks. «Madrass tilsølt, måtte renses/erstattes»."
+      />
 
-      <div className="flex flex-col gap-2">
-        <Label>Bilder (bevis)</Label>
+      <div className="flex flex-col gap-3">
+        <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-hus-svak">
+          Bilder (bevis)
+        </span>
         {photos.length > 0 && (
           <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
             {photos.map((p) => (
@@ -109,7 +102,7 @@ export function ClaimForm({
                 key={p.path}
                 src={p.preview}
                 alt="Skadebilde"
-                className="aspect-square w-full rounded-md object-cover"
+                className="aspect-square w-full rounded-xl border border-hus-linje object-cover"
               />
             ))}
           </div>
@@ -126,25 +119,24 @@ export function ClaimForm({
           }}
         />
         <div>
-          <Button
+          <Handling
             type="button"
-            size="sm"
-            variant="outline"
+            vekt="stille"
             disabled={uploading}
             onClick={() => inputRef.current?.click()}
           >
-            {uploading ? "Laster opp…" : "Last opp bilder"}
-          </Button>
+            {uploading ? "Laster opp …" : "Last opp bilder"}
+          </Handling>
         </div>
-        {error && <p className="text-xs text-destructive">{error}</p>}
+        <Kvittering feil={error ?? undefined} />
       </div>
 
       <div>
-        <Button type="submit" disabled={uploading}>
+        <Handling type="submit" vekt="gull" disabled={uploading}>
           Send krav til gjesten
-        </Button>
+        </Handling>
       </div>
-      <p className="text-xs text-muted-foreground">
+      <p className="text-xs text-hus-svak">
         Gjesten får kravet på e-post med bildene og betaler via en lenke. Kortet
         belastes først når de betaler.
       </p>

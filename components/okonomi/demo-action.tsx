@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { Button } from "@/components/ui/button";
+import { Handling } from "@/components/hus";
 
 /** Knapp for handlinger som ennå er mockup — viser en bekreftelse ved klikk. */
 export function DemoAction({
@@ -17,10 +17,13 @@ export function DemoAction({
   const [clicked, setClicked] = useState(false);
   return (
     <div className="flex flex-col items-start gap-2">
-      <Button type="button" variant={variant} onClick={() => setClicked(true)}>
+      <Handling
+        vekt={variant === "outline" ? "stille" : "gull"}
+        onClick={() => setClicked(true)}
+      >
         {label}
-      </Button>
-      {clicked && <p className="text-sm text-emerald-600">{done}</p>}
+      </Handling>
+      {clicked && <p className="text-sm text-hus-god">{done}</p>}
     </div>
   );
 }

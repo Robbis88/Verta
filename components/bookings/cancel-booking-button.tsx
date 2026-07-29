@@ -1,7 +1,7 @@
 "use client";
 
 import { cancelBooking } from "@/app/dashboard/properties/booking-actions";
-import { Button } from "@/components/ui/button";
+import { Handling } from "@/components/hus";
 
 export function CancelBookingButton({
   id,
@@ -19,9 +19,9 @@ export function CancelBookingButton({
     >
       <input type="hidden" name="id" value={id} />
       <input type="hidden" name="property_id" value={propertyId} />
-      <Button type="submit" variant="ghost" size="sm">
+      <Handling type="submit" vekt="naken">
         Avbryt
-      </Button>
+      </Handling>
     </form>
   );
 }

@@ -1,4 +1,3 @@
-import Link from "next/link";
 
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -12,15 +11,18 @@ import {
   payServiceRequest,
   refundServiceRequest,
 } from "./actions";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  Beskjed,
+  Felt,
+  feltKlasse,
+  Flate,
+  Handling,
+  Kort,
+  Merke,
+  Side,
+  Situasjon,
+  Tomt,
+} from "@/components/hus";
 
 type Prop = { id: string; name: string; lat: number | null; lng: number | null };
 type Cleaner = {
@@ -133,251 +135,280 @@ export default async function FinnVaskehjelpPage({
     cancelled: "Avbrutt",
   };
 
+  const ventende = myRequests.filter((r) => r.status === "pending").length;
+
   return (
-    <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Finn vaskehjelp</h1>
-        <p className="text-sm text-muted-foreground">
-          Ledige vaskere i nærheten av eiendommen din — som har sagt de tar
-          oppdrag og kjører så langt.
-        </p>
-      </div>
+    <Side bred>
+      <Situasjon
+        merke="Finn vaskehjelp"
+        tittel={
+          properties.length === 0
+            ? "Du har ingen bolig å finne hjelp til ennå."
+            : matches.length === 0
+              ? "Ingen ledige vaskere innen rekkevidde ennå."
+              : `${matches.length} ${matches.length === 1 ? "vasker" : "vaskere"} kan ta oppdrag hos deg.`
+        }
+        under={
+          ventende > 0
+            ? `${ventende} av forespørslene dine venter fortsatt på svar.`
+            : "Vaskere som har sagt at de tar oppdrag, og hvor langt de kjører. Dere avtaler pris selv; Verta tar 10 % først når du betaler gjennom oss."
+        }
+        handling={
+          properties.length > 1 ? (
+            <>
+              {properties.map((p) => (
+                <Handling
+                  key={p.id}
+                  href={`/dashboard/finn-vaskehjelp?property=${p.id}`}
+                  vekt={selected?.id === p.id ? "gull" : "stille"}
+                >
+                  {p.name}
+                </Handling>
+              ))}
+            </>
+          ) : undefined
+        }
+      />
 
       {betalt && (
-        <p className="rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+        <Beskjed>
           Betalingen er gjennomført. Vaskeren får beløpet minus Vertas 10 %.
-        </p>
+        </Beskjed>
       )}
       {feil === "vasker" && (
-        <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">
+        <Beskjed tone="obs">
           Vaskeren har ikke koblet utbetaling ennå, så oppdraget kan ikke betales
           gjennom Verta. Be vaskeren koble utbetaling i portalen sin.
-        </p>
+        </Beskjed>
       )}
       {refundert && (
-        <p className="rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+        <Beskjed>
           Oppdraget er refundert. Beløpet hentes tilbake fra vaskeren, og Vertas
           gebyr returneres.
-        </p>
+        </Beskjed>
       )}
       {feil === "refusjon" && (
-        <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-800">
+        <Beskjed tone="kritisk">
           Refusjonen kunne ikke gjennomføres. Prøv igjen, eller sjekk oppdraget i
           Stripe.
-        </p>
+        </Beskjed>
       )}
 
       {properties.length === 0 ? (
-        <Card>
-          <CardContent className="py-8 text-center text-sm text-muted-foreground">
-            Legg til en eiendom først.{" "}
-            <Link href="/dashboard/properties/new" className="underline">
-              Legg til eiendom
-            </Link>
-          </CardContent>
-        </Card>
+        <Flate>
+          <Tomt
+            tittel="Ingen bolig registrert."
+            hva="Verta finner vaskere ut fra hvor boligen din ligger."
+            knappTekst="Legg til bolig"
+            knappHref="/dashboard/properties/new"
+          />
+        </Flate>
+      ) : selected && (selected.lat == null || selected.lng == null) ? (
+        <Flate>
+          <Tomt
+            tittel={`«${selected.name}» mangler en gjenkjent adresse.`}
+            hva="Legg inn adressen og lagre, så finner vi vaskere i nærheten."
+            knappTekst="Rediger eiendommen"
+            knappHref={`/dashboard/properties/${selected.id}`}
+          />
+        </Flate>
+      ) : matches.length === 0 ? (
+        <Flate>
+          <Tomt
+            tittel="Ingen ledige vaskere innen rekkevidde."
+            hva="Markedet fylles opp etter hvert som flere vaskere gjør seg synlige. Prøv igjen om en stund."
+          />
+        </Flate>
       ) : (
-        <>
-          <div className="flex flex-wrap gap-2">
-            {properties.map((p) => (
-              <Button
-                key={p.id}
-                asChild
-                size="sm"
-                variant={selected?.id === p.id ? "default" : "outline"}
-              >
-                <Link href={`/dashboard/finn-vaskehjelp?property=${p.id}`}>
-                  {p.name}
-                </Link>
-              </Button>
-            ))}
-          </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          {matches.map((c) => {
+            const stats = reviewStats.get(c.id);
+            return (
+              <Flate key={c.id}>
+                <div className="flex items-baseline justify-between gap-3">
+                  <p className="text-lg font-light text-hus-blekk">{c.name}</p>
+                  <span className="shrink-0 text-sm text-hus-svak">
+                    ~{c.distance} km
+                  </span>
+                </div>
 
-          {selected && (selected.lat == null || selected.lng == null) ? (
-            <Card>
-              <CardContent className="py-8 text-center text-sm text-muted-foreground">
-                «{selected.name}» mangler en gjenkjent adresse. Legg inn adressen
-                under{" "}
-                <Link
-                  href={`/dashboard/properties/${selected.id}`}
-                  className="underline"
-                >
-                  Rediger eiendom
-                </Link>{" "}
-                og lagre, så finner vi vaskere i nærheten.
-              </CardContent>
-            </Card>
-          ) : matches.length === 0 ? (
-            <Card>
-              <CardContent className="py-8 text-center text-sm text-muted-foreground">
-                Ingen ledige vaskere innen rekkevidde ennå. Det fylles opp
-                etter hvert som flere blir synlige.
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid gap-4 sm:grid-cols-2">
-              {matches.map((c) => (
-                <Card key={c.id}>
-                  <CardHeader>
-                    <CardTitle className="flex items-center justify-between">
-                      <span>{c.name}</span>
-                      <span className="text-sm font-normal text-muted-foreground">
-                        ~{c.distance} km
-                      </span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="flex flex-col gap-2 text-sm">
-                    {reviewStats.get(c.id) && (
-                      <p className="text-gold">
-                        ★ {reviewStats.get(c.id)!.avg}{" "}
-                        <span className="text-muted-foreground">
-                          ({reviewStats.get(c.id)!.count})
-                        </span>
-                      </p>
-                    )}
-                    {c.bio && <p className="text-ink">{c.bio}</p>}
-                    {c.hourly_rate != null && (
-                      <p className="text-muted-foreground">
-                        Timepris: {formatNok(Number(c.hourly_rate))}
-                      </p>
-                    )}
-                    <div className="flex flex-col gap-1 border-t pt-2">
-                      {c.phone && (
-                        <a href={`tel:${c.phone}`} className="text-navy underline">
-                          {c.phone}
-                        </a>
-                      )}
-                      {c.email && (
-                        <a
-                          href={`mailto:${c.email}`}
-                          className="text-navy underline"
-                        >
-                          {c.email}
-                        </a>
-                      )}
-                    </div>
-                    {selected && (
-                      <form
-                        action={requestCleaner}
-                        className="flex flex-col gap-2 border-t pt-2"
+                {stats && (
+                  <p className="mt-2 text-sm text-hus-gull-lys">
+                    ★ {stats.avg}{" "}
+                    <span className="text-hus-svak">({stats.count})</span>
+                  </p>
+                )}
+                {c.bio && (
+                  <p className="mt-3 text-sm leading-relaxed text-hus-dempet">
+                    {c.bio}
+                  </p>
+                )}
+                {c.hourly_rate != null && (
+                  <p className="mt-2 text-sm text-hus-svak">
+                    Timepris {formatNok(Number(c.hourly_rate))}
+                  </p>
+                )}
+
+                {(c.phone || c.email) && (
+                  <div className="mt-4 flex flex-wrap gap-3 border-t border-hus-linje pt-3 text-sm">
+                    {c.phone && (
+                      <a
+                        href={`tel:${c.phone}`}
+                        className="text-hus-gull underline underline-offset-4"
                       >
-                        <input type="hidden" name="cleaner_id" value={c.id} />
-                        <input type="hidden" name="property_id" value={selected.id} />
-                        <Input name="job_date" type="date" className="h-9" />
-                        <Input
-                          name="amount"
-                          type="number"
-                          min={0}
-                          placeholder="Avtalt pris (kr)"
-                          className="h-9"
-                        />
-                        <Input name="message" placeholder="Melding (valgfritt)" className="h-9" />
-                        <Button type="submit" size="sm" variant="outline">
-                          Send forespørsel
-                        </Button>
+                        {c.phone}
+                      </a>
+                    )}
+                    {c.email && (
+                      <a
+                        href={`mailto:${c.email}`}
+                        className="text-hus-gull underline underline-offset-4"
+                      >
+                        {c.email}
+                      </a>
+                    )}
+                  </div>
+                )}
+
+                {selected && (
+                  <form
+                    action={requestCleaner}
+                    className="mt-4 flex flex-col gap-3 border-t border-hus-linje pt-4"
+                  >
+                    <input type="hidden" name="cleaner_id" value={c.id} />
+                    <input type="hidden" name="property_id" value={selected.id} />
+                    <Felt navn="job_date" merke="Dato" type="date" />
+                    <Felt
+                      navn="amount"
+                      merke="Avtalt pris (kr)"
+                      type="number"
+                      min={0}
+                      placeholder="0"
+                    />
+                    <Felt
+                      navn="message"
+                      merke="Melding (valgfritt)"
+                      placeholder="Kort om oppdraget"
+                    />
+                    <div>
+                      <Handling type="submit" vekt="gull">
+                        Send forespørsel
+                      </Handling>
+                    </div>
+                  </form>
+                )}
+              </Flate>
+            );
+          })}
+        </div>
+      )}
+
+      {myRequests.length > 0 && (
+        <Flate
+          tittel="Mine forespørsler"
+          hva="Prisen er det dere avtaler. Verta tar 10 % først når du betaler gjennom oss."
+        >
+          <div className="flex flex-col gap-3">
+            {myRequests.map((r) => (
+              <Kort key={r.id}>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm text-hus-blekk">
+                      {cleanerNameById.get(r.cleaner_id) ?? "Vasker"}
+                    </p>
+                    <p className="text-xs text-hus-svak">
+                      {[propNameById.get(r.property_id), r.job_date]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Merke
+                      tone={
+                        r.status === "accepted"
+                          ? "god"
+                          : r.status === "declined" || r.status === "cancelled"
+                            ? "kritisk"
+                            : "obs"
+                      }
+                    >
+                      {REQ_STATUS[r.status] ?? r.status}
+                    </Merke>
+                    {r.status === "pending" && (
+                      <form action={cancelRequest}>
+                        <input type="hidden" name="id" value={r.id} />
+                        <Handling type="submit" vekt="naken">
+                          Avbryt
+                        </Handling>
                       </form>
                     )}
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
+                    {r.status === "accepted" && (
+                      <form
+                        action={reviewCleaner}
+                        className="flex items-center gap-1"
+                      >
+                        <input type="hidden" name="cleaner_id" value={r.cleaner_id} />
+                        <input type="hidden" name="property_id" value={r.property_id} />
+                        <select
+                          name="rating"
+                          defaultValue="5"
+                          aria-label="Vurdering"
+                          className={`${feltKlasse} h-9 w-auto cursor-pointer`}
+                        >
+                          {[5, 4, 3, 2, 1].map((n) => (
+                            <option key={n} value={n} className="bg-hus-hev">
+                              {n}★
+                            </option>
+                          ))}
+                        </select>
+                        <input
+                          name="comment"
+                          placeholder="Kommentar"
+                          className={`${feltKlasse} h-9 w-36`}
+                        />
+                        <Handling type="submit" vekt="naken">
+                          Vurder
+                        </Handling>
+                      </form>
+                    )}
+                  </div>
+                </div>
 
-          {myRequests.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Mine forespørsler</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ul className="flex flex-col divide-y">
-                  {myRequests.map((r) => (
-                    <li key={r.id} className="flex flex-col gap-2 py-2 text-sm">
-                      <div className="flex items-center justify-between gap-3">
-                      <span className="flex-1">
-                        {cleanerNameById.get(r.cleaner_id) ?? "Vasker"} ·{" "}
-                        <span className="text-muted-foreground">
-                          {propNameById.get(r.property_id) ?? "—"}
-                          {r.job_date ? ` · ${r.job_date}` : ""}
+                {r.amount != null && (
+                  <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-hus-linje pt-3 text-xs">
+                    <span className="text-hus-svak">
+                      Pris {formatNok(Number(r.amount))} · Verta-gebyr{" "}
+                      {formatNok(Number(r.verta_fee ?? 0))} · til vasker{" "}
+                      {formatNok(Number(r.amount) - Number(r.verta_fee ?? 0))}
+                    </span>
+                    {r.status === "accepted" &&
+                      (r.payment_status === "paid" ? (
+                        <span className="flex items-center gap-2">
+                          <span className="text-hus-god">Betalt ✓</span>
+                          <form action={refundServiceRequest}>
+                            <input type="hidden" name="id" value={r.id} />
+                            <Handling type="submit" vekt="naken">
+                              Refunder
+                            </Handling>
+                          </form>
                         </span>
-                      </span>
-                      <Badge>{REQ_STATUS[r.status] ?? r.status}</Badge>
-                      {r.status === "pending" && (
-                        <form action={cancelRequest}>
+                      ) : r.payment_status === "refunded" ? (
+                        <span className="text-hus-svak">Refundert</span>
+                      ) : (
+                        <form action={payServiceRequest}>
                           <input type="hidden" name="id" value={r.id} />
-                          <Button type="submit" variant="ghost" size="sm">
-                            Avbryt
-                          </Button>
+                          <Handling type="submit" vekt="gull">
+                            Betal
+                          </Handling>
                         </form>
-                      )}
-                      {r.status === "accepted" && (
-                        <form action={reviewCleaner} className="flex items-center gap-1">
-                          <input type="hidden" name="cleaner_id" value={r.cleaner_id} />
-                          <input type="hidden" name="property_id" value={r.property_id} />
-                          <select
-                            name="rating"
-                            defaultValue="5"
-                            className="h-8 rounded-lg border border-input bg-background px-2 text-xs"
-                          >
-                            {[5, 4, 3, 2, 1].map((n) => (
-                              <option key={n} value={n}>
-                                {n}★
-                              </option>
-                            ))}
-                          </select>
-                          <Input name="comment" placeholder="Kommentar" className="h-8 w-28" />
-                          <Button type="submit" variant="ghost" size="sm">
-                            Vurder
-                          </Button>
-                        </form>
-                      )}
-                      </div>
-                      {r.amount != null && (
-                        <div className="flex items-center justify-between gap-3 text-xs">
-                          <span className="text-muted-foreground">
-                            Pris {formatNok(Number(r.amount))} · Verta-gebyr{" "}
-                            {formatNok(Number(r.verta_fee ?? 0))} · til vasker{" "}
-                            {formatNok(Number(r.amount) - Number(r.verta_fee ?? 0))}
-                          </span>
-                          {r.status === "accepted" &&
-                            (r.payment_status === "paid" ? (
-                              <span className="flex items-center gap-3">
-                                <span className="font-medium text-emerald-600">
-                                  Betalt ✓
-                                </span>
-                                <form action={refundServiceRequest}>
-                                  <input type="hidden" name="id" value={r.id} />
-                                  <Button
-                                    type="submit"
-                                    variant="ghost"
-                                    size="sm"
-                                    className="text-red-600 hover:text-red-700"
-                                  >
-                                    Refunder
-                                  </Button>
-                                </form>
-                              </span>
-                            ) : r.payment_status === "refunded" ? (
-                              <span className="font-medium text-muted-foreground">
-                                Refundert
-                              </span>
-                            ) : (
-                              <form action={payServiceRequest}>
-                                <input type="hidden" name="id" value={r.id} />
-                                <Button type="submit" size="sm">
-                                  Betal
-                                </Button>
-                              </form>
-                            ))}
-                        </div>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
-          )}
-        </>
+                      ))}
+                  </div>
+                )}
+              </Kort>
+            ))}
+          </div>
+        </Flate>
       )}
-    </div>
+    </Side>
   );
 }

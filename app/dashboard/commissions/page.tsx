@@ -1,8 +1,22 @@
-import { Banknote, CalendarDays } from "lucide-react";
-
 import { createClient } from "@/lib/supabase/server";
 import { formatNok } from "@/lib/utils";
-import { KpiCard, PanelCard } from "@/components/dashboard/overview-ui";
+import {
+  Flate,
+  Liste,
+  Rad,
+  Side,
+  Situasjon,
+  Tall,
+  TallRekke,
+  Tomt,
+} from "@/components/hus";
+
+/**
+ * Provisjon — modul 2 i UI-refaktoren. Kun presentasjon; samme spørring.
+ *
+ * Siden er ren historikk: Verta tar ikke lenger provisjon. Det sier den nå
+ * først, i stedet for å vise tall som ser ut som en løpende kostnad.
+ */
 
 type CommissionRow = {
   id: string;
@@ -12,10 +26,10 @@ type CommissionRow = {
   status: string;
 };
 
-const STATUS_STYLE: Record<string, string> = {
-  paid: "bg-emerald-100 text-emerald-700",
-  pending: "bg-amber-100 text-amber-700",
-  invoiced: "bg-cloud text-navy",
+const STATUS_TEKST: Record<string, string> = {
+  paid: "betalt",
+  pending: "venter",
+  invoiced: "fakturert",
 };
 
 export default async function CommissionsPage() {
@@ -30,66 +44,53 @@ export default async function CommissionsPage() {
     (sum, c) => sum + (Number(c.commission_amount) || 0),
     0,
   );
+  const omsetning = commissions.reduce(
+    (sum, c) => sum + (Number(c.total_revenue) || 0),
+    0,
+  );
 
   return (
-    <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-navy">Provisjon</h1>
-        <p className="text-sm text-muted-foreground">
-          Verta tar ikke lenger provisjon fra deg. Gjestene betaler i stedet et
-          tjenestegebyr på 7,5 % ved bestilling, så du får hele ditt beløp.
-          Eventuelle rader under er historikk.
-        </p>
-      </div>
+    <Side>
+      <Situasjon
+        merke="Provisjon"
+        tittel={
+          commissions.length === 0
+            ? "Du har aldri betalt provisjon til Verta."
+            : "Verta tar ikke lenger provisjon fra deg."
+        }
+        under="Gjestene betaler et tjenestegebyr på 7,5 % ved bestilling, så du får hele ditt beløp. Alt under er historikk."
+      />
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <KpiCard
-          label="Totalt opptjent"
-          value={formatNok(lifetime)}
-          icon={Banknote}
-          trend="til Verta hittil"
-          trendTone="muted"
-        />
-        <KpiCard
-          label="Perioder"
-          value={`${commissions.length}`}
-          icon={CalendarDays}
-          trend="registrert"
-          trendTone="muted"
-        />
-      </div>
+      {commissions.length > 0 && (
+        <TallRekke>
+          <Tall verdi={formatNok(lifetime)} navn="betalt totalt" tone="gull" />
+          <Tall verdi={formatNok(omsetning)} navn="omsetning i perioden" />
+          <Tall verdi={`${commissions.length}`} navn="perioder" />
+          <Tall verdi={commissions[0]?.period ?? "—"} navn="siste periode" />
+        </TallRekke>
+      )}
 
-      <PanelCard title="Perioder">
+      <Flate tittel="Historikk">
         {commissions.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            Ingen provisjon registrert ennå.
-          </p>
+          <Tomt
+            tittel="Ingenting å vise."
+            hva="Du har ikke betalt provisjon til Verta. Det kommer heller ikke til å skje — modellen er byttet ut."
+          />
         ) : (
-          <ul className="flex flex-col divide-y divide-hairline">
+          <Liste>
             {commissions.map((c) => (
-              <li
+              <Rad
                 key={c.id}
-                className="flex flex-wrap items-center justify-between gap-2 py-3 text-sm first:pt-0 last:pb-0"
-              >
-                <span className="w-20 font-medium text-navy">{c.period}</span>
-                <span className="text-ink/60">
-                  Omsetning {formatNok(Number(c.total_revenue) || 0)}
-                </span>
-                <span className="font-semibold tabular-nums text-navy">
-                  {formatNok(Number(c.commission_amount) || 0)}
-                </span>
-                <span
-                  className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                    STATUS_STYLE[c.status] ?? "bg-cloud text-navy"
-                  }`}
-                >
-                  {c.status}
-                </span>
-              </li>
+                nar={c.period}
+                hva={`Omsetning ${formatNok(Number(c.total_revenue) || 0)}`}
+                detalj={STATUS_TEKST[c.status] ?? c.status}
+                verdi={formatNok(Number(c.commission_amount) || 0)}
+                tone="gull"
+              />
             ))}
-          </ul>
+          </Liste>
         )}
-      </PanelCard>
-    </div>
+      </Flate>
+    </Side>
   );
 }

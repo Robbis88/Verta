@@ -3,9 +3,12 @@
 import { useEffect, useState } from "react";
 
 import { createClient } from "@/lib/supabase/client";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Felt, Handling, Kvittering } from "@/components/hus";
+
+/**
+ * Tofaktor — modul 8. Kun presentasjon; samme kall mot supabase.auth.mfa
+ * (listFactors, enroll, challengeAndVerify, unenroll).
+ */
 
 type Factor = { id: string; friendly_name?: string | null; status: string };
 type Enrolling = { factorId: string; qrCode: string; secret: string };
@@ -24,6 +27,9 @@ export function TwoFactor() {
   }
 
   useEffect(() => {
+    // Henter faktorene fra Supabase én gang ved montering — nettopp det en
+    // effekt er til for. Samme unntak som i dashboard-nav.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadFactors();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -74,85 +80,95 @@ export function TwoFactor() {
   return (
     <div className="flex flex-col gap-4">
       {active.length > 0 && (
-        <div className="flex flex-col gap-2">
-          <p className="text-sm text-emerald-600">
-            Tofaktor er aktivert ✓
-          </p>
+        <div className="flex flex-col gap-3">
+          <p className="text-sm text-hus-god">Tofaktor er aktivert.</p>
           {active.map((f) => (
-            <div key={f.id} className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">
+            <div
+              key={f.id}
+              className="flex items-center justify-between gap-4 text-sm"
+            >
+              <span className="min-w-0 truncate text-hus-dempet">
                 Autentiseringsapp ({f.friendly_name || "TOTP"})
               </span>
-              <Button
+              <Handling
                 type="button"
-                variant="ghost"
-                size="sm"
+                vekt="naken"
                 disabled={loading}
                 onClick={() => disable(f.id)}
               >
                 Deaktiver
-              </Button>
+              </Handling>
             </div>
           ))}
         </div>
       )}
 
       {active.length === 0 && !enrolling && (
-        <div className="flex flex-col items-start gap-2">
-          <p className="text-sm text-muted-foreground">
-            Beskytt kontoen med en autentiseringsapp (Google Authenticator,
-            Authy o.l.).
+        <div className="flex flex-col items-start gap-4">
+          <p className="text-sm leading-relaxed text-hus-dempet">
+            Beskytt kontoen med en autentiseringsapp (Google Authenticator, Authy
+            o.l.).
           </p>
-          <Button type="button" onClick={startEnroll} disabled={loading}>
+          <Handling
+            type="button"
+            vekt="gull"
+            onClick={startEnroll}
+            disabled={loading}
+          >
             {loading ? "…" : "Aktiver tofaktor"}
-          </Button>
+          </Handling>
         </div>
       )}
 
       {enrolling && (
-        <div className="flex flex-col gap-3">
-          <p className="text-sm">
+        <div className="flex flex-col gap-4">
+          <p className="text-sm leading-relaxed text-hus-dempet">
             Skann QR-koden i autentiseringsappen, og skriv inn engangskoden:
           </p>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={enrolling.qrCode}
             alt="QR-kode for tofaktor"
-            className="h-44 w-44 rounded-lg border bg-white p-2"
+            className="h-44 w-44 rounded-xl border border-hus-linje bg-white p-2"
           />
-          <p className="text-xs text-muted-foreground">
-            Eller skriv inn nøkkelen manuelt: <code>{enrolling.secret}</code>
+          <p className="text-xs text-hus-svak">
+            Eller skriv inn nøkkelen manuelt:{" "}
+            <code className="text-hus-dempet">{enrolling.secret}</code>
           </p>
-          <div className="flex items-end gap-2">
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="totp">Engangskode</Label>
-              <Input
-                id="totp"
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                inputMode="numeric"
-                placeholder="123456"
-                className="w-32"
-              />
-            </div>
-            <Button type="button" onClick={confirmEnroll} disabled={loading}>
-              {loading ? "Sjekker…" : "Bekreft"}
-            </Button>
-            <Button
+          <div className="max-w-[12rem]">
+            <Felt
+              navn="totp"
+              merke="Engangskode"
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              inputMode="numeric"
+              placeholder="123456"
+            />
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Handling
               type="button"
-              variant="ghost"
+              vekt="gull"
+              onClick={confirmEnroll}
+              disabled={loading}
+            >
+              {loading ? "Sjekker …" : "Bekreft"}
+            </Handling>
+            <Handling
+              type="button"
+              vekt="naken"
               onClick={() => {
                 setEnrolling(null);
                 setCode("");
               }}
             >
               Avbryt
-            </Button>
+            </Handling>
           </div>
         </div>
       )}
 
-      {error && <p className="text-sm text-destructive">{error}</p>}
+      <Kvittering feil={error ?? undefined} />
     </div>
   );
 }
