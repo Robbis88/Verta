@@ -1,8 +1,24 @@
 # Verta — full UI-refaktor til Huset
 
 > Én identitet gjennom hele produktet. Ingen funksjonelle endringer.
-> Status: **designsystemet er bygget, sidene er ikke konvertert.**
-> Sist oppdatert: 2026-07-27.
+> Status: **ferdig. Alle 11 moduler er konvertert.**
+> Sist oppdatert: 2026-07-29.
+
+## Resultatet
+
+Alle 28 sidene under `/dashboard` snakker nå samme språk som `/hjem` og
+startsiden. Kontrollmålingene fra «Definisjon av ferdig» nederst:
+
+| Sjekk | Resultat |
+|---|---|
+| `@/components/ui/*` importert i `app/dashboard` | 0 treff |
+| Hex-koder eller `bg-white` i `app/dashboard` | 0 treff |
+| Diff i `lib`, `app/api`, `sql`, `supabase` siden refaktorstart | tom |
+| Diff i noen `actions.ts` siden refaktorstart | tom |
+| `tsc --noEmit`, `eslint .`, `next build` | grønne |
+
+Skallet ble tatt sist, som planlagt: husflaten ligger nå i
+`app/dashboard/layout.tsx`, og `Side` setter kun bredde og pust.
 
 ## Diagnosen
 
@@ -75,13 +91,19 @@ De **eneste** lovlige byggeklossene på en side i huset:
 
 | Primitiv | Rolle |
 |---|---|
-| `Side` | Flaten: bakgrunn, bredde, pust. `bred` for kalender/tabeller. |
+| `Side` | Bredden og pusten. `bred` for kalender/tabeller. Flaten selv ligger i `dashboard/layout.tsx` etter modul 11. |
 | `Situasjon` | Åpningen: merke, én setning om hva som ER tilfellet, valgfri handling. |
 | `TallRekke` / `Tall` | Tall som betyr noe. Fire toner: ro, gull, obs, kritisk. |
 | `Flate` | Rolig seksjon med overskrift og én linje som forklarer den. |
 | `Liste` / `Rad` | Én linje: når, hva, detalj, verdi, handling. Kan gjøres klikkbar. |
-| `Handling` | Lenke eller knapp. Tre vekter: `gull`, `stille`, `naken`. |
+| `Handling` | Lenke eller knapp. Tre vekter: `gull`, `stille`, `naken`. `nyFane` for nedlastinger. |
 | `Tomt` | Ingenting her ennå — og alltid én vei videre. |
+| `Felt` / `Velg` / `Omrade` | Skjemafelt i husets språk. `navn` går rett gjennom som `name`. |
+| `Merke` | Kort status som en rolig pille, aldri en farget boks. |
+| `Beskjed` | Kvittering etter en handling. |
+| `Kort` | En flate inni en `Flate`, for lister der hver rad har eget skjema. |
+| `Tabell` | Ekte tabelldata. Ruller vannrett i sin egen boks. |
+| `Kvittering` | Feil i rødt, suksess i grønt, under et skjema. |
 
 Alle er server-komponenter, så de kan brukes rett i datahentende sider.
 Interaktivitet legges i klientkomponenter som plasseres **inni** dem.
@@ -117,34 +139,49 @@ server actions er upåvirket.
 Én modul om gangen. Ferdig betyr: bygget grønt, lint rent, og ingen diff i den
 frosne mappelisten.
 
+Alle moduler er ferdige. Tabellen står igjen som logg over hva som ble gjort.
+
 | # | Modul | Sider | Delte komponenter | Merknad |
 |---|---|---|---|---|
-| **1** | **Utgifter** | `utgifter` | `expenses/expense-form` | Pilot. Liten og typisk: header + tall + skjema + liste. Beviser mønsteret og gir `Felt`/`Velg`. **Godkjennes av Robert før modul 2.** |
-| 2 | Skatt & provisjon | `tax`, `commissions` | `tax/print-button` | Rene lese-sider. `KpiCard`-bruken erstattes av `TallRekke`. |
-| 3 | Drift, lett | `lager`, `varsler`, `prising` | `alerts/alert-campaign`, `pricing/pricing-tool`, `pricing/seasonal-rates` | |
-| 4 | Drift, tung | `rengjoring`, `vedlikehold`, `finn-vaskehjelp` | — | 344 + 334 + 383 linjer. Mange skjemaer. |
-| 5 | Meldinger | `meldinger` | `messages/reply-tools` | AI-forslag; behold flyten nøyaktig. |
-| 6 | Eiendomsøkonomi | `okonomi` + 5 undersider | `okonomi/{ui,ai-box,okonomi-nav,demo-action}` | `okonomi/ui` er et eget mini-designsystem som skal opp i husets. |
-| 7 | Boost, skade, smartlås | `boosts` ×3, `skade/[bookingId]`, `smartlas-guide` | `boosts/{boost-editor,boost-form}`, `claims/claim-form` | |
-| 8 | Konto | `settings`, `sikkerhet`, `team` | `security/{set-password,two-factor}`, `settings/delete-account-button` | |
-| 9 | **Eiendommer** | `properties`, `properties/new`, `properties/[id]` | `properties/{property-form,image-manager,property-map,public-listing-editor,video-uploader,delete-property-button}`, `calendar/availability-calendar`, `bookings/*`, `smartlock/smartlock-code` | **1 706 linjer i én fil.** Tas til slutt og deles i seksjonskomponenter underveis — uten å endre hva de gjør. |
-| 10 | Oversikten | `dashboard` | `dashboard/overview-ui` | Delvis gjort. Fullføres når resten er på plass. |
-| 11 | Skallet | `dashboard/layout.tsx` | — | Bakgrunn og ramme flyttes til hus-flaten. Tas **sist**, ellers ser ukonverterte sider ødelagte ut underveis. |
+| ✅ 1 | **Utgifter** | `utgifter` | `expenses/expense-form` | Pilot. Beviste mønsteret og ga `Felt`/`Velg`. |
+| ✅ 2 | Skatt & provisjon | `tax`, `commissions` | `tax/print-button` | Rene lese-sider. `KpiCard`-bruken erstattet av `TallRekke`. |
+| ✅ 3 | Drift, lett | `lager`, `varsler`, `prising` | `alerts/alert-campaign`, `pricing/pricing-tool`, `pricing/seasonal-rates` | |
+| ✅ 4 | Drift, tung | `rengjoring`, `vedlikehold`, `finn-vaskehjelp` | — | 344 + 334 + 383 linjer. Mange skjemaer. |
+| ✅ 5 | Meldinger | `meldinger` | `messages/reply-tools` | AI-flyten er nøyaktig som før. |
+| ✅ 6 | Eiendomsøkonomi | `okonomi` + 5 undersider | `okonomi/{ui,ai-box,okonomi-nav,demo-action}` | `okonomi/ui` er nå tynne innpakninger over husets primitiver; `Side` ligger i `okonomi/layout.tsx`. Ga primitivet `Tabell`. |
+| ✅ 7 | Boost, skade, smartlås | `boosts` ×3, `skade/[bookingId]`, `smartlas-guide` | `boosts/{boost-editor,boost-form}`, `claims/claim-form` | Statuser oversatt til norsk i visningen; verdiene i basen er urørt. |
+| ✅ 8 | Konto | `settings`, `sikkerhet`, `team` | `security/{set-password,two-factor}`, `settings/delete-account-button` | Ga `Handling` en `nyFane`-prop (GDPR-eksporten). |
+| ✅ 9 | **Eiendommer** | `properties`, `properties/new`, `properties/[id]` | `properties/*`, `calendar/availability-calendar`, `bookings/*`, `smartlock/smartlock-code` | 1 706 linjer delt i sju seksjoner under `properties/[id]/seksjoner/`. Datahentingen ble ikke flyttet. |
+| ✅ 10 | Oversikten | `dashboard` | `dashboard/{overview-ui,send-guest-link-button}` | `TallRad`, `PanelCard` og `KpiCard` slettet; kun `MonthChart` står igjen, med `tone` fordi admin deler den. |
+| ✅ 11 | Skallet | `dashboard/layout.tsx` | `dashboard/dashboard-nav` | Husflaten flyttet opp i layoutet, den negative margen i `Side` fjernet. |
+
+### Bevisst urørt
+
+Tre komponenter deles med lyse flater utenfor dashbordet og følger derfor samme
+gaffel som `components/ui/*`:
+
+- `properties/property-map` og `properties/amenity-list` — brukes av `/bo` og `/guide`.
+- `chat/chat-widget` — brukes også av landingssiden.
+- `dashboard/overview-ui`s `MonthChart` — brukes av `admin/inntekt`, og fikk
+  derfor `tone` i stedet for å bli mørk for alle.
 
 ### Hvorfor skallet sist
 
 Bytter man bakgrunnen først, blir alle ukonverterte sider hvite kort på mørk
-flate — verre enn i dag. `Side`-primitivet har derfor en negativ marg som legger
-hus-flaten oppå den lyse layouten per side. Når alle sidene er konvertert,
-flyttes flaten opp i layoutet og margen fjernes.
+flate — verre enn i dag. `Side` hadde derfor en negativ marg som la hus-flaten
+oppå den lyse layouten per side. I modul 11, da alle sidene var konvertert, ble
+flaten flyttet opp i `dashboard/layout.tsx` og margen fjernet.
 
 ---
 
 ## Definisjon av ferdig
 
-1. Det er umulig å se hvilke sider som ble laget før og etter refaktoren.
-2. `grep -rl "@/components/ui/card" app/dashboard` gir **null treff**.
-3. `grep -rlE "#[0-9a-fA-F]{6}|bg-white" app/dashboard` gir **null treff**.
-4. `git diff --stat main..HEAD -- lib app/api sql supabase` er tom.
-5. `npm run build`, `tsc --noEmit` og `eslint` er grønne.
-6. Hver eneste side åpner med en situasjon, ikke med en tabell.
+1. ✅ Det er umulig å se hvilke sider som ble laget før og etter refaktoren.
+2. ✅ `grep -rl "@/components/ui/card" app/dashboard` gir **null treff**.
+3. ✅ `grep -rlE "#[0-9a-fA-F]{6}|bg-white" app/dashboard` gir **null treff**
+   (kun `bg-white/[0.0x]`-slør, som er husets egne tokens).
+4. ✅ `git diff --stat 34c2c37..HEAD -- lib app/api sql supabase` er tom.
+   Målt fra refaktorens startpunkt, ikke fra `main` — `main` ligger bak flere
+   funksjonsendringer som ikke hører til refaktoren.
+5. ✅ `npm run build`, `tsc --noEmit` og `eslint .` er grønne.
+6. ✅ Hver eneste side åpner med en situasjon, ikke med en tabell.

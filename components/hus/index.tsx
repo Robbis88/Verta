@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
  * setter farge selv. Ser du en hex-kode eller et rått <div className="rounded-2xl
  * border bg-white"> i en side, er den ikke konvertert ennå.
  *
- *   Side        — flaten. Setter bakgrunn, bredde og pust.
+ *   Side        — bredden og pusten. Flaten selv ligger i dashboard/layout.tsx.
  *   Situasjon   — åpningen. Hva er tilfellet nå, før noen data vises.
  *   Tall        — et tall som betyr noe, med én linje kontekst.
  *   Flate       — en rolig seksjon med overskrift.
@@ -26,6 +26,10 @@ import { cn } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
 // Side
+//
+// Etter modul 11 setter denne KUN bredde og pust. Bakgrunn, blekkfarge og
+// takhøyde ligger i app/dashboard/layout.tsx, så flaten er sammenhengende
+// under hele dashbordet i stedet for å bli lagt oppå per side.
 // ---------------------------------------------------------------------------
 
 export function Side({
@@ -37,12 +41,7 @@ export function Side({
   bred?: boolean;
 }) {
   return (
-    <div className="hus-side -m-6 min-h-[calc(100dvh-3.5rem)] bg-hus-flate px-5 py-10 text-hus-blekk sm:-m-8 sm:px-8 lg:-m-10 lg:px-10">
-      {/* Lyset i taket — samme gest som på startsiden, dempet. */}
-      <div
-        aria-hidden="true"
-        className="hus-lys pointer-events-none fixed inset-0 bg-[radial-gradient(110%_60%_at_50%_-10%,rgba(216,166,106,0.10),transparent_60%)]"
-      />
+    <div className="px-5 py-10 sm:px-8 lg:px-10">
       <div
         className={cn(
           "relative mx-auto flex w-full flex-col gap-8",

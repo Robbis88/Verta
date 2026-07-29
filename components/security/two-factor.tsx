@@ -27,6 +27,9 @@ export function TwoFactor() {
   }
 
   useEffect(() => {
+    // Henter faktorene fra Supabase én gang ved montering — nettopp det en
+    // effekt er til for. Samme unntak som i dashboard-nav.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadFactors();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

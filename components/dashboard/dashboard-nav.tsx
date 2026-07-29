@@ -47,14 +47,14 @@ export function DashboardNav({
         <div className="flex items-center gap-4">
           <Link
             href="/hjem"
-            className="text-sm text-white/60 transition-colors hover:text-gold"
+            className="text-sm text-hus-svak transition-colors hover:text-hus-gull"
             title="Tilbake til huset"
           >
             ← Huset
           </Link>
           <Link
             href="/dashboard"
-            className="text-lg font-bold tracking-tight text-gold"
+            className="text-lg font-semibold tracking-tight text-hus-gull"
           >
             Verta
           </Link>
@@ -65,18 +65,21 @@ export function DashboardNav({
             type="button"
             onClick={() => setApen((v) => !v)}
             aria-expanded={apen}
-            className="flex items-center gap-2 rounded-full border border-white/15 px-4 py-1.5 text-white/80 transition-colors hover:border-gold/50 hover:text-white"
+            className="flex cursor-pointer items-center gap-2 rounded-full border border-hus-linje px-4 py-1.5 text-hus-dempet transition-colors hover:border-hus-linje-sterk hover:text-hus-blekk"
           >
             <span className="flex flex-col gap-[3px]" aria-hidden="true">
-              <i className="block h-px w-4 bg-gold" />
-              <i className="block h-px w-4 bg-gold" />
-              <i className="block h-px w-4 bg-gold" />
+              <i className="block h-px w-4 bg-hus-gull" />
+              <i className="block h-px w-4 bg-hus-gull" />
+              <i className="block h-px w-4 bg-hus-gull" />
             </span>
             Alt
           </button>
-          <span className="hidden text-white/50 sm:inline">{email}</span>
+          <span className="hidden text-hus-svak sm:inline">{email}</span>
           <form action="/auth/signout" method="post">
-            <button type="submit" className="text-white/70 hover:text-white">
+            <button
+              type="submit"
+              className="cursor-pointer text-hus-dempet transition-colors hover:text-hus-blekk"
+            >
               Logg ut
             </button>
           </form>
@@ -92,28 +95,28 @@ export function DashboardNav({
             role="presentation"
           />
           <div
-            className="absolute left-0 right-0 top-full z-40 mt-3 max-h-[75vh] overflow-y-auto rounded-2xl border border-white/10 bg-navy-dark p-6 shadow-2xl"
+            className="absolute left-0 right-0 top-full z-40 mt-3 max-h-[75vh] overflow-y-auto rounded-2xl border border-hus-linje bg-hus-hev p-6 shadow-2xl"
             role="dialog"
             aria-label="Alt i systemet"
           >
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {grupper.map((g) => (
                 <section key={g.id}>
-                  <h2 className="border-b border-gold/20 pb-2 text-sm font-semibold text-gold-light">
+                  <h2 className="border-b border-hus-linje pb-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-hus-gull">
                     {g.tittel}
                   </h2>
-                  <p className="mt-1 text-[11px] text-white/40">{g.hva}</p>
+                  <p className="mt-1.5 text-[11px] text-hus-svak">{g.hva}</p>
                   <ul className="mt-2 flex flex-col">
                     {g.items.map((i) => (
                       <li key={i.href}>
                         <Link
                           href={i.href}
-                          className="block rounded-lg px-2 py-2 transition-colors hover:bg-white/5"
+                          className="block rounded-lg px-2 py-2 transition-colors hover:bg-white/[0.04]"
                         >
-                          <span className="block text-sm text-white/90">
+                          <span className="block text-sm text-hus-blekk">
                             {i.label}
                           </span>
-                          <span className="block text-[11px] leading-snug text-white/40">
+                          <span className="block text-[11px] leading-snug text-hus-svak">
                             {i.hint}
                           </span>
                         </Link>
