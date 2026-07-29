@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { Button } from "@/components/ui/button";
+import { Handling } from "@/components/hus";
 import { markGuestLinkSent } from "@/app/dashboard/alert-actions";
 
 /**
@@ -22,32 +22,26 @@ export function SendGuestLinkButton({
 
   if (!copied) {
     return (
-      <Button
+      <Handling
         type="button"
-        variant="ghost"
-        size="sm"
+        vekt="naken"
         onClick={async () => {
           await navigator.clipboard.writeText(message);
           setCopied(true);
         }}
       >
         Kopier melding
-      </Button>
+      </Handling>
     );
   }
 
   return (
-    <form action={markGuestLinkSent} className="flex items-center gap-1.5">
-      <span className="text-xs font-medium text-emerald-700">Kopiert ✓</span>
+    <form action={markGuestLinkSent} className="flex items-center gap-2">
+      <span className="text-xs text-hus-god">Kopiert ✓</span>
       <input type="hidden" name="id" value={bookingId} />
-      <Button
-        type="submit"
-        variant="ghost"
-        size="sm"
-        className="text-emerald-700 hover:text-emerald-800"
-      >
+      <Handling type="submit" vekt="naken" className="text-hus-god">
         Bekreft sendt
-      </Button>
+      </Handling>
     </form>
   );
 }

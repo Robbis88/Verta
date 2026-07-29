@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { Sparkles } from "lucide-react";
 
 import { getCurrentProfile } from "@/lib/auth";
@@ -10,9 +9,24 @@ import { resolveAlert } from "./alert-actions";
 import { SendGuestLinkButton } from "@/components/dashboard/send-guest-link-button";
 import { PLANS, propertyLimit, type Plan } from "@/lib/constants";
 import { formatNok } from "@/lib/utils";
-import { MonthChart, PanelCard, TallRad } from "@/components/dashboard/overview-ui";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { MonthChart } from "@/components/dashboard/overview-ui";
+import {
+  Flate,
+  Handling,
+  Liste,
+  Merke,
+  Rad,
+  Side,
+  Situasjon,
+  Tall,
+  TallRekke,
+  Tomt,
+} from "@/components/hus";
+
+/**
+ * Oversikten — modul 10 i UI-refaktoren. Samme spørringer, samme tall, samme
+ * actions. Kortene er byttet mot husets Flate/TallRekke/Liste.
+ */
 
 const MONTH_LABELS = [
   "J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D",
@@ -71,8 +85,7 @@ export default async function DashboardPage() {
   const limit = propertyLimit(plan, profile?.extra_properties_count ?? 0);
 
   // Åpne forespørsler (booking som venter på eierens godkjenning). RLS scoper
-  // begge spørringene til innlogget eier. Vises rødt og blinkende øverst så
-  // eieren fanger dem opp selv om e-posten ble oversett.
+  // begge spørringene til innlogget eier.
   const supabase = await createClient();
   const { data: propRows } = await supabase.from("properties").select("id,name");
   const propName = new Map(
@@ -93,7 +106,7 @@ export default async function DashboardPage() {
 
   // Bookinger der gjestelenken ennå ikke er markert som sendt. Gjelder kommende/
   // pågående opphold med gjestetoken (også Airbnb/Booking eieren registrerer
-  // selv). En gyllen påminnelse nudger eieren til å sende lenken.
+  // selv).
   const todayStr = new Date().toISOString().slice(0, 10);
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://verta.no";
   const { data: unsentRows } = await supabase
@@ -154,296 +167,234 @@ export default async function DashboardPage() {
       : 0;
   const occTrend = occPrev > 0 ? occThis - occPrev : null;
 
-  return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-end justify-between gap-2">
-        <h1 className="text-2xl font-bold tracking-tight text-navy">
-          Oversikt {year}
-        </h1>
-        <span className="rounded-full bg-gold/15 px-3 py-1 text-xs font-medium text-gold">
-          {PLANS[plan].label} · {m.propertyCount} / {limit} eiendommer
-        </span>
-      </div>
+  const venter =
+    criticalAlerts.length + requests.length + unsentLinks.length;
 
-      {(criticalAlerts.length > 0 ||
-        requests.length > 0 ||
-        unsentLinks.length > 0) && (
-        <section className="rounded-2xl border border-hairline bg-white p-5 shadow-[0_8px_30px_rgba(8,27,51,0.06)]">
-          <h2 className="text-sm font-semibold text-navy">Trenger deg</h2>
-          <p className="mt-0.5 text-xs text-ink/50">
-            Alt som venter, samlet. Resten av siden er bare tall.
-          </p>
-          <ul className="mt-3 flex flex-col divide-y divide-hairline">
+  return (
+    <Side bred>
+      <Situasjon
+        merke="Oversikt"
+        tittel={
+          venter === 0
+            ? "Ingenting venter på deg."
+            : venter === 1
+              ? "Én ting venter på deg."
+              : `${venter} ting venter på deg.`
+        }
+        under={
+          venter === 0
+            ? `Alt er i rute. Resten av siden er tallene for ${year}.`
+            : "Alt som venter står samlet øverst. Resten av siden er bare tall."
+        }
+        handling={
+          <Merke tone="gull">
+            {PLANS[plan].label} · {m.propertyCount} / {limit} eiendommer
+          </Merke>
+        }
+      />
+
+      {venter > 0 && (
+        <Flate tittel="Trenger deg" hva="Alt som venter, samlet.">
+          <Liste>
             {criticalAlerts.map((a) => (
-              <li
+              <Rad
                 key={a.id}
-                className="flex items-center justify-between gap-3 py-3"
-              >
-                <div className="flex min-w-0 items-start gap-3">
-                  <span className="mt-1.5 size-2 shrink-0 rounded-full bg-red-600" />
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-navy">
-                      {a.title}
-                    </p>
-                    <p className="text-xs text-ink/60">
-                      {a.kind === "refund_failed"
-                        ? "Refusjon feilet — gjesten er ikke tilbakebetalt"
-                        : "Betaling mottatt uten match — sjekk Stripe/Connect"}
-                    </p>
-                  </div>
-                </div>
-                <form action={resolveAlert}>
-                  <input type="hidden" name="id" value={a.id} />
-                  <Button
-                    type="submit"
-                    variant="ghost"
-                    size="sm"
-                    className="shrink-0 text-ink/60 hover:text-navy"
-                  >
-                    Marker løst
-                  </Button>
-                </form>
-              </li>
+                hva={a.title}
+                detalj={
+                  a.kind === "refund_failed"
+                    ? "Refusjon feilet — gjesten er ikke tilbakebetalt"
+                    : "Betaling mottatt uten match — sjekk Stripe/Connect"
+                }
+                tone="kritisk"
+                verdi="Kritisk"
+                handling={
+                  <form action={resolveAlert}>
+                    <input type="hidden" name="id" value={a.id} />
+                    <Handling type="submit" vekt="naken">
+                      Marker løst
+                    </Handling>
+                  </form>
+                }
+              />
             ))}
 
             {requests.map((r) => (
-              <li
+              <Rad
                 key={r.id}
-                className="flex items-center justify-between gap-3 py-3"
-              >
-                <div className="flex min-w-0 items-start gap-3">
-                  <span className="mt-1.5 size-2 shrink-0 rounded-full bg-gold" />
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-navy">
-                      {r.guest_name} har spurt om å få bo hos deg
-                    </p>
-                    <p className="truncate text-xs text-ink/60">
-                      {propName.get(r.property_id) ?? ""} ·{" "}
-                      {formatRange(r.check_in, r.check_out)}
-                    </p>
-                  </div>
-                </div>
-                <Link
-                  href={`/hjem/opphold/${r.id}`}
-                  className="shrink-0 text-xs font-medium text-gold hover:underline"
-                >
-                  Svar →
-                </Link>
-              </li>
+                hva={`${r.guest_name} har spurt om å få bo hos deg`}
+                detalj={`${propName.get(r.property_id) ?? ""} · ${formatRange(
+                  r.check_in,
+                  r.check_out,
+                )}`}
+                handling={
+                  <Handling href={`/hjem/opphold/${r.id}`} vekt="naken">
+                    Svar →
+                  </Handling>
+                }
+              />
             ))}
 
             {unsentLinks.map((b) => (
-              <li
+              <Rad
                 key={b.id}
-                className="flex items-center justify-between gap-3 py-3"
-              >
-                <div className="flex min-w-0 items-start gap-3">
-                  <span className="mt-1.5 size-2 shrink-0 rounded-full bg-ink/25" />
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-navy">
-                      {b.guest_name} har ikke fått gjestelenken
-                    </p>
-                    <p className="truncate text-xs text-ink/60">
-                      {propName.get(b.property_id) ?? ""} ·{" "}
-                      {SOURCE_LABELS[b.source] ?? b.source} ·{" "}
-                      {formatRange(b.check_in, b.check_out)}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex shrink-0 items-center gap-1">
-                  <SendGuestLinkButton
-                    bookingId={b.id}
-                    message={`Hei${b.guest_name ? " " + b.guest_name : ""}! Her er din digitale gjesteside for oppholdet — innsjekk, WiFi, dørkode og alt du trenger på ett sted:
+                hva={`${b.guest_name} har ikke fått gjestelenken`}
+                detalj={`${propName.get(b.property_id) ?? ""} · ${
+                  SOURCE_LABELS[b.source] ?? b.source
+                } · ${formatRange(b.check_in, b.check_out)}`}
+                handling={
+                  <span className="flex items-center gap-1">
+                    <SendGuestLinkButton
+                      bookingId={b.id}
+                      message={`Hei${b.guest_name ? " " + b.guest_name : ""}! Her er din digitale gjesteside for oppholdet — innsjekk, WiFi, dørkode og alt du trenger på ett sted:
 ${siteUrl}/gjest/${b.guest_token}
 
 Hi! Here's your digital guest page with check-in info, WiFi and everything for your stay:
 ${siteUrl}/gjest/${b.guest_token}`}
-                  />
-                  <Link
-                    href={`/hjem/opphold/${b.id}`}
-                    className="text-xs font-medium text-gold hover:underline"
-                  >
-                    Åpne
-                  </Link>
-                </div>
-              </li>
+                    />
+                    <Handling href={`/hjem/opphold/${b.id}`} vekt="naken">
+                      Åpne
+                    </Handling>
+                  </span>
+                }
+              />
             ))}
-          </ul>
-        </section>
+          </Liste>
+        </Flate>
       )}
 
       {m.propertyCount === 0 ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Kom i gang</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col items-start gap-3">
-            <p className="text-sm text-muted-foreground">
-              Du har ingen eiendommer ennå.
-            </p>
-            <Button asChild>
-              <Link href="/dashboard/properties/new">Legg til eiendom</Link>
-            </Button>
-          </CardContent>
-        </Card>
+        <Flate>
+          <Tomt
+            tittel="Du har ingen eiendommer ennå."
+            hva="Legg inn boligen din, så begynner Verta å regne — inntekt, belegg, oppgaver og skatt."
+            knappTekst="Legg til eiendom"
+            knappHref="/dashboard/properties/new"
+          />
+        </Flate>
       ) : (
         <>
-          {/* Tallene — én flate, ikke fire bokser */}
-          <TallRad
-            tall={[
-              {
-                label: "Inntekt mnd",
-                value: formatNok(monthRevenue),
-                trend:
-                  revTrend != null
-                    ? `${revTrend >= 0 ? "+" : ""}${revTrend} % mot forrige mnd`
-                    : undefined,
-                trendTone: revTrend != null && revTrend < 0 ? "down" : "up",
-              },
-              {
-                label: "Beleggsgrad",
-                value: `${occThis} %`,
-                trend:
-                  occTrend != null
-                    ? `${occTrend >= 0 ? "+" : ""}${occTrend} pp mot forrige mnd`
-                    : undefined,
-                trendTone: occTrend != null && occTrend < 0 ? "down" : "up",
-              },
-              {
-                label: "Kommende",
-                value: `${m.upcomingCount}`,
-                trend: "bookinger",
-                trendTone: "muted",
-              },
-              {
-                label: "Inntekt i år",
-                value: formatNok(m.totalRevenue),
-                trend: "hittil i år",
-                trendTone: "muted",
-              },
-            ]}
-          />
+          <TallRekke>
+            <Tall
+              navn="Inntekt mnd"
+              verdi={formatNok(monthRevenue)}
+              tone="gull"
+            />
+            <Tall
+              navn="Beleggsgrad"
+              verdi={`${occThis} %`}
+              tone={occTrend != null && occTrend < 0 ? "obs" : "ro"}
+            />
+            <Tall navn="Kommende" verdi={`${m.upcomingCount}`} />
+            <Tall
+              navn="Inntekt i år"
+              verdi={formatNok(m.totalRevenue)}
+              tone="gull"
+            />
+          </TallRekke>
 
-          {/* Inntektsgraf */}
-          <PanelCard
-            title="Inntekt siste 12 mnd"
-            action={<span className="text-xs text-ink/50">{year}</span>}
-          >
+          <p className="text-sm text-hus-svak">
+            {revTrend != null
+              ? `Inntekten er ${revTrend >= 0 ? "opp" : "ned"} ${Math.abs(revTrend)} % mot forrige måned`
+              : "Første måned med tall"}
+            {occTrend != null &&
+              `, og beleggsgraden ${occTrend >= 0 ? "opp" : "ned"} ${Math.abs(occTrend)} prosentpoeng`}
+            .
+          </p>
+
+          <Flate tittel={`Inntekt siste 12 mnd`} hva={`Året ${year}, måned for måned.`}>
             <MonthChart
               values={m.byMonth}
               labels={MONTH_LABELS}
               format={formatNok}
+              tone="hus"
             />
-          </PanelCard>
+          </Flate>
 
-          <div className="grid gap-4 lg:grid-cols-2">
-            {/* Kommende bookinger */}
-            <PanelCard
-              title="Kommende bookinger"
-              action={
-                <Link
-                  href="/dashboard/properties"
-                  className="text-xs font-medium text-gold hover:underline"
-                >
+          <div className="grid gap-6 lg:grid-cols-2">
+            <Flate
+              tittel="Kommende bookinger"
+              hva="De neste gjestene dine."
+              handling={
+                <Handling href="/dashboard/properties" vekt="naken">
                   Se alle
-                </Link>
+                </Handling>
               }
             >
               {m.upcoming.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  Ingen kommende bookinger.
-                </p>
+                <Tomt
+                  tittel="Ingen kommende bookinger."
+                  hva="Del bookinglenken din, så fyller kalenderen seg."
+                />
               ) : (
-                <ul className="flex flex-col gap-3">
+                <Liste>
                   {m.upcoming.map((b, i) => (
-                    <li key={b.id ?? i}>
-                      <Link
-                        href={`/hjem/opphold/${b.id}`}
-                        className="-mx-2 flex items-center justify-between gap-2 rounded-lg px-2 py-1 transition hover:bg-cloud"
-                      >
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium text-navy">
-                          {b.guestName}
-                        </p>
-                        <p className="truncate text-xs text-ink/60">
-                          {b.propertyName}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-xs text-ink/70">
-                          {formatRange(b.checkIn, b.checkOut)}
-                        </p>
-                        <span className="rounded-full bg-cloud px-2 py-0.5 text-[10px] font-medium text-navy">
-                          {SOURCE_LABELS[b.source] ?? b.source}
+                    <Rad
+                      key={b.id ?? i}
+                      href={`/hjem/opphold/${b.id}`}
+                      hva={
+                        <span className="flex items-center gap-2">
+                          <span className="truncate">{b.guestName}</span>
+                          <Merke>{SOURCE_LABELS[b.source] ?? b.source}</Merke>
                         </span>
-                        </div>
-                      </Link>
-                    </li>
+                      }
+                      detalj={b.propertyName}
+                      verdi={formatRange(b.checkIn, b.checkOut)}
+                    />
                   ))}
-                </ul>
+                </Liste>
               )}
-            </PanelCard>
+            </Flate>
 
-            {/* Oppgaver */}
-            <PanelCard
-              title="Oppgaver"
-              action={
-                <Link
-                  href="/dashboard/rengjoring"
-                  className="text-xs font-medium text-gold hover:underline"
-                >
+            <Flate
+              tittel="Oppgaver"
+              hva="Vask og vedlikehold som står for tur."
+              handling={
+                <Handling href="/dashboard/rengjoring" vekt="naken">
                   Se alle
-                </Link>
+                </Handling>
               }
             >
               {m.tasks.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  Ingen kommende oppgaver.
-                </p>
+                <Tomt
+                  tittel="Ingen kommende oppgaver."
+                  hva="Verta lager utvask automatisk når en gjest sjekker ut."
+                />
               ) : (
-                <ul className="flex flex-col gap-2.5 text-sm">
+                <Liste>
                   {m.tasks.map((t, i) => (
-                    <li key={i} className="flex items-center gap-2.5">
-                      <span
-                        className={`flex size-4 shrink-0 items-center justify-center rounded border text-[10px] ${
-                          t.done
-                            ? "border-emerald-500 bg-emerald-500 text-white"
-                            : "border-ink/30"
-                        }`}
-                      >
-                        {t.done ? "✓" : ""}
-                      </span>
-                      <span
-                        className={
-                          t.done ? "text-ink/40 line-through" : "text-ink"
-                        }
-                      >
-                        {TASK_TYPE_LABELS[t.type] ?? t.type} – {t.propertyName}
-                      </span>
-                      <span className="ml-auto shrink-0 text-xs text-ink/50">
-                        {formatDay(t.date)}
-                      </span>
-                    </li>
+                    <Rad
+                      key={i}
+                      hva={
+                        <span
+                          className={t.done ? "text-hus-svak line-through" : ""}
+                        >
+                          {TASK_TYPE_LABELS[t.type] ?? t.type} – {t.propertyName}
+                        </span>
+                      }
+                      verdi={formatDay(t.date)}
+                      tone={t.done ? "ro" : "obs"}
+                    />
                   ))}
-                </ul>
+                </Liste>
               )}
-            </PanelCard>
+            </Flate>
           </div>
 
-          {/* Bookinger per kilde */}
-          <PanelCard
-            title="Bookinger per kilde"
-            action={
-              <span className="flex items-center gap-1 text-xs text-ink/50">
-                <Sparkles className="size-3.5 text-gold" />
+          <Flate
+            tittel="Bookinger per kilde"
+            hva="Hvor gjestene dine faktisk kommer fra."
+            handling={
+              <span className="flex items-center gap-1.5 text-xs text-hus-svak">
+                <Sparkles className="size-3.5 text-hus-gull" />
                 Boost: {formatNok(m.boostSpend)} → {formatNok(m.boostRevenue)}
               </span>
             }
           >
             {m.bySource.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                Ingen bookinger i år ennå.
-              </p>
+              <Tomt
+                tittel="Ingen bookinger i år ennå."
+                hva="Så snart den første kommer inn, ser du fordelingen her."
+              />
             ) : (
               <ul className="flex flex-col gap-3">
                 {m.bySource.map((s) => {
@@ -454,16 +405,16 @@ ${siteUrl}/gjest/${b.guest_token}`}
                   const pct = Math.round((s.revenue / maxSource) * 100);
                   return (
                     <li key={s.source} className="flex items-center gap-3 text-sm">
-                      <span className="w-24 shrink-0 text-ink/70">
+                      <span className="w-24 shrink-0 truncate text-hus-dempet">
                         {SOURCE_LABELS[s.source] ?? s.source}
                       </span>
-                      <div className="h-2 flex-1 overflow-hidden rounded-full bg-cloud">
+                      <div className="h-2 flex-1 overflow-hidden rounded-full bg-white/[0.06]">
                         <div
-                          className="h-full rounded-full bg-gradient-to-r from-gold/60 to-gold"
+                          className="h-full rounded-full bg-gradient-to-r from-hus-gull/60 to-hus-gull"
                           style={{ width: `${pct}%` }}
                         />
                       </div>
-                      <span className="w-28 shrink-0 text-right tabular-nums text-navy">
+                      <span className="w-28 shrink-0 text-right tabular-nums text-hus-blekk">
                         {s.count} · {formatNok(s.revenue)}
                       </span>
                     </li>
@@ -471,9 +422,9 @@ ${siteUrl}/gjest/${b.guest_token}`}
                 })}
               </ul>
             )}
-          </PanelCard>
+          </Flate>
         </>
       )}
-    </div>
+    </Side>
   );
 }
