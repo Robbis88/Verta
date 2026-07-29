@@ -7,11 +7,14 @@ import {
   regenerateBoostCopy,
   type BoostFormState,
 } from "@/app/dashboard/boosts/actions";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import { Handling, Kvittering, Omrade } from "@/components/hus";
 
 const initialState: BoostFormState = {};
 
+/**
+ * Redigering av annonseteksten — modul 7. Kun presentasjon: samme
+ * saveBoostText (id, text) og samme regenerateBoostCopy (id).
+ */
 export function BoostEditor({
   id,
   defaultText,
@@ -22,30 +25,29 @@ export function BoostEditor({
   const [state, action, pending] = useActionState(saveBoostText, initialState);
 
   return (
-    <div className="flex flex-col gap-3">
-      <form action={action} className="flex flex-col gap-2">
+    <div className="flex flex-col gap-4">
+      <form action={action} className="flex flex-col gap-4">
         <input type="hidden" name="id" value={id} />
-        <Textarea
-          name="text"
+        <Omrade
+          navn="text"
+          merke="Annonsetekst"
           defaultValue={defaultText}
-          className="min-h-32"
-          placeholder="Annonsetekst…"
+          rows={6}
+          placeholder="Annonsetekst …"
         />
-        {state.error && (
-          <p className="text-sm text-destructive">{state.error}</p>
-        )}
+        <Kvittering feil={state.error} />
         <div>
-          <Button type="submit" disabled={pending}>
-            {pending ? "Lagrer…" : "Lagre tekst"}
-          </Button>
+          <Handling type="submit" vekt="gull" disabled={pending}>
+            {pending ? "Lagrer …" : "Lagre tekst"}
+          </Handling>
         </div>
       </form>
 
       <form action={regenerateBoostCopy}>
         <input type="hidden" name="id" value={id} />
-        <Button type="submit" variant="outline">
+        <Handling type="submit" vekt="stille">
           Generer ny tekst med AI
-        </Button>
+        </Handling>
       </form>
     </div>
   );

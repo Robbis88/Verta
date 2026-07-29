@@ -1,15 +1,19 @@
-import Link from "next/link";
-
 import { createClient } from "@/lib/supabase/server";
 import { formatNok } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  Flate,
+  Handling,
+  Liste,
+  Merke,
+  Rad,
+  Side,
+  Situasjon,
+  Tomt,
+} from "@/components/hus";
+
+/**
+ * Boost-kampanjer — modul 7. Kun presentasjon; samme spørringer.
+ */
 
 type BoostRow = {
   id: string;
@@ -18,6 +22,22 @@ type BoostRow = {
   budget_nok: number;
   platform: string;
   created_at: string;
+};
+
+const STATUS_TEKST: Record<string, string> = {
+  pending: "Venter på betaling",
+  approved: "Aktiv",
+};
+
+const STATUS_TONE: Record<string, "ro" | "obs" | "god"> = {
+  pending: "obs",
+  approved: "god",
+};
+
+const PLATTFORM: Record<string, string> = {
+  instagram: "Instagram",
+  facebook: "Facebook",
+  both: "Instagram og Facebook",
 };
 
 export default async function BoostsPage() {
@@ -37,38 +57,63 @@ export default async function BoostsPage() {
     ((props ?? []) as { id: string; name: string }[]).map((p) => [p.id, p.name]),
   );
 
-  return (
-    <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Boost-kampanjer</h1>
-        <Button asChild>
-          <Link href="/dashboard/boosts/new">Ny boost</Link>
-        </Button>
-      </div>
+  const venter = boosts.filter((b) => b.status === "pending").length;
+  const brukt = boosts
+    .filter((b) => b.status === "approved")
+    .reduce((s, b) => s + Number(b.budget_nok), 0);
 
-      {boosts.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          Ingen kampanjer ennå. Lag en boost for å nå flere gjester.
-        </p>
-      ) : (
-        <div className="grid gap-4 sm:grid-cols-2">
-          {boosts.map((b) => (
-            <Link key={b.id} href={`/dashboard/boosts/${b.id}`}>
-              <Card className="transition-colors hover:bg-muted/40">
-                <CardHeader className="pb-2">
-                  <CardTitle className="flex items-center justify-between text-base">
-                    <span>{nameById.get(b.property_id) ?? "Eiendom"}</span>
-                    <Badge>{b.status}</Badge>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="text-sm text-muted-foreground">
-                  {formatNok(Number(b.budget_nok))} · {b.platform}
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
-        </div>
-      )}
-    </div>
+  return (
+    <Side>
+      <Situasjon
+        merke="Boost"
+        tittel={
+          boosts.length === 0
+            ? "Ingen kampanjer ennå."
+            : venter > 0
+              ? `${venter} kampanje${venter > 1 ? "r" : ""} venter på betaling.`
+              : `Du har brukt ${formatNok(brukt)} på å nå flere gjester.`
+        }
+        under="Verta skriver annonseteksten og publiserer den på Instagram og Facebook. Du godkjenner og betaler før noe går ut."
+        handling={
+          <Handling href="/dashboard/boosts/new" vekt="gull">
+            Ny boost
+          </Handling>
+        }
+      />
+
+      <Flate>
+        {boosts.length === 0 ? (
+          <Tomt
+            tittel="Ingen kampanjer ennå."
+            hva="En boost løfter boligen din foran folk som leter etter et sted akkurat nå."
+            knappTekst="Lag din første boost"
+            knappHref="/dashboard/boosts/new"
+          />
+        ) : (
+          <Liste>
+            {boosts.map((b) => (
+              <Rad
+                key={b.id}
+                nar={b.created_at.slice(0, 10)}
+                href={`/dashboard/boosts/${b.id}`}
+                hva={
+                  <span className="flex items-center gap-2">
+                    <span className="truncate">
+                      {nameById.get(b.property_id) ?? "Eiendom"}
+                    </span>
+                    <Merke tone={STATUS_TONE[b.status] ?? "ro"}>
+                      {STATUS_TEKST[b.status] ?? b.status}
+                    </Merke>
+                  </span>
+                }
+                detalj={PLATTFORM[b.platform] ?? b.platform}
+                verdi={formatNok(Number(b.budget_nok))}
+                tone="gull"
+              />
+            ))}
+          </Liste>
+        )}
+      </Flate>
+    </Side>
   );
 }

@@ -1,9 +1,10 @@
-import Link from "next/link";
-
 import { createClient } from "@/lib/supabase/server";
 import { BoostForm } from "@/components/boosts/boost-form";
-import { Button } from "@/components/ui/button";
+import { Flate, Side, Situasjon, Tomt } from "@/components/hus";
 
+/**
+ * Ny boost — modul 7. Kun presentasjon; skjemaet er uendret.
+ */
 export default async function NewBoostPage() {
   const supabase = await createClient();
   const { data } = await supabase
@@ -13,21 +14,25 @@ export default async function NewBoostPage() {
   const properties = (data ?? []) as { id: string; name: string }[];
 
   return (
-    <div className="flex flex-col gap-6">
-      <h1 className="text-2xl font-semibold">Ny boost</h1>
+    <Side>
+      <Situasjon
+        merke="Boost"
+        tittel="Sett et budsjett — Verta skriver resten."
+        under="Du velger bolig, beløp og datoer. Verta skriver annonseteksten, du godkjenner den før noe publiseres."
+      />
 
-      {properties.length === 0 ? (
-        <div className="flex flex-col items-start gap-3">
-          <p className="text-sm text-muted-foreground">
-            Du må ha minst én eiendom før du kan lage en boost.
-          </p>
-          <Button asChild>
-            <Link href="/dashboard/properties/new">Legg til eiendom</Link>
-          </Button>
-        </div>
-      ) : (
-        <BoostForm properties={properties} />
-      )}
-    </div>
+      <Flate>
+        {properties.length === 0 ? (
+          <Tomt
+            tittel="Du må ha minst én bolig først."
+            hva="Boosten trenger noe å annonsere for — bilder, beliggenhet og pris hentes fra boligen."
+            knappTekst="Legg til eiendom"
+            knappHref="/dashboard/properties/new"
+          />
+        ) : (
+          <BoostForm properties={properties} />
+        )}
+      </Flate>
+    </Side>
   );
 }

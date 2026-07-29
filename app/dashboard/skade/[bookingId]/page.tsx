@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { requireUser } from "@/lib/auth";
@@ -7,16 +6,29 @@ import { formatNok } from "@/lib/utils";
 import { ClaimForm } from "@/components/claims/claim-form";
 import { createIncidentClaim, createClaimPhotoUpload } from "./actions";
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  Flate,
+  Handling,
+  Liste,
+  Rad,
+  Side,
+  Situasjon,
+} from "@/components/hus";
+
+/**
+ * Meld skade — modul 7. Kun presentasjon; samme spørringer og samme actions.
+ */
 
 const STATUS_LABEL: Record<string, string> = {
   pending: "Venter på betaling",
   paid: "Betalt",
   cancelled: "Kansellert",
+};
+
+/** Betalt krav er penger inn — derfor gull, ikke grønt. */
+const STATUS_TONE: Record<string, "ro" | "obs" | "gull"> = {
+  pending: "obs",
+  paid: "gull",
+  cancelled: "ro",
 };
 
 export default async function SkadePage({
@@ -55,75 +67,44 @@ export default async function SkadePage({
   }[];
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Meld skade</h1>
-        <Link
-          href={`/dashboard/properties/${booking.property_id}`}
-          className="text-sm text-muted-foreground hover:text-foreground"
-        >
-          ← Tilbake
-        </Link>
-      </div>
+    <Side>
+      <Situasjon
+        merke="Skade"
+        tittel={`${booking.guest_name} bodde i ${property?.name ?? "boligen"} ${booking.check_in} → ${booking.check_out}.`}
+        under="Send et krav for skade utover normal slitasje. Gjesten får kravet på e-post med bildene, og kortet belastes først når de betaler."
+        handling={
+          <Handling href={`/dashboard/properties/${booking.property_id}`} vekt="stille">
+            ← Tilbake
+          </Handling>
+        }
+      />
 
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            {property?.name ?? "Eiendom"} · {booking.guest_name}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="text-sm text-muted-foreground">
-          Opphold {booking.check_in} → {booking.check_out}. Send gjesten et krav
-          for skade utover normal slitasje.
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Nytt skadekrav</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ClaimForm
-            bookingId={bookingId}
-            createAction={createIncidentClaim}
-            uploadAction={createClaimPhotoUpload}
-          />
-        </CardContent>
-      </Card>
+      <Flate
+        tittel="Nytt skadekrav"
+        hva="Beløp, en kort beskrivelse og bilder som viser hva som skjedde."
+      >
+        <ClaimForm
+          bookingId={bookingId}
+          createAction={createIncidentClaim}
+          uploadAction={createClaimPhotoUpload}
+        />
+      </Flate>
 
       {claims.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Tidligere krav</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ul className="flex flex-col divide-y divide-hairline">
-              {claims.map((c) => (
-                <li
-                  key={c.id}
-                  className="flex items-center justify-between gap-3 py-2 text-sm"
-                >
-                  <span className="text-muted-foreground">
-                    {c.created_at.slice(0, 10)}
-                  </span>
-                  <span className="font-medium text-navy">
-                    {formatNok(Number(c.amount))}
-                  </span>
-                  <span
-                    className={
-                      c.status === "paid"
-                        ? "text-emerald-600"
-                        : "text-amber-600"
-                    }
-                  >
-                    {STATUS_LABEL[c.status] ?? c.status}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
+        <Flate tittel="Tidligere krav" hva="Alt du har sendt for dette oppholdet.">
+          <Liste>
+            {claims.map((c) => (
+              <Rad
+                key={c.id}
+                nar={c.created_at.slice(0, 10)}
+                hva={STATUS_LABEL[c.status] ?? c.status}
+                verdi={formatNok(Number(c.amount))}
+                tone={STATUS_TONE[c.status] ?? "ro"}
+              />
+            ))}
+          </Liste>
+        </Flate>
       )}
-    </div>
+    </Side>
   );
 }

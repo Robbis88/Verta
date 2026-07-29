@@ -1,19 +1,38 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 import { payBoost } from "../actions";
 import { BoostEditor } from "@/components/boosts/boost-editor";
 import { formatNok } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  Beskjed,
+  Flate,
+  Handling,
+  Merke,
+  Side,
+  Situasjon,
+} from "@/components/hus";
 import type { Boost } from "@/lib/types";
+
+/**
+ * Én boost — modul 7. Kun presentasjon; samme spørringer og samme payBoost (id).
+ */
+
+const STATUS_TEKST: Record<string, string> = {
+  pending: "Venter på betaling",
+  approved: "Aktiv",
+};
+
+const STATUS_TONE: Record<string, "ro" | "obs" | "god"> = {
+  pending: "obs",
+  approved: "god",
+};
+
+const PLATTFORM: Record<string, string> = {
+  instagram: "Instagram",
+  facebook: "Facebook",
+  both: "Instagram og Facebook",
+};
 
 export default async function BoostDetailPage({
   params,
@@ -39,64 +58,57 @@ export default async function BoostDetailPage({
   const defaultText = boost.user_approved_text ?? boost.ai_generated_text ?? "";
 
   return (
-    <div className="flex flex-col gap-8">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">
-            Boost — {property?.name ?? "Eiendom"}
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            {formatNok(Number(boost.budget_nok))} · {boost.platform} ·{" "}
-            {boost.start_date} → {boost.end_date}
-          </p>
-        </div>
-        <Badge>{boost.status}</Badge>
-      </div>
+    <Side>
+      <Situasjon
+        merke="Boost"
+        tittel={`${property?.name ?? "Eiendom"} — ${formatNok(Number(boost.budget_nok))} på ${PLATTFORM[boost.platform] ?? boost.platform}`}
+        under={`${boost.start_date} → ${boost.end_date}`}
+        handling={
+          <Merke tone={STATUS_TONE[boost.status] ?? "ro"}>
+            {STATUS_TEKST[boost.status] ?? boost.status}
+          </Merke>
+        }
+      />
 
-      {paid && (
-        <p className="rounded-lg border border-hairline bg-cloud p-4 text-sm text-navy">
-          Boosten er godkjent og betalt!
-        </p>
-      )}
+      {paid && <Beskjed>Boosten er godkjent og betalt.</Beskjed>}
       {payment_failed && (
-        <p className="rounded-lg border border-destructive/40 p-4 text-sm text-destructive">
+        <Beskjed tone="kritisk">
           Betalingen ble ikke fullført. Prøv igjen.
-        </p>
+        </Beskjed>
       )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Annonsetekst</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <BoostEditor id={boost.id} defaultText={defaultText} />
-        </CardContent>
-      </Card>
+      <Flate
+        tittel="Annonsetekst"
+        hva="Verta har skrevet et utkast. Rediger fritt — det er du som eier ordene."
+      >
+        <BoostEditor id={boost.id} defaultText={defaultText} />
+      </Flate>
 
       {boost.status === "pending" && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Godkjenn og betal</CardTitle>
-          </CardHeader>
-          <CardContent className="flex items-center justify-between gap-4">
-            <p className="text-sm text-muted-foreground">
+        <Flate
+          tittel="Godkjenn og betal"
+          hva="Ingenting publiseres før du har betalt."
+        >
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <p className="text-sm text-hus-dempet">
               Betal {formatNok(Number(boost.budget_nok))} for å aktivere
               kampanjen.
             </p>
             <form action={payBoost}>
               <input type="hidden" name="id" value={boost.id} />
-              <Button type="submit">Godkjenn og betal med Vipps</Button>
+              <Handling type="submit" vekt="gull">
+                Godkjenn og betal med Vipps
+              </Handling>
             </form>
-          </CardContent>
-        </Card>
+          </div>
+        </Flate>
       )}
 
-      <Link
-        href="/dashboard/boosts"
-        className="text-sm text-muted-foreground hover:text-foreground"
-      >
-        ← Tilbake til kampanjer
-      </Link>
-    </div>
+      <div>
+        <Handling href="/dashboard/boosts" vekt="naken">
+          ← Tilbake til kampanjer
+        </Handling>
+      </div>
+    </Side>
   );
 }
