@@ -2,8 +2,14 @@ import { getEconomyContext, getTimeline } from "@/lib/okonomi";
 import { formatNok } from "@/lib/utils";
 import { MoneyRow, EmptyOkonomi } from "@/components/okonomi/ui";
 import { DemoAction } from "@/components/okonomi/demo-action";
-import { Card, CardContent } from "@/components/ui/card";
+import { Flate, Liste } from "@/components/hus";
 
+/**
+ * Bankrapport — modul 6. Kun presentasjon; samme beregninger.
+ *
+ * Rapporten er stilt som et dokument og arver husets utskriftsstil, så den kan
+ * skrives ut på hvitt papir og leveres i banken.
+ */
 export default async function BankrapportPage({
   searchParams,
 }: {
@@ -29,97 +35,111 @@ export default async function BankrapportPage({
   );
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="text-xl font-semibold">Bankrapport</h2>
-          <p className="text-sm text-muted-foreground">{economy.propertyName}</p>
-        </div>
+    <>
+      <div className="hus-ikke-print flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-hus-dempet">
+          Alt banken pleier å spørre om, samlet på ett ark.
+        </p>
         <DemoAction
           label="Last ned PDF"
           done="PDF-eksport kommer snart — rapporten er klar til å deles med banken."
         />
       </div>
 
-      {/* Rapport-forhåndsvisning, stilt som et dokument. */}
-      <Card className="mx-auto w-full max-w-2xl">
-        <CardContent className="flex flex-col gap-6 p-8">
-          <div className="border-b border-hairline pb-4 text-center">
-            <p className="text-lg font-bold tracking-tight text-navy">Verta</p>
-            <p className="text-sm text-muted-foreground">
+      <div className="mx-auto w-full max-w-2xl">
+        <Flate>
+          <div className="border-b border-hus-linje pb-4 text-center">
+            <p className="text-lg font-semibold tracking-tight text-hus-gull">
+              Verta
+            </p>
+            <p className="mt-1 text-sm text-hus-svak">
               Eiendomsrapport · {economy.propertyName}
             </p>
           </div>
 
-          <section>
-            <h3 className="mb-1 text-sm font-semibold uppercase tracking-wide text-gold">
-              Balanse
-            </h3>
+          <Bolk tittel="Balanse">
             <MoneyRow label="Eiendomsverdi" value={formatNok(economy.value)} />
             <MoneyRow label="Lån" value={formatNok(economy.loan)} />
             <MoneyRow label="Egenkapital" value={formatNok(equity)} strong />
             <MoneyRow label="Belåningsgrad" value={`${ltv} %`} muted />
-          </section>
+          </Bolk>
 
-          <section>
-            <h3 className="mb-1 text-sm font-semibold uppercase tracking-wide text-gold">
-              Drift (siste år)
-            </h3>
+          <Bolk tittel="Drift (siste år)">
             <MoneyRow label="Leieinntekter" value={formatNok(last.income)} />
             <MoneyRow label="Kostnader" value={formatNok(last.costs)} />
-            <MoneyRow label="Resultat før skatt" value={formatNok(last.result)} strong />
+            <MoneyRow
+              label="Resultat før skatt"
+              value={formatNok(last.result)}
+              strong
+            />
             <MoneyRow label="Estimert skatt" value={formatNok(taxEstimate)} muted />
-            <MoneyRow label="Kontantstrøm etter skatt" value={formatNok(cashflowAfterTax)} strong />
-          </section>
+            <MoneyRow
+              label="Kontantstrøm etter skatt"
+              value={formatNok(cashflowAfterTax)}
+              strong
+            />
+          </Bolk>
 
-          <section>
-            <h3 className="mb-1 text-sm font-semibold uppercase tracking-wide text-gold">
-              Nøkkeltall
-            </h3>
+          <Bolk tittel="Nøkkeltall">
             <MoneyRow label="Direkteavkastning" value={`${yieldPct} %`} muted />
             <MoneyRow label="Rentedekningsgrad" value={`${interestCover}×`} muted />
             <MoneyRow label="Rente" value={`${economy.interestRatePct} %`} muted />
-          </section>
+          </Bolk>
 
-          <section>
-            <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-gold">
-              Verdiutvikling
-            </h3>
-            <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm">
+          <Bolk tittel="Verdiutvikling">
+            <div className="flex flex-wrap gap-x-6 gap-y-1 pt-1 text-sm">
               {economy.history.map((h) => (
-                <span key={h.year} className="tabular-nums">
-                  <span className="text-muted-foreground">{h.year}:</span>{" "}
+                <span key={h.year} className="tabular-nums text-hus-blekk">
+                  <span className="text-hus-svak">{h.year}:</span>{" "}
                   {formatNok(h.value)}
                 </span>
               ))}
             </div>
-          </section>
+          </Bolk>
 
-          <section>
-            <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-gold">
-              Vedlikeholdshistorikk
-            </h3>
-            <ul className="flex flex-col gap-1 text-sm">
+          <Bolk tittel="Vedlikeholdshistorikk">
+            <Liste>
               {maintenance.map((m, i) => (
-                <li key={i} className="flex justify-between">
-                  <span>
+                <li
+                  key={i}
+                  className="flex items-baseline justify-between gap-4 border-b border-hus-linje-svak py-2.5 text-sm last:border-b-0"
+                >
+                  <span className="text-hus-blekk">
                     {m.year} · {m.title}
                   </span>
                   {m.amount != null && (
-                    <span className="tabular-nums text-muted-foreground">
+                    <span className="shrink-0 tabular-nums text-hus-dempet">
                       {formatNok(m.amount)}
                     </span>
                   )}
                 </li>
               ))}
-            </ul>
-          </section>
+            </Liste>
+          </Bolk>
 
-          <p className="border-t border-hairline pt-3 text-center text-xs text-muted-foreground">
+          <p className="mt-6 border-t border-hus-linje pt-4 text-center text-xs text-hus-svak">
             Generert av Verta · Tallene er foreløpig estimater
           </p>
-        </CardContent>
-      </Card>
-    </div>
+        </Flate>
+      </div>
+    </>
+  );
+}
+
+/** En seksjon i rapporten. Lokal, fordi den kun finnes her. */
+function Bolk({
+  tittel,
+  children,
+}: {
+  tittel: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="mt-6">
+      <h3 className="mb-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-hus-gull">
+        {tittel}
+      </h3>
+      {children}
+    </section>
   );
 }

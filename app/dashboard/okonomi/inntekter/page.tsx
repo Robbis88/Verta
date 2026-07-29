@@ -1,13 +1,11 @@
 import { getEconomyContext } from "@/lib/okonomi";
 import { formatNok } from "@/lib/utils";
 import { StatCard, EmptyOkonomi } from "@/components/okonomi/ui";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Flate, Tabell } from "@/components/hus";
 
+/**
+ * Inntekter — modul 6. Kun presentasjon; samme beregninger.
+ */
 export default async function InntekterPage({
   searchParams,
 }: {
@@ -26,73 +24,57 @@ export default async function InntekterPage({
       : 0;
 
   return (
-    <div className="flex flex-col gap-6">
-      <div>
-        <h2 className="text-xl font-semibold">Inntekter</h2>
-        <p className="text-sm text-muted-foreground">{economy.propertyName}</p>
-      </div>
+    <>
+      <p className="text-sm text-hus-dempet">
+        {economy.propertyName} har tjent{" "}
+        <span className="text-hus-gull-lys">{formatNok(ytdTotal)}</span> hittil i
+        år — {diffPct >= 0 ? "opp" : "ned"} {Math.abs(diffPct)} % mot i fjor.
+      </p>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <StatCard label="Hittil i år" value={formatNok(ytdTotal)} tone="gold" />
         <StatCard
           label="Mot i fjor"
           value={`${diffPct >= 0 ? "+" : ""}${diffPct} %`}
           tone={diffPct >= 0 ? "positive" : "negative"}
-          sub={formatNok(lastYearTotal) + " i fjor"}
+          sub={`${formatNok(lastYearTotal)} i fjor`}
         />
-        <StatCard label="Beleggsprosent" value={`${economy.income.occupancyPct} %`} />
-        <StatCard label="Snitt døgnpris" value={formatNok(economy.income.avgNightly)} />
-        <StatCard label="Beste måned" value={economy.income.bestMonth} tone="positive" />
+        <StatCard
+          label="Beleggsprosent"
+          value={`${economy.income.occupancyPct} %`}
+        />
+        <StatCard
+          label="Snitt døgnpris"
+          value={formatNok(economy.income.avgNightly)}
+        />
+        <StatCard
+          label="Beste måned"
+          value={economy.income.bestMonth}
+          tone="positive"
+        />
         <StatCard label="Svakeste måned" value={economy.income.worstMonth} />
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Inntekt per kilde</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-hairline text-xs uppercase tracking-wide text-muted-foreground">
-                  <th className="py-2 text-left font-medium">Kilde</th>
-                  <th className="py-2 text-right font-medium">Denne mnd</th>
-                  <th className="py-2 text-right font-medium">Hittil i år</th>
-                  <th className="py-2 text-right font-medium">I fjor</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sources.map((s) => (
-                  <tr key={s.key} className="border-b border-hairline/60">
-                    <td className="py-2">{s.label}</td>
-                    <td className="py-2 text-right tabular-nums">
-                      {formatNok(s.thisMonth)}
-                    </td>
-                    <td className="py-2 text-right tabular-nums">
-                      {formatNok(s.ytd)}
-                    </td>
-                    <td className="py-2 text-right tabular-nums text-muted-foreground">
-                      {formatNok(s.lastYear)}
-                    </td>
-                  </tr>
-                ))}
-                <tr className="font-semibold text-navy">
-                  <td className="py-3">Totalt</td>
-                  <td className="py-3 text-right tabular-nums">
-                    {formatNok(sources.reduce((s, x) => s + x.thisMonth, 0))}
-                  </td>
-                  <td className="py-3 text-right tabular-nums">
-                    {formatNok(ytdTotal)}
-                  </td>
-                  <td className="py-3 text-right tabular-nums">
-                    {formatNok(lastYearTotal)}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+      <Flate tittel="Inntekt per kilde">
+        <Tabell
+          kolonner={["Kilde", "Denne mnd", "Hittil i år", "I fjor"]}
+          sisteSterk
+          rader={[
+            ...sources.map((s) => [
+              s.label,
+              formatNok(s.thisMonth),
+              formatNok(s.ytd),
+              formatNok(s.lastYear),
+            ]),
+            [
+              "Totalt",
+              formatNok(sources.reduce((s, x) => s + x.thisMonth, 0)),
+              formatNok(ytdTotal),
+              formatNok(lastYearTotal),
+            ],
+          ]}
+        />
+      </Flate>
+    </>
   );
 }

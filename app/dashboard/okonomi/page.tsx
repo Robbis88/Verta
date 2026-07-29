@@ -1,15 +1,17 @@
-import Link from "next/link";
-
 import { getEconomyContext } from "@/lib/okonomi";
 import { monthlyCostTotal, monthlyIncomeTotal } from "@/lib/okonomi-mock";
 import { formatNok } from "@/lib/utils";
 import { StatCard, EmptyOkonomi } from "@/components/okonomi/ui";
 import { AiBox } from "@/components/okonomi/ai-box";
-import { Button } from "@/components/ui/button";
+import { Beskjed, Felt, Flate, Handling } from "@/components/hus";
 import { updateEconomy } from "./actions";
 
 const MONTHS_SO_FAR = 7; // mock: antall måneder hittil i år
 
+/**
+ * Eiendomsøkonomi, oversikt — modul 6. Kun presentasjon; samme beregninger og
+ * samme `updateEconomy` med samme fire felter.
+ */
 export default async function OkonomiOversikt({
   searchParams,
 }: {
@@ -38,11 +40,40 @@ export default async function OkonomiOversikt({
   const qs = `?eiendom=${selected.id}`;
 
   return (
-    <div className="flex flex-col gap-6">
+    <>
+      <p className="text-sm text-hus-dempet">
+        {economy.propertyName} er verdt{" "}
+        <span className="text-hus-gull-lys">{formatNok(economy.value)}</span>, og{" "}
+        {resultMonth >= 0 ? (
+          <>
+            gir deg{" "}
+            <span className="text-hus-god">{formatNok(resultMonth)}</span> i
+            måneden før skatt.
+          </>
+        ) : (
+          <>
+            koster deg{" "}
+            <span className="text-hus-kritisk">
+              {formatNok(Math.abs(resultMonth))}
+            </span>{" "}
+            i måneden.
+          </>
+        )}
+      </p>
+
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Antatt verdi" value={formatNok(economy.value)} sub={economy.propertyName} tone="gold" />
+        <StatCard
+          label="Antatt verdi"
+          value={formatNok(economy.value)}
+          sub={economy.propertyName}
+          tone="gold"
+        />
         <StatCard label="Lån" value={formatNok(economy.loan)} />
-        <StatCard label="Egenkapital" value={formatNok(equity)} tone="positive" />
+        <StatCard
+          label="Egenkapital"
+          value={formatNok(equity)}
+          tone="positive"
+        />
         <StatCard label="Belåningsgrad" value={`${ltv} %`} sub="Lån av verdi" />
         <StatCard label="Inntekter / mnd" value={formatNok(income)} />
         <StatCard label="Kostnader / mnd" value={formatNok(costs)} />
@@ -56,7 +87,11 @@ export default async function OkonomiOversikt({
           value={formatNok(ytdResult)}
           tone={ytdResult >= 0 ? "positive" : "negative"}
         />
-        <StatCard label="Estimert skatt" value={formatNok(taxEstimate)} sub={`${economy.taxRatePct} % sats`} />
+        <StatCard
+          label="Estimert skatt"
+          value={formatNok(taxEstimate)}
+          sub={`${economy.taxRatePct} % sats`}
+        />
         <StatCard
           label="Kontantstrøm etter skatt"
           value={formatNok(cashflowAfterTax)}
@@ -66,83 +101,64 @@ export default async function OkonomiOversikt({
       </div>
 
       <div className="flex flex-wrap gap-3">
-        <Button asChild>
-          <Link href={`/dashboard/okonomi/bankrapport${qs}`}>Lag bankrapport</Link>
-        </Button>
-        <Button asChild variant="outline">
-          <Link href={`/dashboard/okonomi/kostnader${qs}`}>Se kostnadene</Link>
-        </Button>
+        <Handling href={`/dashboard/okonomi/bankrapport${qs}`} vekt="gull">
+          Lag bankrapport
+        </Handling>
+        <Handling href={`/dashboard/okonomi/kostnader${qs}`} vekt="stille">
+          Se kostnadene
+        </Handling>
       </div>
 
-      <details className="rounded-xl border border-hairline bg-white p-5">
-        <summary className="cursor-pointer text-sm font-semibold text-navy">
-          Rediger verdi, lån og rente
-        </summary>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Disse tallene brukes til egenkapital, belåningsgrad, renter og
-          kontantstrøm over. Gjelder <strong>{selected.name}</strong>.
-        </p>
-        {lagret && (
-          <p className="mt-2 text-sm text-emerald-600">Lagret. ✅</p>
-        )}
-        <form
-          action={updateEconomy}
-          className="mt-4 grid gap-4 sm:grid-cols-2"
-        >
+      <Flate
+        tittel="Verdi, lån og rente"
+        hva={`Disse tallene ligger til grunn for egenkapital, belåningsgrad og kontantstrøm over. Gjelder ${selected.name}.`}
+      >
+        {lagret && <Beskjed>Lagret.</Beskjed>}
+        <form action={updateEconomy} className="mt-4 flex flex-col gap-4">
           <input type="hidden" name="property_id" value={selected.id} />
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="text-muted-foreground">Antatt verdi (kr)</span>
-            <input
-              name="market_value"
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Felt
+              navn="market_value"
+              merke="Antatt verdi (kr)"
               type="number"
               min={0}
               step="1000"
               defaultValue={selectedFinance?.market_value ?? ""}
-              className="h-10 rounded-lg border border-hairline bg-white px-3 shadow-sm"
             />
-          </label>
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="text-muted-foreground">Lån (kr)</span>
-            <input
-              name="loan_amount"
+            <Felt
+              navn="loan_amount"
+              merke="Lån (kr)"
               type="number"
               min={0}
               step="1000"
               defaultValue={selectedFinance?.loan_amount ?? ""}
-              className="h-10 rounded-lg border border-hairline bg-white px-3 shadow-sm"
             />
-          </label>
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="text-muted-foreground">Rente (%)</span>
-            <input
-              name="interest_rate"
+            <Felt
+              navn="interest_rate"
+              merke="Rente (%)"
               type="number"
               min={0}
               step="0.01"
               defaultValue={selectedFinance?.interest_rate ?? ""}
-              className="h-10 rounded-lg border border-hairline bg-white px-3 shadow-sm"
             />
-          </label>
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="text-muted-foreground">Avdrag per måned (kr)</span>
-            <input
-              name="monthly_principal"
+            <Felt
+              navn="monthly_principal"
+              merke="Avdrag per måned (kr)"
               type="number"
               min={0}
               step="100"
               defaultValue={selectedFinance?.monthly_principal ?? ""}
-              className="h-10 rounded-lg border border-hairline bg-white px-3 shadow-sm"
             />
-          </label>
-          <div className="sm:col-span-2">
-            <Button type="submit" size="sm">
+          </div>
+          <div>
+            <Handling type="submit" vekt="gull">
               Lagre
-            </Button>
+            </Handling>
           </div>
         </form>
-      </details>
+      </Flate>
 
       <AiBox />
-    </div>
+    </>
   );
 }

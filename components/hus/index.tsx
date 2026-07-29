@@ -534,3 +534,72 @@ export function Kort({ children }: { children: ReactNode }) {
     </div>
   );
 }
+
+// ---------------------------------------------------------------------------
+// Tabell — for ekte tabelldata (flere kolonner som skal sammenlignes).
+// Ruller vannrett i sin egen boks, så siden aldri ruller sidelengs.
+// ---------------------------------------------------------------------------
+
+export function Tabell({
+  kolonner,
+  rader,
+  sisteSterk = false,
+}: {
+  /** Overskrifter. Alt utenom første kolonne høyrestilles. */
+  kolonner: string[];
+  /** Radene, i samme rekkefølge som kolonnene. */
+  rader: ReactNode[][];
+  /** Siste rad er en sum — tyngre skrift og strek over. */
+  sisteSterk?: boolean;
+}) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[28rem] text-sm">
+        <thead>
+          <tr className="border-b border-hus-linje">
+            {kolonner.map((k, i) => (
+              <th
+                key={k}
+                className={cn(
+                  "py-2 text-[11px] font-medium uppercase tracking-[0.12em] text-hus-svak",
+                  i === 0 ? "text-left" : "text-right",
+                )}
+              >
+                {k}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rader.map((rad, ri) => {
+            const sum = sisteSterk && ri === rader.length - 1;
+            return (
+              <tr
+                key={ri}
+                className={cn(
+                  "border-b border-hus-linje-svak last:border-b-0",
+                  sum && "border-t border-t-hus-linje",
+                )}
+              >
+                {rad.map((celle, ci) => (
+                  <td
+                    key={ci}
+                    className={cn(
+                      "py-2.5",
+                      ci === 0
+                        ? "text-left text-hus-blekk"
+                        : "text-right tabular-nums text-hus-dempet",
+                      sum && "py-3.5 font-semibold text-hus-blekk",
+                    )}
+                  >
+                    {celle}
+                  </td>
+                ))}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
