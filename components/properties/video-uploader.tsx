@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 
 import { createClient } from "@/lib/supabase/client";
-import { Button } from "@/components/ui/button";
+import { Handling } from "@/components/hus";
 
 const BUCKET = "property-videos";
 const MAX_BYTES = 100 * 1024 * 1024; // 100 MB
@@ -79,10 +79,10 @@ export function VideoUploader({
         <video
           src={videoUrl}
           controls
-          className="w-full max-w-md rounded-lg border border-hairline"
+          className="w-full max-w-md rounded-xl border border-hus-linje"
         />
       ) : (
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm leading-relaxed text-hus-dempet">
           Ingen video ennå. En kort video vises som bakgrunn øverst på den
           offentlige siden.
         </p>
@@ -99,28 +99,27 @@ export function VideoUploader({
           e.target.value = "";
         }}
       />
-      <div className="flex flex-wrap gap-2">
-        <Button
+      <div className="flex flex-wrap items-center gap-2">
+        <Handling
           type="button"
-          size="sm"
+          vekt="gull"
           disabled={busy}
           onClick={() => inputRef.current?.click()}
         >
-          {busy ? "Laster opp…" : videoUrl ? "Bytt video" : "Last opp video"}
-        </Button>
+          {busy ? "Laster opp …" : videoUrl ? "Bytt video" : "Last opp video"}
+        </Handling>
         {videoUrl && !busy && (
-          <Button
+          <Handling
             type="button"
-            size="sm"
-            variant="ghost"
+            vekt="naken"
             onClick={() => removeVideo(propertyId)}
           >
             Fjern video
-          </Button>
+          </Handling>
         )}
       </div>
-      {status && <p className="text-xs text-muted-foreground">{status}</p>}
-      <p className="text-xs text-muted-foreground">
+      {status && <p className="text-xs text-hus-dempet">{status}</p>}
+      <p className="text-xs text-hus-svak">
         mp4 eller webm, maks 100 MB. Hold den kort (10–30 sek) for rask lasting.
       </p>
     </div>

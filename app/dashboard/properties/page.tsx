@@ -1,16 +1,19 @@
-import Link from "next/link";
-
 import { getCurrentProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { propertyLimit, type Plan } from "@/lib/constants";
-import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  Flate,
+  Handling,
+  Liste,
+  Rad,
+  Side,
+  Situasjon,
+  Tomt,
+} from "@/components/hus";
 
+/**
+ * Eiendommer — modul 9. Kun presentasjon; samme spørring og samme plangrense.
+ */
 export default async function PropertiesPage() {
   const supabase = await createClient();
   const profile = await getCurrentProfile();
@@ -26,46 +29,56 @@ export default async function PropertiesPage() {
   const canAdd = count < limit;
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Eiendommer</h1>
-          <p className="text-sm text-muted-foreground">
-            {count} av {limit} brukt
-          </p>
-        </div>
-        {canAdd ? (
-          <Button asChild>
-            <Link href="/dashboard/properties/new">Legg til eiendom</Link>
-          </Button>
-        ) : (
-          <Button asChild variant="outline">
-            <Link href="/dashboard">Oppgrader for flere</Link>
-          </Button>
-        )}
-      </div>
+    <Side>
+      <Situasjon
+        merke="Eiendommer"
+        tittel={
+          count === 0
+            ? "Ingen bolig lagt inn ennå."
+            : count === 1
+              ? "Du har én bolig i Verta."
+              : `Du har ${count} boliger i Verta.`
+        }
+        under={`${count} av ${limit} plasser brukt på planen din.`}
+        handling={
+          canAdd ? (
+            <Handling href="/dashboard/properties/new" vekt="gull">
+              Legg til eiendom
+            </Handling>
+          ) : (
+            <Handling href="/dashboard" vekt="stille">
+              Oppgrader for flere
+            </Handling>
+          )
+        }
+      />
 
-      {count === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          Ingen eiendommer ennå.
-        </p>
-      ) : (
-        <div className="grid gap-4 sm:grid-cols-2">
-          {properties!.map((p) => (
-            <Link key={p.id} href={`/dashboard/properties/${p.id}`}>
-              <Card className="transition-colors hover:bg-muted/40">
-                <CardHeader>
-                  <CardTitle>{p.name}</CardTitle>
-                </CardHeader>
-                <CardContent className="text-sm text-muted-foreground">
-                  {p.address || "Ingen adresse"}
-                  {p.max_guests ? ` · ${p.max_guests} gjester` : ""}
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
-        </div>
-      )}
-    </div>
+      <Flate>
+        {count === 0 ? (
+          <Tomt
+            tittel="Ingen eiendommer ennå."
+            hva="Legg inn boligen din, så bygger Verta gjesteguide, priser, oppgaver og regnskap rundt den."
+            knappTekst="Legg til eiendom"
+            knappHref="/dashboard/properties/new"
+          />
+        ) : (
+          <Liste>
+            {properties!.map((p) => (
+              <Rad
+                key={p.id}
+                href={`/dashboard/properties/${p.id}`}
+                hva={p.name}
+                detalj={[
+                  p.address || "Ingen adresse",
+                  p.max_guests ? `${p.max_guests} gjester` : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+              />
+            ))}
+          </Liste>
+        )}
+      </Flate>
+    </Side>
   );
 }

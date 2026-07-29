@@ -6,7 +6,7 @@ import {
   generateTestCode,
   type CodeState,
 } from "@/app/dashboard/properties/smartlock-actions";
-import { Button } from "@/components/ui/button";
+import { Handling } from "@/components/hus";
 
 const initialState: CodeState = {};
 
@@ -14,12 +14,14 @@ export function SmartLockCode() {
   const [state, action, pending] = useActionState(generateTestCode, initialState);
 
   return (
-    <form action={action} className="flex items-center gap-3">
-      <Button type="submit" variant="outline" disabled={pending}>
+    <form action={action} className="flex flex-wrap items-center gap-4">
+      <Handling type="submit" vekt="stille" disabled={pending}>
         Generer testkode
-      </Button>
+      </Handling>
       {state.code && (
-        <span className="font-mono text-lg tracking-widest">{state.code}</span>
+        <span className="font-mono text-lg tracking-[0.3em] text-hus-gull-lys">
+          {state.code}
+        </span>
       )}
     </form>
   );
