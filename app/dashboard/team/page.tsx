@@ -1,17 +1,23 @@
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { addCoHost, removeCoHost } from "./actions";
-import { CopyButton } from "@/components/shared/copy-button";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
+import { Kopier } from "@/components/hus/kopier";
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  Felt,
+  Flate,
+  Handling,
+  Liste,
+  Merke,
+  Rad,
+  Side,
+  Situasjon,
+  Tomt,
+} from "@/components/hus";
+
+/**
+ * Team — modul 8. Kun presentasjon; samme spørring og samme actions
+ * (addCoHost: email, removeCoHost: id).
+ */
 
 type Member = {
   id: string;
@@ -31,77 +37,87 @@ export default async function TeamPage() {
     .order("created_at", { ascending: false });
   const members = (data ?? []) as Member[];
 
+  const aktive = members.filter((m) => m.accepted_at).length;
+  const venter = members.length - aktive;
+
   return (
-    <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Team</h1>
-        <p className="text-sm text-muted-foreground">
-          Inviter en co-host som kan logge inn og hjelpe med driften
-          (bookinger, oppgaver, meldinger). De kan ikke endre abonnement,
-          slette kontoen eller opprette nye eiendommer.
+    <Side>
+      <Situasjon
+        merke="Team"
+        tittel={
+          members.length === 0
+            ? "Du driver huset alene."
+            : venter > 0
+              ? `${aktive} hjelper deg, ${venter} har ikke svart ennå.`
+              : `${aktive} hjelper deg med driften.`
+        }
+        under="En co-host kan logge inn og hjelpe med bookinger, oppgaver og meldinger. De kan ikke endre abonnement, slette kontoen eller opprette nye eiendommer."
+      />
+
+      <Flate
+        tittel="Inviter co-host"
+        hva="De må logge inn med samme e-post for å godta invitasjonen."
+      >
+        <form action={addCoHost} className="flex flex-col gap-4">
+          <Felt
+            navn="email"
+            merke="E-post"
+            type="email"
+            required
+            placeholder="navn@eksempel.no"
+          />
+          <div>
+            <Handling type="submit" vekt="gull">
+              Inviter
+            </Handling>
+          </div>
+        </form>
+        <p className="mt-4 text-xs text-hus-svak">
+          Etter invitasjon: kopier lenken i listen under og send den til
+          co-hosten.
         </p>
-      </div>
+      </Flate>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Inviter co-host</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form
-            action={addCoHost}
-            className="flex flex-col gap-2 sm:flex-row sm:items-end"
-          >
-            <div className="flex flex-1 flex-col gap-1.5">
-              <Label htmlFor="email">E-post</Label>
-              <Input id="email" name="email" type="email" required placeholder="navn@eksempel.no" />
-            </div>
-            <Button type="submit">Inviter</Button>
-          </form>
-          <p className="mt-2 text-xs text-muted-foreground">
-            Etter invitasjon: kopier lenken under og send den til co-host. De må
-            logge inn med samme e-post for å godta.
-          </p>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Co-hosts ({members.length})</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {members.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              Ingen co-hosts ennå.
-            </p>
-          ) : (
-            <ul className="flex flex-col divide-y">
-              {members.map((m) => (
-                <li
-                  key={m.id}
-                  className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm"
-                >
-                  <span className="font-medium">{m.member_email}</span>
+      <Flate tittel={`Co-hosts (${members.length})`}>
+        {members.length === 0 ? (
+          <Tomt
+            tittel="Ingen co-hosts ennå."
+            hva="Har du noen som svarer gjester eller møter vaskehjelpen, slipper du å være eneste kontaktpunkt."
+          />
+        ) : (
+          <Liste>
+            {members.map((m) => (
+              <Rad
+                key={m.id}
+                hva={
                   <span className="flex items-center gap-2">
-                    <Badge>{m.accepted_at ? "Aktiv" : "Venter"}</Badge>
+                    <span className="truncate">{m.member_email}</span>
+                    <Merke tone={m.accepted_at ? "god" : "obs"}>
+                      {m.accepted_at ? "Aktiv" : "Venter"}
+                    </Merke>
+                  </span>
+                }
+                handling={
+                  <span className="flex items-center gap-1">
                     {!m.accepted_at && (
-                      <CopyButton
-                        text={`${site}/team/aksepter/${m.invite_token}`}
-                        label="Kopier invitasjonslenke"
+                      <Kopier
+                        tekst={`${site}/team/aksepter/${m.invite_token}`}
+                        merke="Kopier invitasjonslenke"
                       />
                     )}
                     <form action={removeCoHost}>
                       <input type="hidden" name="id" value={m.id} />
-                      <Button type="submit" variant="ghost" size="sm">
+                      <Handling type="submit" vekt="naken">
                         Fjern
-                      </Button>
+                      </Handling>
                     </form>
                   </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+                }
+              />
+            ))}
+          </Liste>
+        )}
+      </Flate>
+    </Side>
   );
 }

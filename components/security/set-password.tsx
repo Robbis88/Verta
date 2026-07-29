@@ -3,10 +3,12 @@
 import { useState } from "react";
 
 import { createClient } from "@/lib/supabase/client";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Felt, Handling, Kvittering } from "@/components/hus";
 
+/**
+ * Sett passord — modul 8. Kun presentasjon; samme kall mot
+ * supabase.auth.updateUser og samme validering.
+ */
 export function SetPassword() {
   const supabase = createClient();
   const [password, setPassword] = useState("");
@@ -35,36 +37,33 @@ export function SetPassword() {
   }
 
   return (
-    <form onSubmit={submit} className="flex max-w-sm flex-col gap-3">
-      <p className="text-sm text-muted-foreground">
-        Sett eller endre passordet du logger inn med.
-      </p>
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="new-password">Nytt passord</Label>
-        <Input
-          id="new-password"
+    <form onSubmit={submit} className="flex flex-col gap-4">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Felt
+          navn="new-password"
+          merke="Nytt passord"
           type="password"
           autoComplete="new-password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="new-confirm">Gjenta passord</Label>
-        <Input
-          id="new-confirm"
+        <Felt
+          navn="new-confirm"
+          merke="Gjenta passord"
           type="password"
           autoComplete="new-password"
           value={confirm}
           onChange={(e) => setConfirm(e.target.value)}
         />
       </div>
-      {error && <p className="text-sm text-destructive">{error}</p>}
-      {done && <p className="text-sm text-emerald-600">Passordet er lagret ✓</p>}
+      <Kvittering
+        feil={error ?? undefined}
+        ok={done ? "Passordet er lagret." : undefined}
+      />
       <div>
-        <Button type="submit" disabled={pending}>
-          {pending ? "Lagrer…" : "Lagre passord"}
-        </Button>
+        <Handling type="submit" vekt="gull" disabled={pending}>
+          {pending ? "Lagrer …" : "Lagre passord"}
+        </Handling>
       </div>
     </form>
   );

@@ -286,6 +286,7 @@ export function Handling({
   disabled,
   onClick,
   className,
+  nyFane = false,
 }: {
   /** Lenke. Uten href blir det en knapp (for <form action=…>). */
   href?: string;
@@ -297,11 +298,18 @@ export function Handling({
   /** Kun fra klientkomponenter (f.eks. window.print()). */
   onClick?: () => void;
   className?: string;
+  /** Åpner i ny fane — for nedlastinger og eksterne portaler. */
+  nyFane?: boolean;
 }) {
   const klasse = cn(HANDLING_BASE, HANDLING_VEKT[vekt], className);
   if (href) {
     return (
-      <Link href={href} className={klasse}>
+      <Link
+        href={href}
+        className={klasse}
+        target={nyFane ? "_blank" : undefined}
+        rel={nyFane ? "noopener noreferrer" : undefined}
+      >
         {children}
       </Link>
     );

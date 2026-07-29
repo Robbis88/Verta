@@ -1,15 +1,22 @@
-import Link from "next/link";
-
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { TwoFactor } from "@/components/security/two-factor";
 import { SetPassword } from "@/components/security/set-password";
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  Beskjed,
+  Flate,
+  Handling,
+  Liste,
+  Rad,
+  Side,
+  Situasjon,
+  Tomt,
+} from "@/components/hus";
+
+/**
+ * Sikkerhet — modul 8. Kun presentasjon; samme spørring og samme filter
+ * (?severity=…).
+ */
 
 type LogEntry = {
   id: string;
@@ -26,10 +33,10 @@ const SEVERITIES = [
   ["security", "Sikkerhet"],
 ] as const;
 
-const SEVERITY_STYLE: Record<string, string> = {
-  security: "text-red-600",
-  warning: "text-amber-600",
-  info: "text-muted-foreground",
+const SEVERITY_TONE: Record<string, "ro" | "obs" | "kritisk"> = {
+  security: "kritisk",
+  warning: "obs",
+  info: "ro",
 };
 
 export default async function SikkerhetPage({
@@ -51,83 +58,77 @@ export default async function SikkerhetPage({
   const log = (data ?? []) as LogEntry[];
 
   return (
-    <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Sikkerhet</h1>
-        <p className="text-sm text-muted-foreground">
-          Tofaktor-autentisering og en logg over viktige handlinger på kontoen.
-        </p>
-      </div>
+    <Side>
+      <Situasjon
+        merke="Sikkerhet"
+        tittel="Ingen andre skal komme inn i huset ditt."
+        under="Tofaktor-autentisering og en logg over alt som er gjort på kontoen."
+      />
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Passord</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <SetPassword />
-        </CardContent>
-      </Card>
+      <Flate
+        tittel="Passord"
+        hva="Passordet du logger inn med. Minst åtte tegn."
+      >
+        <SetPassword />
+      </Flate>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Tofaktor-autentisering (2FA)</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
+      <Flate
+        tittel="Tofaktor (2FA)"
+        hva="En engangskode fra telefonen i tillegg til passordet."
+      >
+        <div className="flex flex-col gap-4">
           {mfa === "required" && (
-            <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-700">
+            <Beskjed tone="obs">
               Administratorkontoer må ha tofaktor aktivert. Aktiver det under for
               å få tilgang til admin-området.
-            </p>
+            </Beskjed>
           )}
           <TwoFactor />
-        </CardContent>
-      </Card>
+        </div>
+      </Flate>
 
-      <Card>
-        <CardHeader className="flex-row items-center justify-between">
-          <CardTitle>Revisjonslogg</CardTitle>
-          <div className="flex gap-1 text-xs">
+      <Flate
+        tittel="Revisjonslogg"
+        hva="De 50 siste hendelsene på kontoen din."
+        handling={
+          <div className="flex flex-wrap gap-1">
             {SEVERITIES.map(([v, l]) => (
-              <Link
-                key={v || "all"}
-                href={v ? `/dashboard/sikkerhet?severity=${v}` : "/dashboard/sikkerhet"}
-                className={`rounded px-2 py-1 ${
-                  (severity ?? "") === v
-                    ? "bg-navy text-white"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
+              <Handling
+                key={v || "alle"}
+                href={
+                  v ? `/dashboard/sikkerhet?severity=${v}` : "/dashboard/sikkerhet"
+                }
+                vekt={(severity ?? "") === v ? "stille" : "naken"}
               >
                 {l}
-              </Link>
+              </Handling>
             ))}
           </div>
-        </CardHeader>
-        <CardContent>
-          {log.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Ingen hendelser.</p>
-          ) : (
-            <ul className="flex flex-col divide-y">
-              {log.map((e) => (
-                <li
-                  key={e.id}
-                  className="flex items-center justify-between gap-3 py-2 text-sm"
-                >
-                  <span className="flex-1 font-mono text-xs">{e.action}</span>
-                  <span className={`text-xs ${SEVERITY_STYLE[e.severity] ?? ""}`}>
-                    {e.severity}
-                  </span>
-                  <span className="w-32 text-right text-xs text-muted-foreground">
-                    {new Date(e.created_at).toLocaleString("nb-NO", {
-                      dateStyle: "short",
-                      timeStyle: "short",
-                    })}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+        }
+      >
+        {log.length === 0 ? (
+          <Tomt
+            tittel="Ingen hendelser."
+            hva="Her dukker innlogginger, endringer og sikkerhetsvarsler opp."
+          />
+        ) : (
+          <Liste>
+            {log.map((e) => (
+              <Rad
+                key={e.id}
+                nar={new Date(e.created_at).toLocaleString("nb-NO", {
+                  dateStyle: "short",
+                  timeStyle: "short",
+                })}
+                hva={e.action}
+                detalj={e.resource_type ?? undefined}
+                verdi={e.severity}
+                tone={SEVERITY_TONE[e.severity] ?? "ro"}
+              />
+            ))}
+          </Liste>
+        )}
+      </Flate>
+    </Side>
   );
 }
